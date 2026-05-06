@@ -8,6 +8,8 @@
 #include <WebServer.h>
 #include <Adafruit_NeoPixel.h>
 #include <time.h>
+#include <WiFiManager.h>
+#include <ArduinoOTA.h>
 #if LUX_SENSOR_ENABLED
 #include <Adafruit_VEML7700.h>
 #endif
@@ -435,7 +437,10 @@ enum StatusMode : uint8_t {
   STATUS_WIFI_FAIL,
   STATUS_BUTTON,
   STATUS_TIME_SYNC,
-  STATUS_SETTINGS_SAVED
+  STATUS_SETTINGS_SAVED,
+  STATUS_OTA_UPDATE,
+  STATUS_OTA_SUCCESS,
+  STATUS_OTA_FAILED
 };
 
 class ClockRenderer {
@@ -691,6 +696,15 @@ class ClockRenderer {
         break;
       case STATUS_SETTINGS_SAVED:
         color = strip_.Color(70, 0, 120);
+        break;
+      case STATUS_OTA_UPDATE:
+        color = strip_.Color(0, 0, 200);  // Blue for OTA update in progress
+        break;
+      case STATUS_OTA_SUCCESS:
+        color = strip_.Color(0, 200, 0);  // Green for OTA success
+        break;
+      case STATUS_OTA_FAILED:
+        color = strip_.Color(200, 0, 0);  // Red for OTA failure
         break;
       default:
         break;
@@ -1062,6 +1076,51 @@ class TimeSync {
   static constexpr uint32_t syncIntervalMs_ = 6UL * 60UL * 60UL * 1000UL;
 };
 
+// ===================== WiFi Setup (WiFiManager) =====================
+bool setupWiFi() {
+  WiFiManager wm;
+  wm.setConnectRetries(3);
+  bool connected = wm.autoConnect("esp32c3-clock-setup", "");
+  return connected;
+}
+
+// ===================== OTA Setup =====================
+void setupOTA() {
+  ArduinoOTA.setHostname(DEVICE_HOSTNAME);
+  ArduinoOTA.setPassword("iris_ota_2026");
+
+  ArduinoOTA.onStart([]() {
+    Serial.println("[OTA] Update starting...");
+  });
+
+  ArduinoOTA.onEnd([]() {
+    Serial.println("[OTA] Update complete, rebooting...");
+    delay(2000);
+  });
+
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    static uint32_t lastLog = 0;
+    if (millis() - lastLog > 500) {
+      Serial.printf("[OTA] Progress: %u/%u (%.1f%%)\n", progress, total,
+                   (float)progress * 100.0 / total);
+      lastLog = millis();
+    }
+  });
+
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("[OTA] Error %u: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+    else Serial.println("Unknown");
+  });
+
+  ArduinoOTA.begin();
+  Serial.printf("[OTA] Ready. Upload: pio run -e esp32c3_v3_8inch -t upload --upload-port %s.local:3232\n", DEVICE_HOSTNAME);
+}
+
 // ===================== Web UI =====================
 class WebUi {
  public:
@@ -1079,28 +1138,19 @@ class WebUi {
 
   void begin() {
 #if ENABLE_WIFI_UI
+    Serial.println("[WiFi] Starting WiFi provisioning...");
     WiFi.mode(WIFI_STA);
-    WiFi.persistent(false);
+    WiFi.persistent(true);
     WiFi.setAutoReconnect(true);
-    configureWiFiHostname();
-    Serial.print("Connecting Wi-Fi SSID: ");
-    Serial.println(WIFI_SSID);
-    Serial.print("LAN hostname: ");
-    Serial.println(DEVICE_HOSTNAME);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     renderer_.setStatus(STATUS_WIFI_CONNECTING, WIFI_CONNECT_TIMEOUT_MS);
 
-    const uint32_t start = millis();
-    uint32_t lastDotMs = 0;
-    while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
-      renderer_.render(model_.get());
-      if (millis() - lastDotMs >= 500) {
-        Serial.print(".");
-        lastDotMs = millis();
-      }
-      delay(50);
+    // Use WiFiManager for auto-connect with provisioning portal on first boot
+    if (!setupWiFi()) {
+      enabled_ = false;
+      renderer_.setStatus(STATUS_WIFI_FAIL, 2000);
+      Serial.println("[WiFi] WiFiManager provisioning failed or timed out");
+      return;
     }
-    Serial.println();
 
     if (WiFi.status() != WL_CONNECTED) {
       enabled_ = false;
@@ -1113,13 +1163,31 @@ class WebUi {
       return;
     }
 
+    // ===== FIX 1: Reapply hostname AFTER connection =====
+    delay(2000);
+    WiFi.setHostname(DEVICE_HOSTNAME);
+    WiFi.mode(WIFI_STA);  // Reapply mode to force hostname propagation
+
+    Serial.printf("[WiFi] Hostname: %s\n", WiFi.getHostname());
+    Serial.printf("[WiFi] SSID: %s\n", WiFi.SSID().c_str());
+    Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
+
     enabled_ = true;
     setupRoutes();
     server_.begin();
+
+    // ===== FIX 2: Register with mDNS =====
     mdnsEnabled_ = MDNS.begin(DEVICE_HOSTNAME);
     if (mdnsEnabled_) {
       MDNS.addService("http", "tcp", 80);
+      Serial.printf("[mDNS] Registered: %s.local\n", DEVICE_HOSTNAME);
+    } else {
+      Serial.println("[mDNS] Start failed");
     }
+
+    // ===== FIX 3: Setup OTA =====
+    setupOTA();
+
     timeSync_.begin();
     if (timeSync_.syncNow()) {
       renderer_.setStatus(STATUS_TIME_SYNC, 1500);
@@ -1132,7 +1200,7 @@ class WebUi {
   void loop() {
     if (!enabled_) return;
     server_.handleClient();
-
+    ArduinoOTA.handle();  // Handle OTA updates
   }
 
   bool enabled() const { return enabled_; }

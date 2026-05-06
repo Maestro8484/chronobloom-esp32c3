@@ -40,7 +40,45 @@ Upload over USB:
 pio run -e esp32c3_v3_8inch -t upload
 ```
 
-After connecting to Wi-Fi, the web UI should be reachable at `http://esp32c3-v3-8inch.local/` or the IP address shown by your router.
+## Wi-Fi Setup
+
+**First Boot (WiFi Provisioning Portal)**:
+On first boot, if no saved WiFi credentials exist, the device opens a captive portal:
+1. Your phone/computer will detect a WiFi network named `esp32c3-clock-setup` (no password required)
+2. Connect to this network
+3. A browser window will auto-open (or navigate to `http://192.168.4.1`)
+4. Select your WiFi network from the list and enter the password
+5. Device saves credentials to EEPROM and connects
+6. Portal closes, device is ready to use
+
+**Subsequent Boots**:
+The device auto-connects to saved WiFi network. If credentials become invalid (password changed, network unavailable), the provisioning portal reappears on the next boot.
+
+## Hostname & Network Access
+
+After WiFi connection, the device advertises its hostname via mDNS. You can access the web UI at:
+- `http://esp32c3-v3-8inch.local/` (mDNS hostname, recommended)
+- `http://<device-ip>/` (IP address shown in router device list)
+
+The hostname also appears correctly in your router's device list (not as a MAC address).
+
+## OTA Firmware Updates
+
+After initial USB flash, firmware updates can be deployed over WiFi without USB cable:
+
+```powershell
+# Build new firmware
+pio run -e esp32c3_v3_8inch
+
+# Upload via OTA (device must be on WiFi)
+pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+```
+
+During OTA update:
+- Inner ring shows blue status animation
+- Serial monitor (if available) shows progress percentage
+- Device reboots automatically when complete
+- Inner ring shows green on success, red on failure
 
 ## LED Mapping
 

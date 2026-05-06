@@ -1,0 +1,592 @@
+# Troubleshooting Guide
+
+## Common Issues & Solutions
+
+---
+
+## WiFi Connection Problems
+
+### Clock won't connect to WiFi
+
+**Symptoms**:
+- Red spinning dot on inner ring (STATUS_WIFI_FAIL animation)
+- Serial output shows "Wi-Fi connect failed. Status: X"
+- Web UI not accessible
+
+**Diagnostic steps**:
+1. Check serial monitor output (`pio device monitor`)
+2. Verify WiFi credentials in `platformio.ini`:
+   ```ini
+   -D WIFI_SSID=\"YourSSID\"
+   -D WIFI_PASSWORD=\"YourPassword\"
+   ```
+3. Check router DHCP table for device (hostname: `esp32c3-v3-8inch`)
+4. Verify SSID is 2.4GHz (ESP32-C3 does NOT support 5GHz)
+
+**Common fixes**:
+- Special characters in password need escaping: `\"` for quotes, `\\` for backslash
+- SSID/password case-sensitive
+- Router may be blocking new devices (check MAC filter)
+- WiFi signal too weak (try closer to router during first boot)
+
+**Workaround**: Add temporary debug output
+```cpp
+WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+Serial.print("Connecting to: ");
+Serial.println(WIFI_SSID);
+Serial.print("Password length: ");
+Serial.println(strlen(WIFI_PASSWORD));
+```
+
+---
+
+### mDNS hostname not resolving
+
+**Symptoms**:
+- `http://esp32c3-v3-8inch.local/` times out
+- Direct IP access works
+
+**Fixes**:
+1. **Windows**: Install Bonjour Print Services (Apple) for mDNS support
+2. **Linux**: Ensure `avahi-daemon` is running
+3. **macOS**: Should work natively
+4. **Alternative**: Use direct IP address from serial output or router DHCP table
+
+**Check mDNS status**:
+```cpp
+// In setup(), after MDNS.begin()
+Serial.print("mDNS started: ");
+Serial.println(mdnsEnabled_ ? "YES" : "NO");
+```
+
+---
+
+## Button Issues
+
+### Spurious button presses / time jumping backward
+
+**Symptoms**:
+- Time jumps backward by 5 minutes without physical button press
+- Most common when USB cable connected
+- Less common when powered via 5V-only supply
+
+**Root cause**: GPIO3/GPIO4 are JTAG TCK/TDI pins on ESP32-C3. USB data connection can trigger JTAG subsystem, causing FALLING edge interrupts.
+
+**Diagnostic test**:
+1. Power clock via 5V-only supply (no USB data pins connected)
+2. Observe if spurious presses stop
+3. If yes, confirms JTAG interference
+
+**Fixes** (in priority order):
+
+**Option 1: Revert to polled buttons** (recommended)
+```cpp
+// Replace ISR-based ButtonInput with polled version
+void poll(uint32_t now) {
+  bool upNow = (digitalRead(BUTTON_UP_PIN) == LOW);
+  bool downNow = (digitalRead(BUTTON_DOWN_PIN) == LOW);
+  
+  if (upNow && !lastUp_ && now - lastUpMs_ > debounceMs_) {
+    upPressed_ = true;
+    lastUpMs_ = now;
+  }
+  if (downNow && !lastDown_ && now - lastDownMs_ > debounceMs_) {
+    downPressed_ = true;
+    lastDownMs_ = now;
+  }
+  
+  lastUp_ = upNow;
+  lastDown_ = downNow;
+}
+
+// Call in loop():
+buttons.poll(millis());
+```
+
+**Option 2: Move buttons to safe pins** (requires rewiring)
+- Use GPIO6, GPIO7, GPIO8, or GPIO9
+- Note: GPIO6/7 currently used for I2C (VEML7700)
+- Viable if sensor not installed
+
+**Option 3: Add stable-LOW guard** (software-only, partial fix)
+```cpp
+// In main loop, when consuming button flag:
+if (buttonUpPressed_) {
+  if (digitalRead(BUTTON_UP_PIN) == LOW) {  // Verify still pressed
+    timeModel.addMinutes(1);
+  }
+  buttonUpPressed_ = false;
+}
+```
+
+---
+
+### Buttons not responding at all
+
+**Symptoms**:
+- Physical button press does nothing
+- No animation, no time change
+
+**Checks**:
+1. Verify pull-up resistors: buttons should connect pin to GND when pressed
+2. Check `INPUT_PULLUP` mode set in `pinMode()`
+3. Test with multimeter: pin should read 3.3V when not pressed, 0V when pressed
+4. Verify button wiring: Common = GND, NO (normally open) = GPIO pin
+
+**Debug code**:
+```cpp
+// In loop():
+Serial.print("UP: ");
+Serial.print(digitalRead(GPIO3));
+Serial.print(" DOWN: ");
+Serial.println(digitalRead(GPIO4));
+delay(500);
+```
+Should print `1 1` when not pressed, `0 1` or `1 0` when single button pressed.
+
+---
+
+## LED Display Problems
+
+### All LEDs off / no display
+
+**Checks**:
+1. **Power supply**: Verify 5V present at LED strip VCC/GND
+2. **Data connection**: Check 300Ω resistor inline with GPIO10 → LED DIN
+3. **Strip polarity**: Ensure VCC/GND not swapped (can damage LEDs)
+4. **Sacrificial pixel**: First LED in strip is intentionally dark (index 0)
+
+**Serial output check**:
+```
+NeoPixelClock v3 booting...
+Build target: esp32c3-v3-8inch
+LED count: 98
+Ring pixel offset: 1
+Center pixel: enabled at physical index 97
+```
+
+**Test code**:
+```cpp
+// In setup(), after strip_.begin():
+strip_.fill(strip_.Color(255, 0, 0), 0, CLOCK_PIXEL_COUNT);  // All red
+strip_.show();
+delay(2000);
+```
+
+---
+
+### Center pixel not lighting (15" variant)
+
+**Symptoms**:
+- All rings work
+- Center pixel remains dark
+
+**Checks**:
+1. Verify `CENTER_PIXEL_SEPARATE_OUTPUT=1` in build flags
+2. Check `CENTER_PIXEL_PIN=20` wired correctly
+3. Confirm GPIO20 not shorted to GND
+4. Test center strip separately:
+```cpp
+centerStrip_->setPixelColor(0, centerStrip_->Color(255, 255, 255));
+centerStrip_->show();
+```
+
+---
+
+### Wrong colors / colors shifted
+
+**Symptoms**:
+- Red appears green, green appears blue, etc.
+
+**Cause**: NeoPixel color order mismatch
+
+**Fix**: Change `NEO_GRB` to `NEO_RGB` (or vice versa) in NeoPixel initialization:
+```cpp
+Adafruit_NeoPixel ledStrip(CLOCK_PIXEL_COUNT, LED_DATA_PIN, NEO_RGB + NEO_KHZ800);
+```
+
+Common orders: `NEO_GRB`, `NEO_RGB`, `NEO_GRBW` (if RGBW strip)
+
+---
+
+### Flickering during web requests
+
+**Symptoms**:
+- LEDs flicker or dim briefly when accessing web UI
+- Most noticeable during long HTTP responses
+
+**Cause**: WiFi interrupt preemption delays `strip_.show()` timing
+
+**Mitigations**:
+1. Reduce web UI polling frequency (increase `setInterval` from 1000ms to 2000ms)
+2. Use longer delays between animation frames
+3. Disable WiFi during critical animations:
+```cpp
+WiFi.mode(WIFI_OFF);
+renderAnimation();
+WiFi.mode(WIFI_STA);
+```
+
+---
+
+## Sensor Issues
+
+### VEML7700 not detected
+
+**Symptoms**:
+- Serial output: "VEML7700 not found on I2C"
+- `/lux` endpoint returns `{"available":false}`
+
+**Diagnostic I2C scan**:
+```cpp
+Wire.begin(6, 7);
+Serial.println("Scanning I2C bus...");
+for (uint8_t addr = 1; addr < 127; addr++) {
+  Wire.beginTransmission(addr);
+  if (Wire.endTransmission() == 0) {
+    Serial.print("Found device at 0x");
+    Serial.println(addr, HEX);
+  }
+}
+```
+Expected output: `Found device at 0x10`
+
+**Common fixes**:
+- Check SDA/SCL not swapped (green=SDA/GPIO6, yellow=SCL/GPIO7)
+- Verify 3.3V and GND connected
+- Try different I2C address if using non-standard VEML7700 breakout
+- Check solder joints on sensor breakout board
+
+---
+
+### Auto-brightness not working
+
+**Symptoms**:
+- Lux reading shown in web UI
+- Brightness doesn't change with room lighting
+
+**Checks**:
+1. Verify `autoBrightnessMode = 1` (auto) in web UI, not 0 (manual) or 2 (scheduled)
+2. Check min/max brightness limits (if both set to same value, no change visible)
+3. Confirm lux reading actually changing (cover sensor, shine flashlight)
+
+**Debug output**:
+```cpp
+Serial.print("Lux: ");
+Serial.print(luxSensor.lux());
+Serial.print(" → Brightness: ");
+Serial.println(luxSensor.autoBrightness());
+```
+
+**Calibration**: If brightness changes too slowly/quickly, adjust logarithmic curve in `LuxSensor::autoBrightness()`.
+
+---
+
+## Settings & EEPROM
+
+### Settings not persisting after reboot
+
+**Symptoms**:
+- Change settings in web UI, reboot, settings reset to defaults
+
+**Checks**:
+1. Verify "Save display" button clicked (not just changing values)
+2. Check serial output for "Settings saved" confirmation
+3. Verify `EEPROM.commit()` called after `EEPROM.put()`
+
+**Force EEPROM reset** (if corrupted):
+```cpp
+// In setup(), before settingsStore.begin():
+EEPROM.begin(256);
+for (int i = 0; i < 256; i++) {
+  EEPROM.write(i, 0x00);
+}
+EEPROM.commit();
+Serial.println("EEPROM cleared");
+```
+
+---
+
+### Settings reset unexpectedly
+
+**Cause**: Settings version mismatch (firmware update changed `ClockSettings` struct)
+
+**Expected behavior**: When `SETTINGS_VERSION` increments, all settings reset to defaults. This is by design to ensure clean state.
+
+**Check version**:
+```cpp
+Serial.print("Stored settings version: ");
+Serial.println(storedSettings.version);
+Serial.print("Current firmware version: ");
+Serial.println(SETTINGS_VERSION);
+```
+
+---
+
+## Web UI Issues
+
+### Web UI loads but controls don't work
+
+**Symptoms**:
+- Can access web page
+- Buttons/sliders do nothing
+- No errors in browser console
+
+**Checks**:
+1. Hard refresh browser (Ctrl+Shift+R) to clear cached JavaScript
+2. Check browser console for JavaScript errors (F12 → Console tab)
+3. Verify `/settings` POST endpoint responding (Network tab in F12)
+
+**Test endpoint directly**:
+```
+POST http://192.168.1.XXX/settings
+Content-Type: application/x-www-form-urlencoded
+
+dayBrightness=200&nightBrightness=20
+```
+
+---
+
+### Live clock preview not updating
+
+**Symptoms**:
+- SVG clock visible but frozen
+- Time doesn't advance
+
+**Checks**:
+1. Verify `/time` endpoint responding (check Network tab, should poll every 1 sec)
+2. Check JavaScript console for fetch errors
+3. Confirm `setInterval(refresh, 1000)` running
+
+**Test `/time` endpoint**:
+```
+GET http://192.168.1.XXX/time
+```
+Should return JSON: `{"hour":14,"minute":30,"second":45,...}`
+
+---
+
+## Build & Flash Issues
+
+### Upload fails: "Port not found"
+
+**Symptoms**:
+- `pio run -t upload` fails
+- Error: "Please specify `upload_port`"
+
+**Fixes**:
+1. Check USB cable (data-capable, not charge-only)
+2. Verify XIAO board drivers installed (CH340 or CP210x)
+3. Manually specify port:
+```powershell
+pio run -e esp32c3_v3_8inch -t upload --upload-port COM3
+```
+4. Windows: Check Device Manager → Ports (COM & LPT)
+5. Linux: Check `ls /dev/ttyUSB*` or `ls /dev/ttyACM*`
+
+---
+
+### Compilation errors after updating
+
+**Common errors**:
+
+**"LuxSensor was not declared"**:
+- Missing `#include` or class definition
+- Check `LUX_SENSOR_ENABLED=1` in build flags
+
+**"Adafruit_VEML7700.h: No such file"**:
+- Library not installed
+- Add to `platformio.ini` lib_deps:
+```ini
+adafruit/Adafruit VEML7700 Library @ ^2.1.6
+```
+- Run `pio lib install`
+
+**"Multiple definition of..."**:
+- Function/variable defined in header without `inline` or `static`
+- Move implementation to `.cpp` or add `inline` keyword
+
+---
+
+## Animation Issues
+
+### Animations not triggering at expected times
+
+**Symptoms**:
+- Top of hour passes, no animation
+- Quarter-hour passes, nothing happens
+
+**Checks**:
+1. Verify `intervalAnimationsEnabled = 1` in web UI
+2. Confirm specific animation not set to "Off" (mode 0)
+3. Check time is actually advancing (NTP sync working)
+
+**Debug trigger logic**:
+```cpp
+if (time.minute != lastMinute && time.second == 0) {
+  Serial.print("Minute changed: ");
+  Serial.print(time.minute);
+  Serial.print(" Animation enabled: ");
+  Serial.println(settingsStore.get().intervalAnimationsEnabled);
+}
+```
+
+---
+
+### Animation runs but clock display wrong after
+
+**Symptoms**:
+- Animation plays correctly
+- Afterward, clock shows wrong time or frozen
+
+**Cause**: Animation didn't call `timeModel.markDirty()` at end
+
+**Fix**: Add to end of animation function:
+```cpp
+void renderMyAnimation(uint32_t now) {
+  // ... animation code ...
+  
+  timeModel.markDirty();  // Force full redraw
+}
+```
+
+---
+
+## Performance Issues
+
+### Sluggish web UI / slow response
+
+**Symptoms**:
+- Web page takes seconds to load
+- Button clicks delayed
+
+**Causes**:
+- WiFi signal weak (clock too far from router)
+- Too many concurrent connections
+- ESP32 busy with animation rendering
+
+**Mitigations**:
+1. Move clock closer to router
+2. Reduce SVG preview refresh rate (2000ms instead of 1000ms)
+3. Disable animations during web UI usage
+4. Increase web server timeout in code
+
+---
+
+### Clock loses time / drifts
+
+**Symptoms**:
+- Clock slow by minutes/hours
+- No NTP sync happening
+
+**Checks**:
+1. Verify NTP sync enabled: `ENABLE_NTP=1` in build flags
+2. Check WiFi connected (NTP requires network)
+3. Monitor serial for "NTP sync" messages
+4. Verify timezone string correct: `MST7MDT,M3.2.0,M11.1.0` for Mountain time
+
+**Force NTP sync** via web UI or POST:
+```
+POST http://192.168.1.XXX/syncNtp
+```
+
+---
+
+## Hardware Damage Prevention
+
+### Precautions
+1. **NEVER power LEDs from 3.3V** — Will damage ESP32 voltage regulator
+2. **Check polarity before connecting** — Reversed VCC/GND can destroy LED strip
+3. **Use 300Ω resistor on data line** — Prevents voltage spikes from damaging first LED
+4. **Limit initial brightness** — Test with low brightness before full power
+5. **Proper power supply sizing** — 5V 3A minimum, 5A recommended
+
+### If LEDs won't light after assembly
+1. Check LED strip not damaged during fabrication (measure resistance VCC-GND, should be >1kΩ)
+2. Verify data direction (DIN → DOUT, chain must be correct direction)
+3. Test with single LED first (disconnect strip, connect one LED directly)
+
+---
+
+## Getting Help
+
+### Before asking for help, collect:
+1. Serial monitor output (full boot sequence)
+2. Web UI screenshot showing current settings
+3. Build target (`esp32c3_v3_8inch` or `esp32c3_v3_15inch`)
+4. Firmware version (check serial: "SETTINGS_VERSION")
+5. Symptoms and steps to reproduce
+
+### Useful diagnostic commands
+```powershell
+# Full serial output
+pio device monitor -e esp32c3_v3_8inch
+
+# Clean build (remove cached files)
+pio run -e esp32c3_v3_8inch -t clean
+pio run -e esp32c3_v3_8inch
+
+# List connected devices
+pio device list
+```
+
+---
+
+## WiFi Provisioning Portal
+
+### Portal doesn't appear on first boot
+
+**Symptoms**:
+- Expected `esp32c3-clock-setup` WiFi network doesn't appear
+- Device tries to connect to hardcoded SSID instead
+
+**Fixes**:
+1. Check if WiFiManager has saved credentials from previous session — portal only appears on true first boot
+2. Force reset: uncomment `wm.resetSettings();` in `setupWiFi()` function, rebuild, and flash
+3. Verify ENABLE_WIFI_UI is defined in build flags
+
+---
+
+## OTA (Over-The-Air) Updates
+
+### OTA port not responding
+
+**Symptoms**:
+- Upload command: `pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232`
+- Error: "Could not open esp32c3-v3-8inch.local:3232"
+- Timeout waiting for OTA server
+
+**Fixes**:
+1. Verify device is on WiFi: `ping esp32c3-v3-8inch.local` should resolve
+2. Check firewall: OTA port 3232 may be blocked (try disabling WiFi firewall temporarily)
+3. Verify OTA is initialized: check serial monitor for `[OTA] Ready` message
+4. Try again: OTA server may take 30-60 seconds to fully initialize after boot
+
+**Alternative**: Flash via USB if OTA is unavailable
+```powershell
+pio run -e esp32c3_v3_8inch -t upload
+```
+
+### Device reboots during OTA
+
+**Symptoms**:
+- OTA upload starts, device shows blue animation
+- Then reboots before completion
+
+**Possible causes**:
+- WiFi disconnected during upload (unstable connection)
+- Firmware binary too large for available RAM
+- Password incorrect for OTA (`iris_ota_2026` in setupOTA())
+
+**Fix**:
+- Try again with stronger WiFi signal
+- Check device is close to router during upload
+
+---
+
+### Check documentation
+- [WORKFLOW.md](../WORKFLOW.md) — Development rules
+- [REVIEW.md](../REVIEW.md) — Known technical issues
+- [HARDWARE.md](HARDWARE.md) — Pin mappings and specs
+- [FEATURES.md](FEATURES.md) — Current feature list
+- [API.md](API.md) — Web endpoints and settings structure

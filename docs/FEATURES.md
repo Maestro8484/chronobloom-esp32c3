@@ -1,0 +1,216 @@
+# Feature Catalog
+
+## Current Features (Implemented ✅)
+
+### Time Display
+- ✅ **Analog 3-ring clock** — Hours/minutes/seconds shown via LED position
+- ✅ **Per-ring color customization** — RGB color pickers for 6 elements
+- ✅ **Per-ring brightness control** — Independent intensity sliders (0-255)
+- ✅ **Quarter-hour markers** — Every 5th LED on outer ring
+- ✅ **Progress fill** — Dim arc showing seconds elapsed
+- ✅ **Fading trail** — 4-LED trail behind second hand
+- ✅ **Center status pixel** — Breathing idle animation, status indicator
+
+### Brightness Control
+- ✅ **Manual brightness** — Day/night sliders
+- ✅ **Scheduled brightness** — Auto-switch at configurable hours
+- ✅ **VEML7700 auto-brightness** — Lux-based logarithmic curve
+- ✅ **Three modes** — Manual / Auto (sensor) / Scheduled (day/night)
+- ✅ **Configurable limits** — Min/max brightness clamps
+
+### Animations
+- ✅ **Hourly chime** — Sweep + center pulse (8 sec)
+- ✅ **Status animations** — WiFi connect, button press, NTP sync, settings save
+- ✅ **Center idle breathing** — Slow pulse when no status active
+- ✅ **Time-interval animations** — Escalating intensity at :15/:30/:00
+  - Quarter-hour (2-3 sec): Sparkle burst, quarter pulse, ring shimmer
+  - Half-hour (4-6 sec): Rainbow sweep, dual flash, tidal pulse
+  - Top of hour (8-12 sec): Firework burst, zenith cascade, rainbow spiral, breathing mandala
+
+### Smart Features
+- ✅ **NTP time sync** — Network Time Protocol with timezone/DST support (Mountain time default)
+- ✅ **Web UI** — Full-featured control interface with live preview
+- ✅ **Browser time sync** — One-click sync from phone/computer clock
+- ✅ **EEPROM persistence** — All settings survive power cycles
+- ✅ **WiFi web server** — mDNS hostname (esp32c3-v3-8inch.local)
+- ✅ **Live SVG preview** — Clock updates every 90ms in web UI
+- ✅ **Animation toggles** — Enable/disable individual effects
+- ✅ **Theme selection** — Classic, Aqua, Magenta presets
+- ✅ **Manual time adjustment** — +/- minute buttons, H:M:S entry
+
+### Web UI Features
+- ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement
+- ✅ **Display settings** — Day/night brightness, schedule hours
+- ✅ **Ring controls** — 6 separate RGB + brightness: outer marker, outer fill, seconds, minutes, hours, center
+- ✅ **Animation controls** — Second trail, progress ring, hourly chime, status animations, interval animations
+- ✅ **Live sensor data** — Current lux reading updates every 2 seconds
+- ✅ **Auto-brightness controls** — Mode selection, min/max limits
+- ✅ **Network info** — IP address, WiFi SSID, signal strength, NTP sync status
+
+---
+
+## Planned Features (Priority Order)
+
+### High Priority
+- [ ] **OTA firmware updates** — Flash new firmware via web UI (eliminate ladder access for wall-mounted clock)
+- [ ] **WiFi provisioning portal** — Captive portal on first boot, WPS button support (remove hardcoded credentials)
+- [ ] **Sunrise/sunset detection** — VEML7700 detects daylight transitions, triggers warm fade animations
+- [ ] **Holiday auto-animations** — Date-triggered effects (Christmas, Halloween, New Year, Easter, user birthday)
+
+### Medium Priority
+- [ ] **Theme presets** — Save/load entire color schemes to EEPROM slots (named presets)
+- [ ] **BME280 temp/humidity sensor** — Color-coded center pixel (blue=cold, red=hot), web UI display
+- [ ] **MQTT for Home Assistant** — Publish state, subscribe to commands
+- [ ] **Sunrise alarm** — 5-minute gradual brightness increase simulating dawn
+- [ ] **Pomodoro timer mode** — 25/5 work/break visual countdown on outer ring
+- [ ] **Diagnostic endpoint** — `/debug` with uptime, heap, NTP sync count, button press counters
+
+### Low Priority
+- [ ] **Lux history graph** — 60-minute trend chart in web UI (canvas or SVG)
+- [ ] **Circadian rhythm color shift** — Warm orange evening, cool blue morning (auto-adjusts based on lux)
+- [ ] **Motion detection proxy** — Sudden lux spike = person approaching, trigger welcome animation
+- [ ] **Power saving mode** — Turn off all LEDs in pitch black (<0.5 lux)
+- [ ] **Multi-clock network sync** — Master/slave mode for synchronized animations across multiple clocks
+- [ ] **LED mapping test mode** — `/ledtest?pixel=N` and `/ledwalk` endpoints for physical verification
+- [ ] **Animation playlist** — Auto-rotate effects every N minutes in demo mode
+- [ ] **Custom schedules** — Different animations at different times/days
+- [ ] **Voice control** — Alexa/Google Assistant via MQTT bridge
+
+---
+
+## Rejected Features (Do Not Implement)
+
+### Why These Don't Fit
+The clock's purpose is **elegant analog timekeeping through light and color**. The 3-ring LED topology (60/24/12) is optimized for circular time display, not general-purpose pixel matrix.
+
+### Specific Rejections
+
+❌ **Game modes** (Tetris/Snake/Pong)
+- Requires rectangular pixel grid
+- Obscures time display entirely
+- Wrong use case for a clock
+
+❌ **Text scrolling / message display**
+- Insufficient pixel density (96 LEDs total)
+- Ring topology makes text unreadable
+- Better suited for 8x8 or larger matrices
+
+❌ **Pixel art upload / painting interface**
+- 96 LEDs in concentric circles ≠ rectangular canvas
+- Can't map bitmap images to ring topology meaningfully
+
+❌ **7-segment digital display overlay**
+- Conflicts with analog aesthetic
+- Would require hiding ring LEDs = wasted hardware
+- If you want digital, buy a different clock
+
+❌ **Music visualization / audio reactive mode**
+- Would obscure time display during playback
+- I2S mic + FFT would constantly override clock
+- Dedicated LED strip projects exist for this purpose
+
+❌ **Social media counters / stock tickers**
+- This is not an information dashboard
+- No way to display numbers/text clearly
+- Use Tidbyt or LaMetric for this
+
+❌ **Audio speaker mode / Bluetooth speaker**
+- Feature creep beyond timekeeping
+- Adds speaker hardware complexity
+- Not what this project is about
+
+❌ **E-ink companion display**
+- Unnecessary complexity
+- If you need date/temp text, add a separate e-ink module elsewhere
+
+❌ **Video playback / GIF animation upload**
+- 96 LEDs total, circular topology
+- Cannot render video meaningfully
+- Wrong hardware entirely
+
+---
+
+## Feature Request Guidelines
+
+### Before Proposing a New Feature, Ask:
+
+1. **Does it enhance timekeeping?** (Better readability, more accurate, more informative about time?)
+2. **Does it use the ring topology effectively?** (Radial symmetry, position = time metaphor?)
+3. **Is it visually compatible?** (Light bloom aesthetic, flower-like petal effect?)
+4. **Does it stay true to analog display?** (No trying to make digital displays from circular LEDs)
+5. **Is the complexity justified?** (Simple is better, don't add features just because you can)
+
+### Good Feature Examples:
+- ✅ Moon phase indicator (inner ring changes color based on lunar cycle)
+- ✅ Tide indicator (for coastal users, outer ring shows high/low tide position)
+- ✅ Countdown to event (outer ring fills as event approaches)
+- ✅ Weather-based color themes (cloudy = gray, sunny = yellow, rainy = blue)
+- ✅ Air quality indicator (center pixel color = AQI level)
+
+### Bad Feature Examples:
+- ❌ Display email notifications as scrolling text
+- ❌ Play YouTube videos on the LED rings
+- ❌ Cryptocurrency price charts
+- ❌ Turn it into a smart speaker
+- ❌ Instagram follower counter
+
+---
+
+## Settings Structure (EEPROM v7)
+
+### Stored Configuration
+**Total size**: 256 bytes  
+**Magic byte**: 0xC1  
+**Version**: 7
+
+**Fields**:
+```cpp
+struct ClockSettings {
+  uint8_t magic;                    // 0xC1 (validation)
+  uint8_t version;                  // 7 (current)
+  
+  // Brightness
+  uint8_t dayBrightness;            // 0-255
+  uint8_t nightBrightness;          // 0-255
+  uint8_t nightStartHour;           // 0-23
+  uint8_t nightEndHour;             // 0-23
+  
+  // Display
+  uint8_t colorTheme;               // 0=Classic, 1=Aqua, 2=Magenta
+  uint8_t secondTrail;              // 0=off, 1=on
+  uint8_t progressSeconds;          // 0=off, 1=on
+  uint8_t hourlyChime;              // 0=off, 1=on
+  uint8_t statusAnimations;         // 0=off, 1=on
+  
+  // Ring colors (RGB + level for 6 elements)
+  uint8_t outerMarkerRed, outerMarkerGreen, outerMarkerBlue, outerMarkerLevel;
+  uint8_t outerFillerRed, outerFillerGreen, outerFillerBlue, outerFillerLevel;
+  uint8_t secondsRed, secondsGreen, secondsBlue, secondsLevel;
+  uint8_t minutesRed, minutesGreen, minutesBlue, minutesLevel;
+  uint8_t hoursRed, hoursGreen, hoursBlue, hoursLevel;
+  uint8_t centerRed, centerGreen, centerBlue, centerLevel;
+  
+  // Auto-brightness (VEML7700)
+  uint8_t autoBrightnessMode;       // 0=manual, 1=auto, 2=scheduled
+  uint8_t minAutoBrightness;        // 5-255
+  uint8_t maxAutoBrightness;        // 5-255
+  
+  // Time-interval animations
+  uint8_t quarterAnimation;         // 0=off, 1=sparkle, 2=pulse, 3=shimmer
+  uint8_t halfHourAnimation;        // 0=off, 1=sweep, 2=flash, 3=tidal
+  uint8_t hourAnimation;            // 0=off, 1=chime, 2=firework, 3=cascade, 4=spiral, 5=mandala
+  uint8_t intervalAnimationsEnabled; // 0=off, 1=on
+};
+```
+
+### Version History
+- **v1-5**: Original ESP8266 versions (deprecated)
+- **v6**: Initial ESP32-C3 release (March 2026)
+- **v7**: Added VEML7700 auto-brightness + time-interval animations (May 2026)
+
+### Bumping Settings Version
+When adding/removing/reordering fields:
+1. Update `ClockSettings` struct
+2. Update `SettingsStore::defaults()` with new defaults
+3. Increment `SETTINGS_VERSION` by 1
+4. **All clocks will reset to defaults on next boot** (by design, ensures clean state)

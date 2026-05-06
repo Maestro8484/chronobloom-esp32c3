@@ -1,21 +1,75 @@
 # Claude Development Instructions
 
-This file acts as a router to project-specific documentation.
+**This file acts as a documentation router. For quick session start, see [docs/PRIMER.md](docs/PRIMER.md).**
 
-## Quick Reference
+---
 
-- **Workflow rules**: See [WORKFLOW.md](WORKFLOW.md) — Claude Chat vs Claude Code role separation, source of truth hierarchy
-- **Current issues**: See [REVIEW.md](REVIEW.md) — Technical debugging notes, GPIO3/4 button issue, render safety audit
-- **Build/flash**: See [README.md](README.md) — PlatformIO commands, pin assignments, hardware specs
-- **Features**: See [README.md](README.md) — Current feature set, LED mapping, web UI capabilities
+## Documentation Index
 
-## Critical Rules
+### Quick Start
+- **[docs/PRIMER.md](docs/PRIMER.md)** — Quick session primer (read this first, 2-min read time)
 
-1. Local repo (`C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`) is #1 truth source
-2. Claude Chat = planning only, Claude Code = all implementation
-3. Never implement from Chat when Code is available
-4. Always read WORKFLOW.md before starting work
+### Reference Documentation
+- **[WORKFLOW.md](WORKFLOW.md)** — Development workflow rules (Claude Chat vs Code, source of truth hierarchy)
+- **[README.md](README.md)** — Build instructions, features, quick start
+- **[REVIEW.md](REVIEW.md)** — Technical audit, known issues, debugging notes
 
-## Session Anchor
+### Detailed Documentation (docs/)
+- **[docs/HARDWARE.md](docs/HARDWARE.md)** — Pin maps, sensors, physical construction, power specs
+- **[docs/FEATURES.md](docs/FEATURES.md)** — Current/planned/rejected features, settings structure
+- **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)** — Animation catalog, triggers, implementation guide
+- **[docs/HISTORY.md](docs/HISTORY.md)** — Project lineage (Steve Manley → Mike van der Sluis → Maestro)
+- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Common issues, diagnostic steps, solutions
+- **[docs/API.md](docs/API.md)** — Web endpoints, settings structure, client examples
 
-Use phrase: **"3-RingNeoPixelClock workflow rules active"** in first message of new sessions to confirm workflow rules are loaded.
+---
+
+## Critical Workflow Rules
+
+1. **Local repo is #1 truth source** — `C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`
+2. **Read WORKFLOW.md before implementing** — Defines Chat vs Code roles
+3. **Claude Chat** = planning, design, documentation only
+4. **Claude Code** = ALL implementation, file edits, builds, flashing
+5. **Never implement from Chat** when Code is available
+
+---
+
+## Session Anchor Phrase
+
+Say **"Iris Clock workflow rules active"** at the start of any session to confirm you've loaded the project context.
+
+---
+
+## Project Identity
+
+**Name**: Iris Clock  
+**Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor  
+**Visual**: Concentric LED rings creating flower-like light bloom pattern  
+**Purpose**: Elegant analog timekeeping through addressable LEDs
+
+---
+
+## Build Commands
+
+```powershell
+# Build 8" variant
+pio run -e esp32c3_v3_8inch
+
+# Flash via USB
+pio run -e esp32c3_v3_8inch -t upload
+
+# Serial monitor
+pio device monitor
+```
+
+---
+
+## Web UI Access
+
+- 8" variant: `http://esp32c3-v3-8inch.local/`
+- 15" variant: `http://esp32c3-v3-15inch.local/`
+- WiFi: SSID `MAINFRAME007`, password `Secure!4`
+
+---
+
+**For detailed information, see the linked documentation above.**
