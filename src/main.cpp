@@ -6,6 +6,7 @@
 #include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <Update.h>
 #include <Adafruit_NeoPixel.h>
 #include <time.h>
 #include <WiFiManager.h>
@@ -1332,6 +1333,139 @@ class WebUi {
       renderer_.setStatus(STATUS_BUTTON, 700);
       server_.send(200, "text/plain", "ok");
     });
+
+    // ===== Firmware Update Web Page (GET /update) =====
+    server_.on("/update", HTTP_GET, [&]() {
+      String html = R"HTML(
+<!doctype html><html><head>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>Firmware Update - ESP32 Ring Clock</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}
+main{max-width:600px;margin:40px auto;padding:20px}
+.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008;padding:24px;margin-bottom:16px}
+h1{margin:0 0 8px;font-size:24px}p{color:var(--muted);margin:0 0 16px}
+input[type=file]{display:block;margin:16px 0;padding:8px;background:#0c1017;border:1px solid #374253;border-radius:6px;color:var(--text)}
+button{background:#145875;border:1px solid #2d9ccb;color:white;padding:12px 24px;border-radius:6px;font-size:16px;cursor:pointer;margin:8px 8px 8px 0}
+button:hover{background:#1a6a8f}button.danger{background:#8b2e2e;border-color:#c04040}
+.progress{width:100%;height:24px;background:#0c1017;border:1px solid #374253;border-radius:4px;overflow:hidden;margin:16px 0}
+.progress-bar{height:100%;background:#6bd7ff;width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;font-size:12px;color:#090b10}
+.status{margin:16px 0;padding:12px;border-radius:6px;display:none}
+.status.success{background:#0a3a2a;border:1px solid #10a060;color:#90ff90}
+.status.error{background:#3a0a0a;border:1px solid #a01010;color:#ff9090}
+.status.info{background:#0a1a3a;border:1px solid #1060a0;color:#90d0ff}
+#updateForm{margin:16px 0}
+.info-box{background:#0c1017;border-left:3px solid #6bd7ff;padding:12px;margin:16px 0;border-radius:4px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+</style></head>
+<body><main>
+<div class='panel'>
+<h1>🔧 Firmware Update</h1>
+<p>Upload a new .bin firmware file to update the clock.</p>
+<div class='info-box'>
+<strong>Current Firmware:</strong> Latest<br>
+<strong>Flash Size:</strong> ~700 KB<br>
+<strong>Device:</strong> XIAO ESP32-C3
+</div>
+<div id='updateForm'>
+<input type='file' id='binFile' accept='.bin' required>
+<button onclick='uploadFirmware()'>Upload & Update</button>
+<button onclick='history.back()'>Cancel</button>
+</div>
+<div class='progress' id='progress' style='display:none'>
+<div class='progress-bar' id='progressBar'>0%</div>
+</div>
+<div class='status' id='status'></div>
+</main>
+<script>
+function uploadFirmware(){
+  const file=document.getElementById('binFile').files[0];
+  if(!file){alert('Please select a .bin file');return}
+  if(!file.name.endsWith('.bin')){alert('File must be .bin format');return}
+  if(file.size>800000){alert('File too large (max ~700KB)');return}
+  const xhr=new XMLHttpRequest();
+  xhr.upload.onprogress=(e)=>{
+    if(e.lengthComputable){
+      const pct=Math.round(e.loaded/e.total*100);
+      document.getElementById('progressBar').style.width=pct+'%';
+      document.getElementById('progressBar').textContent=pct+'%';
+    }
+  };
+  xhr.onload=()=>{
+    const msg=document.getElementById('status');
+    if(xhr.status===200){
+      msg.textContent='✓ Upload successful! Device will reboot with new firmware...';
+      msg.className='status success';
+      document.getElementById('updateForm').style.display='none';
+      setTimeout(()=>{window.location.href='/'},5000);
+    }else{
+      msg.textContent='✗ Update failed: '+xhr.responseText;
+      msg.className='status error';
+    }
+    msg.style.display='block';
+  };
+  xhr.onerror=()=>{
+    const msg=document.getElementById('status');
+    msg.textContent='✗ Upload error (connection lost?)';
+    msg.className='status error';
+    msg.style.display='block';
+  };
+  document.getElementById('progress').style.display='block';
+  xhr.open('POST','/update');
+  xhr.send(file);
+}
+</script></body></html>
+      )HTML";
+      server_.send(200, "text/html", html);
+    });
+
+    // ===== Firmware Upload Handler (POST /update) =====
+    server_.on("/update", HTTP_POST, [&]() {
+      // Handler completion - called after all chunks received
+      if (Update.isRunning()) {
+        if (Update.end(true)) {
+          renderer_.setStatus(STATUS_OTA_SUCCESS, 1500);
+          server_.send(200, "text/plain", "Update successful, rebooting...");
+          delay(1000);
+          ESP.restart();
+        } else {
+          renderer_.setStatus(STATUS_OTA_FAILED, 2000);
+          server_.send(500, "text/plain", String("Update failed: ") + Update.getError());
+        }
+      } else {
+        server_.send(400, "text/plain", "No update in progress");
+      }
+    }, [&]() {
+      // Handler upload chunks
+      HTTPUpload &upload = server_.upload();
+
+      if (upload.status == UPLOAD_FILE_START) {
+        Serial.printf("[FW] Update starting: %s, size: %u\n", upload.filename.c_str(), upload.totalSize);
+        if (upload.totalSize > (ESP.getFreeSketchSpace() - 0x1000)) {
+          Serial.println("[FW] Not enough free space");
+          server_.send(413, "text/plain", "File too large");
+          return;
+        }
+        renderer_.setStatus(STATUS_OTA_UPDATE, 60000);  // 60s timeout
+        if (!Update.begin(upload.totalSize, U_FLASH)) {
+          Serial.printf("[FW] Update.begin() failed, error: %d\n", Update.getError());
+          server_.send(500, "text/plain", "Update.begin failed");
+          return;
+        }
+      } else if (upload.status == UPLOAD_FILE_WRITE) {
+        if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+          Serial.printf("[FW] Write failed, error: %d\n", Update.getError());
+          server_.send(500, "text/plain", "Update.write failed");
+          Update.abort();
+          return;
+        }
+        Serial.printf("[FW] Written: %u bytes (%.1f%%)\n", upload.totalSize - upload.currentSize,
+                     (float)(upload.totalSize - upload.currentSize) * 100 / upload.totalSize);
+      } else if (upload.status == UPLOAD_FILE_END) {
+        Serial.println("[FW] Upload complete, finalizing...");
+      }
+    });
   }
 
   String settingsJson() {
@@ -1512,6 +1646,7 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
 </select>
 </div>
 <div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>
+<div class='panel'><h2>⚙ Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a></div></div>
 </section></main>
 <script>
 const counts={outer:60,middle:24,inner:12}, radii={outer:182,middle:134,inner:88};
