@@ -266,10 +266,20 @@ struct ClockSettings {
   uint8_t halfHourAnimation;
   uint8_t hourAnimation;
   uint8_t intervalAnimationsEnabled;
+  // FOCUS REMINDERS MVP (v8) - 16 bytes total (13 used + 3 reserved)
+  uint8_t focusReminder_enabled;        // Master enable/disable
+  uint8_t focusReminder_startHour;      // Window start (0-23)
+  uint8_t focusReminder_endHour;        // Window end (0-23)
+  uint16_t focusReminder_intervalMinutes; // Repeat interval in minutes (1-1440)
+  uint8_t focusReminder_daysMask;       // Bitmask Sun=0, Sat=6
+  uint8_t focusReminder_animation;      // Animation type (0-5)
+  uint8_t focusReminder_durationSeconds; // Duration (1-60) - reserved for v2
+  uint32_t focusReminder_lastFireMs;    // Last fire timestamp (millis)
+  // uint8_t reserved[3];               // Future expansion
 };
 
 constexpr uint8_t SETTINGS_MAGIC = 0xC1;
-constexpr uint8_t SETTINGS_VERSION = 7;
+constexpr uint8_t SETTINGS_VERSION = 8;
 constexpr size_t EEPROM_BYTES = 256;
 
 class SettingsStore {
@@ -300,7 +310,8 @@ class SettingsStore {
             220, 0,   180, 255,   // hours:       hot pink/magenta
             255, 60,  0,   180,   // center:      warm orange-red
             1,   10,  255,        // autoBrightness: mode=auto, min=10, max=255
-            3,   1,   4,   1};    // animations: shimmer, sweep, spiral, enabled
+            3,   1,   4,   1,     // animations: shimmer, sweep, spiral, enabled
+            0,   8,   22,   60,   0, 0, 60, 0};  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
   }
 
   static bool valid(const ClockSettings &settings) {
@@ -312,7 +323,14 @@ class SettingsStore {
            settings.statusAnimations <= 1 && settings.autoBrightnessMode <= 2 &&
            settings.minAutoBrightness <= 255 && settings.maxAutoBrightness <= 255 &&
            settings.quarterAnimation <= 3 && settings.halfHourAnimation <= 3 &&
-           settings.hourAnimation <= 5 && settings.intervalAnimationsEnabled <= 1;
+           settings.hourAnimation <= 5 && settings.intervalAnimationsEnabled <= 1 &&
+           settings.focusReminder_enabled <= 1 &&
+           settings.focusReminder_startHour < 24 &&
+           settings.focusReminder_endHour < 24 &&
+           settings.focusReminder_intervalMinutes >= 1 && settings.focusReminder_intervalMinutes <= 1440 &&
+           settings.focusReminder_daysMask <= 127 &&
+           settings.focusReminder_animation <= 5 &&
+           settings.focusReminder_durationSeconds >= 1 && settings.focusReminder_durationSeconds <= 60;
   }
 
   static ClockSettings sanitize(ClockSettings settings) {
@@ -334,6 +352,15 @@ class SettingsStore {
     if (settings.halfHourAnimation > 3) settings.halfHourAnimation = 0;
     if (settings.hourAnimation > 5) settings.hourAnimation = 0;
     settings.intervalAnimationsEnabled = settings.intervalAnimationsEnabled ? 1 : 0;
+    settings.focusReminder_enabled = settings.focusReminder_enabled ? 1 : 0;
+    if (settings.focusReminder_startHour >= 24) settings.focusReminder_startHour = 8;
+    if (settings.focusReminder_endHour >= 24) settings.focusReminder_endHour = 22;
+    if (settings.focusReminder_intervalMinutes < 1) settings.focusReminder_intervalMinutes = 60;
+    if (settings.focusReminder_intervalMinutes > 1440) settings.focusReminder_intervalMinutes = 1440;
+    settings.focusReminder_daysMask &= 127;  // Mask to 7 bits (Sun-Sat)
+    if (settings.focusReminder_animation > 5) settings.focusReminder_animation = 0;
+    if (settings.focusReminder_durationSeconds < 1) settings.focusReminder_durationSeconds = 60;
+    if (settings.focusReminder_durationSeconds > 60) settings.focusReminder_durationSeconds = 60;
     return settings;
   }
 
@@ -1290,6 +1317,13 @@ class WebUi {
       if (server_.hasArg("halfHourAnimation")) settings.halfHourAnimation = clampByte(server_.arg("halfHourAnimation").toInt(), 0, 3);
       if (server_.hasArg("hourAnimation")) settings.hourAnimation = clampByte(server_.arg("hourAnimation").toInt(), 0, 5);
       if (server_.hasArg("intervalAnimationsEnabled")) settings.intervalAnimationsEnabled = server_.arg("intervalAnimationsEnabled").toInt() ? 1 : 0;
+      if (server_.hasArg("focusReminder_enabled")) settings.focusReminder_enabled = server_.arg("focusReminder_enabled").toInt() ? 1 : 0;
+      if (server_.hasArg("focusReminder_startHour")) settings.focusReminder_startHour = clampByte(server_.arg("focusReminder_startHour").toInt(), 0, 23);
+      if (server_.hasArg("focusReminder_endHour")) settings.focusReminder_endHour = clampByte(server_.arg("focusReminder_endHour").toInt(), 0, 23);
+      if (server_.hasArg("focusReminder_intervalMinutes")) settings.focusReminder_intervalMinutes = clampWord(server_.arg("focusReminder_intervalMinutes").toInt(), 1, 1440);
+      if (server_.hasArg("focusReminder_daysMask")) settings.focusReminder_daysMask = clampByte(server_.arg("focusReminder_daysMask").toInt(), 0, 127);
+      if (server_.hasArg("focusReminder_animation")) settings.focusReminder_animation = clampByte(server_.arg("focusReminder_animation").toInt(), 0, 5);
+      if (server_.hasArg("focusReminder_durationSeconds")) settings.focusReminder_durationSeconds = clampByte(server_.arg("focusReminder_durationSeconds").toInt(), 1, 60);
       settings_.update(settings);
       renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
       model_.markDirty();
@@ -1497,7 +1531,14 @@ function uploadFirmware(){
            ",\"quarterAnimation\":" + s.quarterAnimation +
            ",\"halfHourAnimation\":" + s.halfHourAnimation +
            ",\"hourAnimation\":" + s.hourAnimation +
-           ",\"intervalAnimationsEnabled\":" + s.intervalAnimationsEnabled + "}";
+           ",\"intervalAnimationsEnabled\":" + s.intervalAnimationsEnabled +
+           ",\"focusReminder_enabled\":" + s.focusReminder_enabled +
+           ",\"focusReminder_startHour\":" + s.focusReminder_startHour +
+           ",\"focusReminder_endHour\":" + s.focusReminder_endHour +
+           ",\"focusReminder_intervalMinutes\":" + s.focusReminder_intervalMinutes +
+           ",\"focusReminder_daysMask\":" + s.focusReminder_daysMask +
+           ",\"focusReminder_animation\":" + s.focusReminder_animation +
+           ",\"focusReminder_durationSeconds\":" + s.focusReminder_durationSeconds + "}";
   }
 
   static String boolJson(bool value) {
@@ -1508,6 +1549,12 @@ function uploadFirmware(){
     if (value < minValue) return minValue;
     if (value > maxValue) return maxValue;
     return static_cast<uint8_t>(value);
+  }
+
+  static uint16_t clampWord(int value, int minValue, int maxValue) {
+    if (value < minValue) return minValue;
+    if (value > maxValue) return maxValue;
+    return static_cast<uint16_t>(value);
   }
 
   static String colorHex(uint8_t r, uint8_t g, uint8_t b) {
@@ -1645,6 +1692,26 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
   <option value='5'>Breathing mandala</option>
 </select>
 </div>
+<div class='panel'><h2>🚀 Focus Reminders (ADHD)</h2>
+<p class='sub' style='font-size:12px;color:#92a0b5'>Visual nudge system for hyperfocus interruption. Fires animations at set intervals on selected days/times.</p>
+<div class='toggle'><label><input id='focusReminder_enabled' type='checkbox'> Enable focus reminders</label></div>
+<div class='row'>
+  <div><label>Start hour</label><input id='focusReminder_startHour' type='number' min='0' max='23' placeholder='HH'></div>
+  <div><label>End hour</label><input id='focusReminder_endHour' type='number' min='0' max='23' placeholder='HH'></div>
+  <div><label>Interval (min)</label><input id='focusReminder_intervalMinutes' type='number' min='1' max='1440' placeholder='60'></div>
+</div>
+<label>Days of week</label>
+<div class='toggle' id='daysToggle' style='display:flex;gap:4px;flex-wrap:wrap'></div>
+<div><label>Animation</label><select id='focusReminder_animation'>
+  <option value='0'>Quarter pulse</option>
+  <option value='1'>Half-hour sweep</option>
+  <option value='2'>Hour chime</option>
+  <option value='3'>Quarter pulse (dup)</option>
+  <option value='4'>Half-hour sweep (dup)</option>
+  <option value='5'>Hour chime (dup)</option>
+</select></div>
+<div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>
+</div>
 <div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>
 <div class='panel'><h2>⚙ Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a></div></div>
 </section></main>
@@ -1659,13 +1726,14 @@ function level(id){return Number(qs(id+'Level')?.value||180)} function color(id)
 function draw(){clearRing('middle');clearRing('inner');for(let i=0;i<60;i++){const mark=i%5===0;setLed(leds.outer[i],mark?color('outerMarker'):color('outerFiller'),mark?level('outerMarker'):level('outerFiller'),mark?'marker':'ghost')}let s=current.second,m=current.minute,h=current.hour%12,hoff=current.minute>=30?1:0,h24=(h*2+hoff)%24;const mode=qs('previewMode')?.value||'live',tick=Math.floor(Date.now()/90);if(settings.progressSeconds){for(let i=0;i<=s;i++)setLed(leds.outer[i],color('seconds'),38,'ghost')}if(settings.secondTrail||mode==='trail'){for(let i=1;i<7;i++)setLed(leds.outer[(s+60-i)%60],color('seconds'),Math.max(20,level('seconds')-(i*32)),'ghost')}if(mode==='trail'){for(let i=1;i<5;i++){setLed(leds.outer[(m+60-i)%60],color('minutes'),Math.max(25,level('minutes')-(i*42)),'ghost');setLed(leds.middle[(h24+24-i)%24],color('hours'),Math.max(25,level('hours')-(i*42)),'ghost');setLed(leds.inner[(h+12-i)%12],color('hours'),Math.max(25,level('hours')-(i*52)),'ghost')}}if(mode==='spark'){for(let i=0;i<10;i++){setLed(leds.outer[(tick+i*6)%60],i%2?color('hours'):color('minutes'),90+(i*10),'ghost')}}for(let i=0;i<24;i++)setLed(leds.middle[i],color('hours'),22,'marker');for(let i=0;i<12;i++)setLed(leds.inner[i],color('center'),24,'marker');setLed(leds.outer[s],color('seconds'),level('seconds'));setLed(leds.outer[m],color('minutes'),level('minutes'));setLed(leds.middle[h24],color('hours'),level('hours'));setLed(leds.inner[h],color('hours'),level('hours'));setLed(leds.inner[(h+hoff)%12],color('hours'),level('hours'));const pulse=45+Math.floor((Math.sin(Date.now()/450)+1)*85);setLed(qs('centerLed'),color('center'),Math.min(level('center'),pulse),'on')}
 async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;qs('now').textContent=`${pad(t.hour)}:${pad(t.minute)}:${pad(t.second)}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}
 async function loadNet(){const r=await fetch('/net');const n=await r.json();qs('net').textContent=`${n.hostname} | ${n.ssid} | IP ${n.ip} | GW ${n.gateway} | RSSI ${n.rssi} dBm`}
-async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}
+async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}
 async function refreshLux(){const r=await fetch('/lux');const data=await r.json();if(data.available){qs('luxValue').textContent=data.lux.toFixed(1)}}
 function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()}}
 async function post(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});await refresh()}
 function setTime(){post('/set',`hour=${h.value}&minute=${m.value}&second=${s.value}`)}
 function syncBrowser(){const d=new Date();post('/syncBrowser',`hour=${d.getHours()}&minute=${d.getMinutes()}&second=${d.getSeconds()}`)}
 function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);post('/settings',p.toString()).then(loadSettings)}
+function saveFocusReminder(){const p=new URLSearchParams();p.set('focusReminder_enabled',qs('focusReminder_enabled').checked?1:0);p.set('focusReminder_startHour',qs('focusReminder_startHour').value);p.set('focusReminder_endHour',qs('focusReminder_endHour').value);p.set('focusReminder_intervalMinutes',qs('focusReminder_intervalMinutes').value);p.set('focusReminder_animation',qs('focusReminder_animation').value);let daysMask=0;for(let i=0;i<7;i++){if(qs('focusReminder_day'+i).checked)daysMask|=(1<<i)}p.set('focusReminder_daysMask',daysMask);post('/settings',p.toString()).then(loadSettings)}
 makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);
 </script></body></html>)HTML";
   }
@@ -1679,6 +1747,75 @@ makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInte
   ClockWebServer server_;
   bool enabled_ = false;
   bool mdnsEnabled_ = false;
+};
+
+// ===================== Focus Reminder Scheduler =====================
+class FocusReminderScheduler {
+ public:
+  explicit FocusReminderScheduler(TimeModel &model, ClockRenderer &renderer, SettingsStore &settings)
+      : model_(model), renderer_(renderer), settings_(settings) {}
+
+  void checkAndFire(uint32_t now) {
+    const ClockSettings &s = settings_.get();
+    if (!s.focusReminder_enabled) return;
+
+    ClockTime t = model_.get();
+    uint8_t dow = getDayOfWeek();
+
+    // Conditions check: day matches
+    if (!(s.focusReminder_daysMask & (1 << dow))) return;
+
+    // Time window check
+    bool inWindow = false;
+    if (s.focusReminder_startHour < s.focusReminder_endHour) {
+      // Normal window (e.g., 08:00-22:00)
+      inWindow = (t.hour >= s.focusReminder_startHour && t.hour < s.focusReminder_endHour);
+    } else if (s.focusReminder_startHour > s.focusReminder_endHour) {
+      // Wrapped window (e.g., 22:00-08:00, crosses midnight)
+      inWindow = (t.hour >= s.focusReminder_startHour || t.hour < s.focusReminder_endHour);
+    }
+    if (!inWindow) return;
+
+    // Interval check: enough time since last fire?
+    uint32_t intervalMs = static_cast<uint32_t>(s.focusReminder_intervalMinutes) * 60000UL;
+    if (now - s.focusReminder_lastFireMs < intervalMs) return;
+
+    // Fire animation (reuse existing renderer methods)
+    triggerReminderAnimation(s.focusReminder_animation, now);
+
+    // Update last fire time in settings
+    ClockSettings updated = s;
+    updated.focusReminder_lastFireMs = now;
+    settings_.update(updated);
+
+    Serial.printf("[FocusReminder] Fired at %02d:%02d (interval=%d min, dow=%d)\n",
+                  t.hour, t.minute, s.focusReminder_intervalMinutes, dow);
+  }
+
+ private:
+  uint8_t getDayOfWeek() {
+    // MVP: return hardcoded Sunday (0) as placeholder
+    // In production, use system weekday from NTP sync or RTC
+    // For now, user sets reminder to fire on all days or manually set day
+    return 0;  // TODO: compute from system time after NTP sync
+  }
+
+  void triggerReminderAnimation(uint8_t mode, uint32_t now) {
+    // Reuse existing animation triggers from ClockRenderer
+    switch (mode) {
+      case 0: renderer_.triggerQuarterAnimation(now); break;
+      case 1: renderer_.triggerHalfHourAnimation(now); break;
+      case 2: renderer_.triggerHourAnimation(now); break;
+      case 3: renderer_.triggerQuarterAnimation(now); break;  // Duplicate for safety
+      case 4: renderer_.triggerHalfHourAnimation(now); break;
+      case 5: renderer_.triggerHourAnimation(now); break;
+      default: renderer_.triggerQuarterAnimation(now); break;
+    }
+  }
+
+  TimeModel &model_;
+  ClockRenderer &renderer_;
+  SettingsStore &settings_;
 };
 
 // ===================== Globals =====================
@@ -1697,6 +1834,7 @@ TemperatureInput temperature;
 LuxSensor luxSensor;
 TimeSync timeSync(timeModel);
 WebUi webUi(timeModel, settingsStore, renderer, timeSync, temperature);
+FocusReminderScheduler reminderScheduler(timeModel, renderer, settingsStore);
 
 uint32_t lastTickMs = 0;
 uint32_t lastAnimationRenderMs = 0;
@@ -1778,6 +1916,9 @@ void loop() {
 
   timeSync.loop();
   webUi.loop();
+
+  // Check and fire focus reminders
+  reminderScheduler.checkAndFire(now);
 
   // Handle interval animations (quarter, half-hour, hourly)
   const ClockTime time = timeModel.get();

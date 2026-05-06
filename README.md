@@ -15,6 +15,7 @@ PlatformIO firmware for the Seeed Studio XIAO ESP32C3 version of the 3-ring NeoP
 - Night brightness schedule
 - Wi-Fi, button, settings, sync, idle, and hourly chime animations
 - I2C sensor support (VEML7700 ambient light sensor for auto-brightness)
+- **[NEW v2.0] Focus Reminders: ADHD hyperfocus interrupt system** — Visual nudge animations at configurable intervals
 
 ## Development
 
