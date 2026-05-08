@@ -6,7 +6,7 @@
 
 ## Project Identity
 **Name**: ChronoBloom ESP32-C3 (formerly neopixelClock-esp32c3-v3)
-**Repo**: `C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`  
+**Repo**: `C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3`  
 **Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor  
 **Interface**: Claude Desktop (Windows), VSCode PlatformIO, USB flashing  
 **Visual**: Concentric LED rings creating flower-like light bloom pattern
@@ -66,7 +66,7 @@ pio device monitor                     # Serial monitor
 ## Session Anchor Phrase
 Say **"Iris Clock workflow rules active"** to confirm context loaded.
 
-> Project is now publicly named **ChronoBloom ESP32-C3**. The session anchor phrase and local repo folder name remain unchanged.
+> Project publicly named **ChronoBloom ESP32-C3**. Local repo folder renamed to `chronobloom-esp32c3` (May 2026). Session anchor phrase unchanged.
 
 ---
 

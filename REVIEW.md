@@ -1,4 +1,4 @@
-# NeoPixel Clock ESP32-C3 v3 — Firmware Review
+# ChronoBloom ESP32-C3 — Firmware Review
 Date: 2026-05-04
 
 ---

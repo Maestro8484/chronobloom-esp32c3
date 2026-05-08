@@ -77,7 +77,7 @@ Use one of these restore paths depending on whether the changes have been commit
 From the repo root:
 
 ```powershell
-git -c safe.directory=C:/Users/SuperMaster/Documents/PlatformIO/neopixelClock-esp32c3-v3 checkout -- platformio.ini src/main.cpp docs/CHANGELOG.md
+git -c safe.directory=C:/Users/SuperMaster/Documents/PlatformIO/chronobloom-esp32c3 checkout -- platformio.ini src/main.cpp docs/CHANGELOG.md
 ```
 
 This removes the 15-inch default env change, USB CDC serial flags, build-time Wi-Fi credential path, periodic status heartbeat, and this changelog entry.
@@ -125,7 +125,7 @@ This removes the 15-inch default env change, USB CDC serial flags, build-time Wi
 If these changes have already been committed, revert that commit instead of editing files by hand:
 
 ```powershell
-git -c safe.directory=C:/Users/SuperMaster/Documents/PlatformIO/neopixelClock-esp32c3-v3 revert <commit-sha>
+git -c safe.directory=C:/Users/SuperMaster/Documents/PlatformIO/chronobloom-esp32c3 revert <commit-sha>
 ```
 
 Then rebuild and flash the desired environment.

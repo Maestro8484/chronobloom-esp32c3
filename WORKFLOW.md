@@ -29,7 +29,7 @@ This rule applies to every session regardless of topic or urgency.
 
 ## Source of Truth Hierarchy
 
-1. **Local repo** (`C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`, project: ChronoBloom ESP32-C3) = #1 truth source
+1. **Local repo** (`C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3`, project: ChronoBloom ESP32-C3) = #1 truth source
 2. **GitHub repo** = #1.5 backup/reference
 3. **Snapshot files** = session context, derived from local repo
 
@@ -86,7 +86,7 @@ These rules persist across:
 ## File Structure
 
 ```
-neopixelClock-esp32c3-v3/   ← repo folder name (ChronoBloom ESP32-C3 project)
+chronobloom-esp32c3/        ← repo folder name (ChronoBloom ESP32-C3 project)
 ├── WORKFLOW.md          ← This file (development workflow rules)
 ├── README.md            ← Build instructions, features, hardware specs
 ├── REVIEW.md            ← Technical issues, debugging notes, firmware audit

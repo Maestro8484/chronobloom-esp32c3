@@ -26,7 +26,7 @@
 
 ## Critical Workflow Rules
 
-1. **Local repo is #1 truth source** — `C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`
+1. **Local repo is #1 truth source** — `C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3`
 2. **Read WORKFLOW.md before implementing** — Defines Chat vs Code roles
 3. **Claude Chat** = planning, design, documentation only
 4. **Claude Code** = ALL implementation, file edits, builds, flashing
