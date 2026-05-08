@@ -1108,8 +1108,31 @@ class TimeSync {
 bool setupWiFi() {
   WiFiManager wm;
   wm.setConnectRetries(3);
-  bool connected = wm.autoConnect("esp32c3-clock-setup", "");
-  return connected;
+  wm.setConfigPortalTimeout(120);  // 2-minute portal window, then release
+
+  if (strcmp(WIFI_SSID, "clock-ssid") != 0) {
+    Serial.printf("[WiFi] Trying build-time SSID: %s\n", WIFI_SSID);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
+    const uint32_t start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
+      Serial.print(".");
+      delay(500);
+    }
+    Serial.println();
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("[WiFi] Connected with build-time credentials");
+      return true;
+    }
+
+    Serial.printf("[WiFi] Build-time credentials failed, status=%d. Starting setup portal.\n",
+                  WiFi.status());
+    WiFi.disconnect(false);
+    delay(250);
+  }
+
+  return wm.autoConnect("esp32c3-clock-setup", "");
 }
 
 // ===================== OTA Setup =====================
@@ -1172,55 +1195,53 @@ class WebUi {
     WiFi.setAutoReconnect(true);
     renderer_.setStatus(STATUS_WIFI_CONNECTING, WIFI_CONNECT_TIMEOUT_MS);
 
-    // Use WiFiManager for auto-connect with provisioning portal on first boot
-    if (!setupWiFi()) {
-      enabled_ = false;
-      renderer_.setStatus(STATUS_WIFI_FAIL, 2000);
-      Serial.println("[WiFi] WiFiManager provisioning failed or timed out");
-      return;
+    if (!setupWiFi() || WiFi.status() != WL_CONNECTED) {
+      // STA failed — broadcast own AP so device is always reachable
+      WiFi.mode(WIFI_AP);
+      WiFi.softAP(DEVICE_HOSTNAME);
+      apMode_ = true;
+      Serial.printf("[WiFi] AP mode active. SSID=%s  IP=192.168.4.1\n", DEVICE_HOSTNAME);
+      Serial.println("[WiFi] Connect to that SSID then visit http://192.168.4.1/");
+      renderer_.setStatus(STATUS_WIFI_FAIL, 3000);
+    } else {
+      // Reapply hostname after STA connection stabilises
+      delay(2000);
+      WiFi.setHostname(DEVICE_HOSTNAME);
+      WiFi.mode(WIFI_STA);
+      Serial.printf("[WiFi] Hostname: %s\n", WiFi.getHostname());
+      Serial.printf("[WiFi] SSID: %s\n", WiFi.SSID().c_str());
+      Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
     }
-
-    if (WiFi.status() != WL_CONNECTED) {
-      enabled_ = false;
-      renderer_.setStatus(STATUS_WIFI_FAIL, 2000);
-      Serial.print("Wi-Fi connect failed. Status: ");
-      Serial.print(WiFi.status());
-      Serial.print(" (");
-      Serial.print(wifiStatusText(WiFi.status()));
-      Serial.println(")");
-      return;
-    }
-
-    // ===== FIX 1: Reapply hostname AFTER connection =====
-    delay(2000);
-    WiFi.setHostname(DEVICE_HOSTNAME);
-    WiFi.mode(WIFI_STA);  // Reapply mode to force hostname propagation
-
-    Serial.printf("[WiFi] Hostname: %s\n", WiFi.getHostname());
-    Serial.printf("[WiFi] SSID: %s\n", WiFi.SSID().c_str());
-    Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
 
     enabled_ = true;
     setupRoutes();
     server_.begin();
 
-    // ===== FIX 2: Register with mDNS =====
-    mdnsEnabled_ = MDNS.begin(DEVICE_HOSTNAME);
-    if (mdnsEnabled_) {
-      MDNS.addService("http", "tcp", 80);
-      Serial.printf("[mDNS] Registered: %s.local\n", DEVICE_HOSTNAME);
-    } else {
-      Serial.println("[mDNS] Start failed");
-    }
+    if (!apMode_) {
+      mdnsEnabled_ = MDNS.begin(DEVICE_HOSTNAME);
+      if (mdnsEnabled_) {
+        MDNS.addService("http", "tcp", 80);
+        Serial.printf("[mDNS] Registered: %s.local\n", DEVICE_HOSTNAME);
+      } else {
+        Serial.println("[mDNS] Start failed");
+      }
 
-    // ===== FIX 3: Setup OTA =====
-    setupOTA();
+      // Re-register mDNS after WiFi reconnects
+      WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
+        if (mdnsEnabled_) {
+          MDNS.begin(DEVICE_HOSTNAME);
+          Serial.printf("[mDNS] Re-registered after reconnect: %s.local\n", DEVICE_HOSTNAME);
+        }
+      }, ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-    timeSync_.begin();
-    if (timeSync_.syncNow()) {
-      renderer_.setStatus(STATUS_TIME_SYNC, 1500);
-    } else {
-      renderer_.setStatus(STATUS_WIFI_OK, 1500);
+      setupOTA();
+
+      timeSync_.begin();
+      if (timeSync_.syncNow()) {
+        renderer_.setStatus(STATUS_TIME_SYNC, 1500);
+      } else {
+        renderer_.setStatus(STATUS_WIFI_OK, 1500);
+      }
     }
 #endif
   }
@@ -1747,6 +1768,7 @@ makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInte
   ClockWebServer server_;
   bool enabled_ = false;
   bool mdnsEnabled_ = false;
+  bool apMode_ = false;
 };
 
 // ===================== Focus Reminder Scheduler =====================
@@ -1794,10 +1816,10 @@ class FocusReminderScheduler {
 
  private:
   uint8_t getDayOfWeek() {
-    // MVP: return hardcoded Sunday (0) as placeholder
-    // In production, use system weekday from NTP sync or RTC
-    // For now, user sets reminder to fire on all days or manually set day
-    return 0;  // TODO: compute from system time after NTP sync
+    time_t now = time(nullptr);
+    struct tm t;
+    localtime_r(&now, &t);
+    return static_cast<uint8_t>(t.tm_wday);  // 0=Sun … 6=Sat
   }
 
   void triggerReminderAnimation(uint8_t mode, uint32_t now) {
@@ -1838,9 +1860,24 @@ FocusReminderScheduler reminderScheduler(timeModel, renderer, settingsStore);
 
 uint32_t lastTickMs = 0;
 uint32_t lastAnimationRenderMs = 0;
+uint32_t lastStatusLogMs = 0;
 static uint8_t lastMinute = 255;
 static bool intervalAnimationActive = false;
 static uint32_t intervalAnimationEndMs = 0;
+
+static void logRuntimeStatus(uint32_t now) {
+  if (now - lastStatusLogMs < 10000) return;
+  lastStatusLogMs = now;
+
+  Serial.printf("[Status] uptime=%lus wifi=%d host=%s ssid=%s ip=%s rssi=%d heap=%lu\n",
+                now / 1000,
+                WiFi.status(),
+                DEVICE_HOSTNAME,
+                WiFi.SSID().c_str(),
+                WiFi.localIP().toString().c_str(),
+                WiFi.RSSI(),
+                static_cast<unsigned long>(ESP.getFreeHeap()));
+}
 
 void setup() {
 #if STATUS_LED_PIN >= 0
@@ -1916,6 +1953,7 @@ void loop() {
 
   timeSync.loop();
   webUi.loop();
+  logRuntimeStatus(now);
 
   // Check and fire focus reminders
   reminderScheduler.checkAndFire(now);
@@ -1963,6 +2001,4 @@ void loop() {
     lastAnimationRenderMs = now;
   }
 }
-
-
 
