@@ -68,7 +68,7 @@ pio device monitor
 
 - 8" variant: `http://esp32c3-v3-8inch.local/`
 - 15" variant: `http://esp32c3-v3-15inch.local/`
-- WiFi: SSID `MAINFRAME007`, password `Secure!4`
+- WiFi: SSID and password set via `platformio.ini` build flags (`WIFI_SSID` / `WIFI_PASSWORD`)
 
 ---
 

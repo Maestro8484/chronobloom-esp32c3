@@ -60,13 +60,13 @@
 
 ### Verified
 - Flashed `esp32c3_v3_15inch` over USB on `COM9`.
-- Confirmed the device connects to `MAINFRAME007` from `platformio.ini`.
-- Confirmed mDNS resolves `esp32c3-v3-15inch.local` to `192.168.1.67`.
+- Confirmed the device connects to configured SSID from `platformio.ini`.
+- Confirmed mDNS resolves `esp32c3-v3-15inch.local` to device IP.
 - Confirmed `http://esp32c3-v3-15inch.local/` returns HTTP 200.
-- Confirmed `/net` reports `ssid=MAINFRAME007`, `status=3`, and RSSI around `-70` to `-74 dBm`.
+- Confirmed `/net` reports correct SSID, `status=3`, and expected RSSI range.
 - Confirmed serial monitor on `COM9` at `115200` prints runtime status lines such as:
   ```text
-  [Status] uptime=10s wifi=3 host=esp32c3-v3-15inch ssid=MAINFRAME007 ip=192.168.1.67 rssi=-73 heap=242972
+  [Status] uptime=10s wifi=3 host=esp32c3-v3-15inch ssid=<YOUR_SSID> ip=192.168.1.x rssi=-73 heap=242972
   ```
 
 ### Restore-Back Instructions

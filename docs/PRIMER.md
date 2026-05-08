@@ -53,7 +53,7 @@ pio device monitor                     # Serial monitor
 ## Web UI Access
 - 8" variant: `http://esp32c3-v3-8inch.local/`
 - 15" variant: `http://esp32c3-v3-15inch.local/`
-- WiFi: SSID `MAINFRAME007`, password `Secure!4`
+- WiFi: credentials set via `platformio.ini` build flags (`WIFI_SSID` / `WIFI_PASSWORD`)
 
 ## Documentation Map
 - **[HARDWARE.md](HARDWARE.md)** — Pin maps, sensors, physical specs

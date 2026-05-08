@@ -99,7 +99,7 @@
 ```json
 {
   "hostname": "esp32c3-v3-8inch",
-  "ssid": "MAINFRAME007",
+  "ssid": "YOUR_SSID",
   "ip": "192.168.1.100",
   "gateway": "192.168.1.1",
   "subnet": "255.255.255.0",
