@@ -1,4 +1,6 @@
-# Changelog
+# ChronoBloom ESP32-C3 — Changelog
+
+> Formerly neopixelClock-esp32c3-v3
 
 ## [2.0.2] - 2026-05-08
 

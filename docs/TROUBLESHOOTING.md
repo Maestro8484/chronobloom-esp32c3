@@ -1,4 +1,4 @@
-# Troubleshooting Guide
+# ChronoBloom ESP32-C3 — Troubleshooting Guide
 
 ## Common Issues & Solutions
 
@@ -154,15 +154,15 @@ Should print `1 1` when not pressed, `0 1` or `1 0` when single button pressed.
 1. **Power supply**: Verify 5V present at LED strip VCC/GND
 2. **Data connection**: Check 300Ω resistor inline with GPIO10 → LED DIN
 3. **Strip polarity**: Ensure VCC/GND not swapped (can damage LEDs)
-4. **Sacrificial pixel**: First LED in strip is intentionally dark (index 0)
+4. **Index 0**: Physical index 0 is the first active ring LED — no sacrificial pixel in current firmware. If you upgraded from a pre-v2.0.2 build, rewire GPIO10 data line directly to DIN of first ring LED.
 
 **Serial output check**:
 ```
 NeoPixelClock v3 booting...
 Build target: esp32c3-v3-8inch
-LED count: 98
-Ring pixel offset: 1
-Center pixel: enabled at physical index 97
+LED count: 97
+Ring pixel offset: 0
+Center pixel: enabled at physical index 96
 ```
 
 **Test code**:
@@ -532,6 +532,28 @@ pio device list
 
 ---
 
+## WiFi AP Fallback
+
+### Device starts its own access point instead of connecting
+
+**When this happens**:
+- All STA connection attempts fail (wrong credentials, network unavailable)
+- Portal timeout (120 seconds) expires without a successful connection
+- Device starts `WiFi.softAP(DEVICE_HOSTNAME)` and serves web UI at `192.168.4.1`
+
+**In AP fallback mode**:
+- Clock continues to display time (using last-known or browser-synced time)
+- Web UI is accessible at `http://192.168.4.1/`
+- NTP, mDNS, and OTA are unavailable until STA connects
+- All settings can be changed and saved via the web UI
+
+**To restore STA connection**:
+1. Connect to the device AP (`esp32c3-v3-8inch` or similar SSID)
+2. Navigate to `http://192.168.4.1/`
+3. Use web UI or force a portal reset (see WiFi Provisioning Portal section below)
+
+---
+
 ## WiFi Provisioning Portal
 
 ### Portal doesn't appear on first boot
@@ -576,7 +598,7 @@ pio run -e esp32c3_v3_8inch -t upload
 **Possible causes**:
 - WiFi disconnected during upload (unstable connection)
 - Firmware binary too large for available RAM
-- Password incorrect for OTA (`iris_ota_2026` in setupOTA())
+- Password incorrect for OTA (`iris_ota_2026` in `setupOTA()` — current firmware identifier, not renamed with project)
 
 **Fix**:
 - Try again with stronger WiFi signal

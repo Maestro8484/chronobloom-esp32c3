@@ -1,4 +1,4 @@
-# 3-Ring NeoPixel Clock — Development Workflow
+# ChronoBloom ESP32-C3 — Development Workflow
 
 ## Claude Chat vs Claude Code Role Separation
 
@@ -29,7 +29,7 @@ This rule applies to every session regardless of topic or urgency.
 
 ## Source of Truth Hierarchy
 
-1. **Local repo** (`C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`) = #1 truth source
+1. **Local repo** (`C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`, project: ChronoBloom ESP32-C3) = #1 truth source
 2. **GitHub repo** = #1.5 backup/reference
 3. **Snapshot files** = session context, derived from local repo
 
@@ -79,20 +79,21 @@ These rules persist across:
 - Hardware vs software topic switches
 - Planning vs debugging mode transitions
 
-**Rule anchor phrase**: "3-RingNeoPixelClock workflow rules active" (use in first message of new sessions to confirm)
+**Rule anchor phrase**: "Iris Clock workflow rules active" (use in first message of new sessions to confirm)
 
 ---
 
 ## File Structure
 
 ```
-neopixelClock-esp32c3-v3/
+neopixelClock-esp32c3-v3/   ← repo folder name (ChronoBloom ESP32-C3 project)
 ├── WORKFLOW.md          ← This file (development workflow rules)
 ├── README.md            ← Build instructions, features, hardware specs
 ├── REVIEW.md            ← Technical issues, debugging notes, firmware audit
+├── CHANGELOG.md         ← Pointer to docs/CHANGELOG.md
 ├── platformio.ini       ← Build configuration for 8" and 15" variants
 ├── src/
-│   └── main.cpp         ← Single-file monolith firmware (~1600 lines)
+│   └── main.cpp         ← Single-file monolith firmware (~2000 lines)
 └── .git/                ← Local git repo
 ```
 

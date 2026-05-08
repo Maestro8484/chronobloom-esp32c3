@@ -1,11 +1,11 @@
-# Iris Clock — Quick Session Primer
+# ChronoBloom ESP32-C3 — Quick Session Primer
 
 **Use this at the start of any Claude Chat or Claude Code session.**
 
 ---
 
 ## Project Identity
-**Name**: Iris Clock  
+**Name**: ChronoBloom ESP32-C3 (formerly neopixelClock-esp32c3-v3)
 **Repo**: `C:\Users\SuperMaster\Documents\PlatformIO\neopixelClock-esp32c3-v3`  
 **Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor  
 **Interface**: Claude Desktop (Windows), VSCode PlatformIO, USB flashing  
@@ -20,12 +20,13 @@
 
 ## Current Feature State
 - ✅ Analog clock (3 rings show time via LED position + color)
-- ✅ Web UI (live SVG preview, per-ring controls, settings persist EEPROM)
+- ✅ Web UI (live SVG preview, per-ring controls, settings persist EEPROM v8)
 - ✅ VEML7700 auto-brightness (manual/auto/scheduled modes)
 - ✅ Time-interval animations (quarter/half/hour escalating intensity)
-- ✅ NTP sync, WiFi, mDNS hostname
-- ⬜ OTA updates (pending)
-- ⬜ WiFi provisioning portal (pending)
+- ✅ NTP sync, WiFi, mDNS hostname (with reconnect handler)
+- ✅ OTA firmware updates (ArduinoOTA, port 3232)
+- ✅ WiFi provisioning portal (captive portal on first boot; AP fallback at 192.168.4.1)
+- ✅ Focus Reminders — configurable visual nudge at set interval/days/hours (v2.0)
 
 ## Known Issues
 - **GPIO3/4 button conflict**: JTAG pins cause spurious ISR fires when USB connected
@@ -34,7 +35,7 @@
 
 ## Quick Pin Reference
 ```
-GPIO10 → NeoPixel rings (300Ω resistor)
+GPIO10 → NeoPixel rings (300Ω resistor; index 0 = first ring LED, no sacrificial pixel)
 GPIO20 → Center pixel (15" variant only)
 GPIO3  → Button UP (INPUT_PULLUP)
 GPIO4  → Button DOWN (INPUT_PULLUP)
@@ -64,6 +65,8 @@ pio device monitor                     # Serial monitor
 
 ## Session Anchor Phrase
 Say **"Iris Clock workflow rules active"** to confirm context loaded.
+
+> Project is now publicly named **ChronoBloom ESP32-C3**. The session anchor phrase and local repo folder name remain unchanged.
 
 ---
 

@@ -1,4 +1,4 @@
-# Project History
+# ChronoBloom ESP32-C3 — Project History
 
 ## Lineage: Steve Manley → Mike van der Sluis → Maestro
 
@@ -87,7 +87,7 @@
 - **Assembly**: Parametric thirds design with alignment pins
 - **Deployment**: Wall-mounted in home, ran continuously for 4 years
 
-### Phase 3: ESP32-C3 Modernization (March 2026)
+### Phase 3: ChronoBloom / ESP32-C3 Modernization (March–May 2026)
 **Trigger**: Claude Code availability enabled ambitious refactor
 
 #### Hardware Upgrade
@@ -100,15 +100,23 @@
 - **Platform**: Migrated from Arduino IDE to PlatformIO
 - **Architecture**: Single-file monolith (main.cpp, ~2000 lines)
 - **Build system**: Dual variants (8" and 15") with compile-time configuration
-- **Features added**:
+- **Features added (v1.x)**:
   - Full web UI with live SVG preview
   - NTP timezone sync with DST support (Mountain time)
-  - EEPROM settings persistence
+  - EEPROM settings persistence (v7)
   - Per-ring RGB color customization
   - VEML7700 auto-brightness (3 modes)
   - Time-interval animations (quarter/half/hour escalation)
-  - Browser time sync
-  - mDNS hostname support
+  - Browser time sync, mDNS hostname
+  - WiFi provisioning portal (captive portal, AP fallback)
+  - OTA firmware updates (ArduinoOTA, port 3232)
+- **Features added (v2.0)**:
+  - Focus Reminders — ADHD hyperfocus interrupt system (EEPROM v8)
+  - Day-of-week scheduling via NTP weekday
+- **Features added (v2.0.2)**:
+  - Sacrificial pixel removed (hardware rework + firmware fix)
+  - mDNS reconnect handler
+  - WiFi AP fallback when STA unavailable
 
 #### Collaboration Period (March-May 2026)
 - **Claude Chat**: Planning, architecture, feature design
@@ -120,16 +128,17 @@
 1. **Multi-scale parametric design** — Proven at 85% and 200% scales
 2. **Hybrid fabrication workflow** — Combined FDM + laser cutting advantages
 3. **Parchment paper diffuser** — Optimal light distribution discovery
-4. **ESP32-C3 smart features** — Web UI, NTP, sensors, animations
+4. **ESP32-C3 smart features** — Web UI, NTP, sensors, animations, OTA, Focus Reminders
 5. **Dual build variants** — Compile-time configuration for 8" vs 15"
 6. **4-year production validation** — Real-world reliability testing
 7. **Comprehensive documentation** — WORKFLOW.md, FEATURES.md, ANIMATIONS.md, API.md
+8. **Public rebranding** — Project renamed ChronoBloom ESP32-C3 (May 2026)
 
 ---
 
 ## Technical Evolution Summary
 
-| Aspect              | Steve (2015)        | Mike (2020)         | Maestro (2026)      |
+| Aspect              | Steve (2015)        | Mike (2020)         | ChronoBloom (2026)  |
 |---------------------|---------------------|---------------------|---------------------|
 | Microcontroller     | Arduino Nano        | Nano clone (CH340G) | XIAO ESP32-C3       |
 | Timekeeping         | DS3234 RTC          | DS3234 RTC          | NTP + RTC fallback* |
@@ -192,7 +201,7 @@ Multiple makers have built variants inspired by Steve's original:
 
 **Mike van der Sluis**: For making it accessible to budget-conscious makers. The modified STLs and beginner-friendly documentation expanded the builder community.
 
-**Maestro**: For modernizing the platform without losing the soul. Web UI and sensors enhance but don't replace the core analog timekeeping experience.
+**Maestro**: For modernizing the platform without losing the soul. Web UI, sensors, OTA, and Focus Reminders enhance but don't replace the core analog timekeeping experience. Public rebranding to ChronoBloom ESP32-C3 completed May 2026.
 
 **Claude AI (Anthropic)**: For enabling the March-May 2026 refactor through Claude Chat (planning) and Claude Code (implementation). The collaboration workflow proved essential for managing complexity while maintaining code quality.
 
@@ -222,4 +231,4 @@ Multiple makers have built variants inspired by Steve's original:
 
 ---
 
-**The 3-ring NeoPixel clock is now 10+ years old (2015-2026) and stronger than ever. Each iteration has honored the original vision while adapting to modern capabilities.**
+**ChronoBloom ESP32-C3 is now 10+ years old as a concept (2015-2026) and stronger than ever. Each iteration has honored the original vision while adapting to modern capabilities.**

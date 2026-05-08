@@ -1,4 +1,4 @@
-# Hardware Specifications
+# ChronoBloom ESP32-C3 — Hardware Specifications
 
 ## LED Configuration
 
@@ -10,16 +10,16 @@
 
 ### Variants
 **8" Clock (esp32c3_v3_8inch)**:
-- Total: 98 LEDs on single strip
-- Center pixel at index 97
-- Sacrificial pixel at index 0
-- Ring offset: index 1
+- Total: 97 LEDs on single strip
+- Center pixel at index 96
+- No sacrificial pixel — physical index 0 is the first ring LED (12 o'clock, outer ring)
+- Ring offset: 0
 
 **15" Clock (esp32c3_v3_15inch)**:
 - Main strip: 96 LEDs (rings only)
 - Separate center strip: 1 LED on GPIO20
-- Ring offset: index 1
-- Sacrificial pixel at index 0
+- No sacrificial pixel — physical index 0 is the first ring LED
+- Ring offset: 0
 
 ---
 
@@ -171,19 +171,21 @@ VEML7700 SCL → GPIO7 (yellow wire)
 
 ### Ring Config (main.cpp)
 ```cpp
-constexpr RingConfig RING_OUTER_60  = {60, RING_PIXEL_OFFSET, true};
-constexpr RingConfig RING_MIDDLE_24 = {24, RING_PIXEL_OFFSET + 60, true};
-constexpr RingConfig RING_INNER_12  = {12, RING_PIXEL_OFFSET + 84, true};
+// RING_PIXEL_OFFSET = 0 (no sacrificial pixel)
+constexpr RingConfig RING_OUTER_60  = {60, RING_PIXEL_OFFSET, true};      // indexes 0-59
+constexpr RingConfig RING_MIDDLE_24 = {24, RING_PIXEL_OFFSET + 60, true}; // indexes 60-83
+constexpr RingConfig RING_INNER_12  = {12, RING_PIXEL_OFFSET + 84, true}; // indexes 84-95
 ```
 
 ### LED Indexing
-- **Physical strip index 0**: Sacrificial pixel (always dark)
-- **Physical strip index 1**: Outer ring LED 0 (12 o'clock position)
-- **Physical strip indexes 1-60**: Outer ring (seconds/minutes)
-- **Physical strip indexes 61-84**: Middle ring (hours)
-- **Physical strip indexes 85-96**: Inner ring (hours)
-- **Physical strip index 97**: Center pixel (8" variant)
+- **Physical strip index 0**: Outer ring LED 0 (12 o'clock position)
+- **Physical strip indexes 0-59**: Outer ring (seconds/minutes)
+- **Physical strip indexes 60-83**: Middle ring (hours)
+- **Physical strip indexes 84-95**: Inner ring (hours)
+- **Physical strip index 96**: Center pixel (8" variant)
 - **Separate strip index 0**: Center pixel (15" variant on GPIO20)
+
+> Sacrificial pixel removed in firmware v2.0.2. If upgrading from an older build, rewire GPIO10 data line directly to DIN of physical LED index 0 (first ring LED).
 
 ---
 

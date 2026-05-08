@@ -1,4 +1,4 @@
-# Feature Catalog
+# ChronoBloom ESP32-C3 — Feature Catalog
 
 ## Current Features (Implemented ✅)
 
@@ -31,12 +31,24 @@
 - ✅ **NTP time sync** — Network Time Protocol with timezone/DST support (Mountain time default)
 - ✅ **Web UI** — Full-featured control interface with live preview
 - ✅ **Browser time sync** — One-click sync from phone/computer clock
-- ✅ **EEPROM persistence** — All settings survive power cycles
+- ✅ **EEPROM persistence** — All settings survive power cycles (v8)
 - ✅ **WiFi web server** — mDNS hostname (esp32c3-v3-8inch.local)
 - ✅ **Live SVG preview** — Clock updates every 90ms in web UI
 - ✅ **Animation toggles** — Enable/disable individual effects
 - ✅ **Theme selection** — Classic, Aqua, Magenta presets
 - ✅ **Manual time adjustment** — +/- minute buttons, H:M:S entry
+- ✅ **WiFi provisioning portal** — Captive portal on first boot; AP fallback at 192.168.4.1 if STA unavailable
+- ✅ **OTA firmware updates** — ArduinoOTA over WiFi (port 3232), no USB cable required after first flash
+- ✅ **mDNS reconnect** — Hostname re-advertised automatically after WiFi reconnect
+
+### Focus Reminders
+- ✅ **Focus Reminders (ADHD support)** — Visual nudge animations at configurable intervals to interrupt hyperfocus
+  - Single configurable rule: interval (1-1440 min), active hours window, days-of-week bitmask
+  - Reuses existing animation system (Quarter Pulse, Half-Hour Sweep, Hour Chime)
+  - Enable/disable toggle
+  - Configurable per-day schedule (Sun-Sat)
+  - Persistent storage via EEPROM (16 bytes in v8 struct)
+  - Web UI panel: "Focus Reminders (ADHD)"
 
 ### Web UI Features
 - ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement
@@ -52,10 +64,10 @@
 ## Planned Features (Priority Order)
 
 ### High Priority
-- [ ] **OTA firmware updates** — Flash new firmware via web UI (eliminate ladder access for wall-mounted clock)
-- [ ] **WiFi provisioning portal** — Captive portal on first boot, WPS button support (remove hardcoded credentials)
 - [ ] **Sunrise/sunset detection** — VEML7700 detects daylight transitions, triggers warm fade animations
 - [ ] **Holiday auto-animations** — Date-triggered effects (Christmas, Halloween, New Year, Easter, user birthday)
+- [ ] **Multiple Focus Reminder rules** — 3-5 concurrent reminder rules (v2.1 roadmap)
+- [ ] **Focus Reminder: test-now button** — Manual trigger from Web UI for validation
 
 ### Medium Priority
 - [ ] **Theme presets** — Save/load entire color schemes to EEPROM slots (named presets)
@@ -156,18 +168,18 @@ The clock's purpose is **elegant analog timekeeping through light and color**. T
 
 ---
 
-## Settings Structure (EEPROM v7)
+## Settings Structure (EEPROM v8)
 
 ### Stored Configuration
 **Total size**: 256 bytes  
 **Magic byte**: 0xC1  
-**Version**: 7
+**Version**: 8
 
 **Fields**:
 ```cpp
 struct ClockSettings {
   uint8_t magic;                    // 0xC1 (validation)
-  uint8_t version;                  // 7 (current)
+  uint8_t version;                  // 8 (current)
   
   // Brightness
   uint8_t dayBrightness;            // 0-255
@@ -200,6 +212,15 @@ struct ClockSettings {
   uint8_t halfHourAnimation;        // 0=off, 1=sweep, 2=flash, 3=tidal
   uint8_t hourAnimation;            // 0=off, 1=chime, 2=firework, 3=cascade, 4=spiral, 5=mandala
   uint8_t intervalAnimationsEnabled; // 0=off, 1=on
+
+  // Focus Reminders (added v8, 16 bytes: 13 used + 3 reserved)
+  uint8_t focusEnabled;             // 0=off, 1=on
+  uint8_t focusIntervalMinutes;     // 1-255 (minutes between nudges)
+  uint8_t focusStartHour;           // 0-23 (active window start)
+  uint8_t focusEndHour;             // 0-23 (active window end)
+  uint8_t focusDaysMask;            // bitmask Sun(bit0)…Sat(bit6)
+  uint8_t focusAnimationMode;       // reuses quarter/half/hour animation enum
+  uint8_t focusReserved[3];         // reserved for v2.1 multi-rule expansion
 };
 ```
 
@@ -207,6 +228,7 @@ struct ClockSettings {
 - **v1-5**: Original ESP8266 versions (deprecated)
 - **v6**: Initial ESP32-C3 release (March 2026)
 - **v7**: Added VEML7700 auto-brightness + time-interval animations (May 2026)
+- **v8**: Added Focus Reminders scheduler (May 2026); v7 settings auto-reset to v8 defaults on first boot
 
 ### Bumping Settings Version
 When adding/removing/reordering fields:

@@ -1,21 +1,26 @@
-# NeoPixelClock v3 ESP32-C3
+# ChronoBloom ESP32-C3
 
-PlatformIO firmware for the Seeed Studio XIAO ESP32C3 version of the 3-ring NeoPixel clock. This repo is intentionally ESP32-C3-only so v3 can grow into heavier features such as OTA updates, richer web UI, Wi-Fi setup, sensors, and Home Assistant integration without being constrained by ESP8266 RAM/flash limits.
+> Formerly `neopixelClock-esp32c3-v3`
+
+PlatformIO firmware for the Seeed Studio XIAO ESP32-C3 version of the 3-ring NeoPixel clock. The ESP32-C3 platform enables OTA updates, a rich web UI, WiFi provisioning, I2C sensors, and Home Assistant integration without the RAM/flash constraints of earlier ESP8266 builds.
 
 ## Features
 
 - 60 LED seconds ring with optional progress fill and fading trail
 - 24 LED minutes ring with quarter-hour markers
 - 12 LED hours/status ring
-- Center status pixel at index 96
+- Center status pixel (index 96 on 8" variant, separate strip on 15" variant)
 - Wi-Fi web UI for time setting, browser sync, NTP sync, brightness, themes, and animation toggles
 - Per-ring web controls for seconds, minutes, hours, and center LED color/intensity
 - NTP timezone support for Mountain time with DST
-- Saved display settings in EEPROM emulation
-- Night brightness schedule
+- Saved display settings in EEPROM (v8)
+- Night brightness schedule and VEML7700 lux-based auto-brightness
 - Wi-Fi, button, settings, sync, idle, and hourly chime animations
-- I2C sensor support (VEML7700 ambient light sensor for auto-brightness)
-- **[NEW v2.0] Focus Reminders: ADHD hyperfocus interrupt system** — Visual nudge animations at configurable intervals
+- Time-interval animations: 3 quarter-hour, 3 half-hour, 5 top-of-hour variants
+- WiFi provisioning portal (captive portal on first boot, AP fallback if STA unavailable)
+- OTA firmware updates over WiFi (ArduinoOTA, port 3232)
+- mDNS hostname with automatic reconnect after WiFi drop
+- **Focus Reminders** — Visual nudge animations at configurable intervals for hyperfocus interruption (ADHD support)
 
 ## Development
 
@@ -26,7 +31,7 @@ See [REVIEW.md](REVIEW.md) for current technical issues and debugging notes.
 ## PlatformIO Environment
 
 Build variants:
-- `esp32c3_v3_8inch`: 8.5" clock variant (single NeoPixel strip, 98 LEDs total)
+- `esp32c3_v3_8inch`: 8.5" clock variant (single NeoPixel strip, 97 LEDs total)
 - `esp32c3_v3_15inch`: 15" clock variant (separate center pixel strip on GPIO20)
 
 Build:
@@ -88,6 +93,8 @@ During OTA update:
 - Hours ring: indexes 84-95 (inner ring)
 - Center pixel: index 96 (8" variant) or separate strip index 0 (15" variant)
 
+> Note: no sacrificial pixel. Physical index 0 maps directly to the first ring LED (12 o'clock on the outer ring).
+
 ## XIAO ESP32C3 Pin Assignments
 
 ```
@@ -123,6 +130,6 @@ AVOID: GPIO2, GPIO8, GPIO9 (boot strapping pins)
 
 **Cost-Optimized Build**: Mike van der Sluis (2020-2021) — Modified STL files for Chinese NeoPixel ring clones, simplified firmware
 
-**ESP32-C3 Modernization**: Maestro (2022-2026) — Multi-scale parametric design (85% and 200%), hybrid FDM + laser cutting, parchment paper diffuser, web UI + NTP, per-ring controls
+**ChronoBloom / ESP32-C3 Modernization**: Maestro (2022-2026) — Multi-scale parametric design (85% and 200%), hybrid FDM + laser cutting, parchment paper diffuser, web UI + NTP, per-ring controls, OTA, Focus Reminders
 
 Thanks to Steve Manley and Mike van der Sluis for the foundation that made this project possible.

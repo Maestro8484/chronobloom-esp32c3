@@ -1,4 +1,4 @@
-# Web API Reference
+# ChronoBloom ESP32-C3 — Web API Reference
 
 ## HTTP Endpoints
 
@@ -308,14 +308,14 @@ dayBrightness=200&nightBrightness=20&autoBrightnessMode=1&secondsColor=#FF0000
 
 ---
 
-## Settings Structure (EEPROM v7)
+## Settings Structure (EEPROM v8)
 
 ### ClockSettings Struct
 
 ```cpp
 struct ClockSettings {
   uint8_t magic;                    // 0xC1 (validation byte)
-  uint8_t version;                  // 7 (current version)
+  uint8_t version;                  // 8 (current version)
   
   // Brightness (2 bytes)
   uint8_t dayBrightness;            // 0-255, default 44
@@ -348,6 +348,15 @@ struct ClockSettings {
   uint8_t halfHourAnimation;        // 0-3, default 1 (sweep)
   uint8_t hourAnimation;            // 0-5, default 4 (spiral)
   uint8_t intervalAnimationsEnabled; // 0-1, default 1
+
+  // Focus Reminders (16 bytes, added v8)
+  uint8_t focusEnabled;             // 0-1, default 0
+  uint8_t focusIntervalMinutes;     // 1-255, default 25
+  uint8_t focusStartHour;           // 0-23, default 9
+  uint8_t focusEndHour;             // 0-23, default 17
+  uint8_t focusDaysMask;            // bitmask Sun(0)…Sat(6), default 0x3E (Mon-Fri)
+  uint8_t focusAnimationMode;       // animation to play, default 2 (quarter pulse)
+  uint8_t focusReserved[3];         // reserved
 };
 ```
 
@@ -431,6 +440,8 @@ ntp unavailable
 ## MQTT Topics (Future)
 
 **When MQTT support added**:
+
+> Note: topic prefix `iris-clock` below is the planned firmware identifier. Final topic names will be confirmed when MQTT is implemented.
 
 **Subscribe** (commands from Home Assistant):
 - `iris-clock/command/brightness` — Set brightness (0-255)
@@ -517,6 +528,10 @@ curl -X POST http://esp32c3-v3-8inch.local/set \
 - IP address: `192.168.4.1`
 - Portal timeout: 120 seconds (default)
 
+### WiFi AP Fallback
+
+If all STA connection attempts fail (wrong password, network unavailable), the device starts a software AP and runs the full web server at `192.168.4.1`. Clock display, web UI, and settings are all functional in AP mode. NTP, mDNS, and OTA are skipped until a STA connection is established.
+
 **Portal page**:
 1. Displays list of available WiFi networks (SSIDs)
 2. User selects their SSID and enters password
@@ -545,7 +560,7 @@ After initial USB flash, firmware updates can be deployed over WiFi using Arduin
 ### OTA Protocol Details
 
 **Port**: 3232 (TCP)
-**Authentication**: Password (`iris_ota_2026`)
+**Authentication**: Password (`iris_ota_2026` — current firmware identifier, not renamed with project)
 **Protocol**: ArduinoOTA binary protocol (not HTTP/HTTPS)
 
 ### Update Command

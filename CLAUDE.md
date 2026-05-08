@@ -42,7 +42,7 @@ Say **"Iris Clock workflow rules active"** at the start of any session to confir
 
 ## Project Identity
 
-**Name**: Iris Clock  
+**Name**: ChronoBloom ESP32-C3 (formerly neopixelClock-esp32c3-v3 / Iris Clock)
 **Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor  
 **Visual**: Concentric LED rings creating flower-like light bloom pattern  
 **Purpose**: Elegant analog timekeeping through addressable LEDs
