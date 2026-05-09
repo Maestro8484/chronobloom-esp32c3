@@ -188,42 +188,97 @@ class LuxSensor {
     uint32_t nowMs = millis();
     if (nowMs - lastReadMs_ < 120) return luxAvg_;
     lastReadMs_ = nowMs;
-    float reading = veml_.readLux();
 
-    if (reading > 1000.0f && veml_.getGain() != VEML7700_GAIN_1_8) {
-      veml_.setGain(VEML7700_GAIN_1_8);
-      lastGainChangeMs_ = nowMs;
-    } else if (reading < 100.0f && reading > 0 && veml_.getGain() != VEML7700_GAIN_2) {
+    // Wait 400ms after a gain change (2 full 100ms integration cycles + margin)
+    // before trusting the reading. Short settling was the primary cause of
+    // gain oscillation: reading was still invalid when next switch decision ran.
+    if (nowMs - lastGainChangeMs_ < 400) return luxAvg_;
+
+    float reading = veml_.readLux();
+    if (reading < 0.0f) return luxAvg_;  // discard library error returns
+
+    // 3-state gain machine with hysteresis bands to prevent oscillation.
+    // Previous code had no hysteresis: GAIN_1_8 -> GAIN_2 direct jump
+    // caused reading to spike -> GAIN_1_8 again -> flicker loop.
+    uint8_t g = veml_.getGain();
+    bool gainChanged = false;
+    if (g == VEML7700_GAIN_2 && reading > 200.0f) {
+      // High-sensitivity: exit when scene is bright enough (>200 hysteresis vs <50 entry)
+      veml_.setGain(VEML7700_GAIN_1);
+      gainChanged = true;
+    } else if (g == VEML7700_GAIN_1 && reading > 0.0f && reading < 50.0f) {
+      // Normal: enter high-sensitivity for dark scenes
       veml_.setGain(VEML7700_GAIN_2);
+      gainChanged = true;
+    } else if (g == VEML7700_GAIN_1 && reading > 900.0f) {
+      // Normal: enter low-sensitivity for very bright light
+      veml_.setGain(VEML7700_GAIN_1_8);
+      gainChanged = true;
+    } else if (g == VEML7700_GAIN_1_8 && reading < 300.0f) {
+      // Low-sensitivity: return to normal (never jump directly to GAIN_2)
+      veml_.setGain(VEML7700_GAIN_1);
+      gainChanged = true;
+    }
+    if (gainChanged) {
       lastGainChangeMs_ = nowMs;
+      return luxAvg_;
     }
 
-    if (nowMs - lastGainChangeMs_ < 150) return luxAvg_;
-
-    luxAvg_ = luxAvg_ * 0.95f + reading * 0.05f;
+    // Faster smoothing (alpha 0.15) so we track real changes while still
+    // suppressing noise. Previous 0.05 was so slow that resets after a gain
+    // switch left luxAvg_ stale for many seconds.
+    luxAvg_ = luxAvg_ * 0.85f + reading * 0.15f;
     return luxAvg_;
 #else
     return -1.0f;
 #endif
   }
 
+  // Returns the current ramped brightness (what LEDs actually show).
+  // Use this for web UI display so it matches hardware state.
   uint8_t autoBrightness() {
-    float lx = lux();
-    if (lx < 0) return 128;
-    float normalized = log10(max(0.1f, lx) + 1.0f) / log10(10001.0f);
-    return constrain((int)(normalized * 240 + 15), 15, 255);
+    return autoBrightnessCached(millis());
+  }
+
+  // Returns the brightness target (pre-ramp) for diagnostic display.
+  uint8_t autoBrightnessTarget() const {
+    return (uint8_t)cachedBrightness_;
   }
 
   uint8_t autoBrightnessCached(uint32_t nowMs) {
 #if LUX_SENSOR_ENABLED
     if (!available_) return 128;
-    if (nowMs - lastBrightnessMs_ < 500) return (uint8_t)cachedBrightness_;
-    float lx = lux();
-    if (lx < 0) return 128;
-    float normalized = log10(max(0.1f, lx) + 1.0f) / log10(10001.0f);
-    cachedBrightness_ = constrain(normalized * 240.0f + 15.0f, 15.0f, 255.0f);
-    lastBrightnessMs_ = nowMs;
-    return (uint8_t)cachedBrightness_;
+
+    // Refresh the lux-derived target every 500ms
+    if (nowMs - lastBrightnessMs_ >= 500) {
+      float lx = lux();
+      if (lx >= 0.0f) {
+        float normalized = log10(max(0.1f, lx) + 1.0f) / log10(10001.0f);
+        cachedBrightness_ = constrain(normalized * 240.0f + 15.0f, 15.0f, 255.0f);
+      }
+      lastBrightnessMs_ = nowMs;
+    }
+
+    // On first call, snap rampedBrightness_ to target to avoid a ramp from 128
+    if (lastRampMs_ == 0) {
+      rampedBrightness_ = cachedBrightness_;
+      lastRampMs_ = nowMs;
+      return (uint8_t)rampedBrightness_;
+    }
+
+    // Ramp toward target at ≤50 brightness units/sec.
+    // This prevents the sudden strip-wide flash/dark when lux changes rapidly.
+    // At 50/sec: full range (255→15) takes ~4.8 seconds — smooth but responsive.
+    uint32_t dt = nowMs - lastRampMs_;
+    if (dt > 200) dt = 200;  // cap dt so a stall doesn't cause a big jump
+    lastRampMs_ = nowMs;
+    float maxStep = dt * 0.050f;  // 50 units/sec → 0.050 per ms
+    float diff = cachedBrightness_ - rampedBrightness_;
+    if (diff > maxStep)       diff = maxStep;
+    else if (diff < -maxStep) diff = -maxStep;
+    rampedBrightness_ = constrain(rampedBrightness_ + diff, 15.0f, 255.0f);
+
+    return (uint8_t)rampedBrightness_;
 #else
     return 128;
 #endif
@@ -237,8 +292,10 @@ class LuxSensor {
   float luxAvg_ = 100.0f;
   uint32_t lastGainChangeMs_ = 0;
   uint32_t lastReadMs_ = 0;
-  float cachedBrightness_ = 128.0f;
+  float cachedBrightness_ = 128.0f;  // target (lux-derived, unsmoothed)
+  float rampedBrightness_ = 128.0f;  // actual output (smoothed toward target)
   uint32_t lastBrightnessMs_ = 0;
+  uint32_t lastRampMs_ = 0;
 };
 
 // ===================== Persistent settings =====================
@@ -296,11 +353,11 @@ struct ClockSettings {
   uint8_t focusReminder_animation;      // Animation type (0-5)
   uint8_t focusReminder_durationSeconds; // Duration (1-60) - reserved for v2
   uint32_t focusReminder_lastFireMs;    // Last fire timestamp (millis)
-  // uint8_t reserved[3];               // Future expansion
+  uint8_t outerRingOffset;              // 0-59: clockwise LED rotation applied to all rings at render time
 };
 
 constexpr uint8_t SETTINGS_MAGIC = 0xC1;
-constexpr uint8_t SETTINGS_VERSION = 9;
+constexpr uint8_t SETTINGS_VERSION = 10;
 constexpr size_t EEPROM_BYTES = 256;
 
 class SettingsStore {
@@ -332,7 +389,8 @@ class SettingsStore {
             255, 60,  0,   180,   // center:      warm orange-red
             1,   10,  255,        // autoBrightness: mode=auto, min=10, max=255
             3,   1,   4,   1,     // animations: shimmer, sweep, spiral, enabled
-            0,   8,   22,   60,   0, 0, 60, 60};  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
+            0,   8,   22,   60,   0, 0, 60, 60,  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
+            0};  // outerRingOffset: no rotation
   }
 
   static bool valid(const ClockSettings &settings) {
@@ -351,7 +409,8 @@ class SettingsStore {
            settings.focusReminder_intervalMinutes >= 1 && settings.focusReminder_intervalMinutes <= 1440 &&
            settings.focusReminder_daysMask <= 127 &&
            settings.focusReminder_animation <= 5 &&
-           settings.focusReminder_durationSeconds >= 1 && settings.focusReminder_durationSeconds <= 60;
+           settings.focusReminder_durationSeconds >= 1 && settings.focusReminder_durationSeconds <= 60 &&
+           settings.outerRingOffset < 60;
   }
 
   static ClockSettings sanitize(ClockSettings settings) {
@@ -382,6 +441,7 @@ class SettingsStore {
     if (settings.focusReminder_animation > 5) settings.focusReminder_animation = 0;
     if (settings.focusReminder_durationSeconds < 1) settings.focusReminder_durationSeconds = 60;
     if (settings.focusReminder_durationSeconds > 60) settings.focusReminder_durationSeconds = 60;
+    if (settings.outerRingOffset >= 60) settings.outerRingOffset = 0;
     return settings;
   }
 
@@ -811,7 +871,7 @@ class ClockRenderer {
     switch (animPhase_) {
 
       case ANIM_Q1: {
-        if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
+        if (elapsed >= 600) { animPhase_ = ANIM_IDLE; return; }
         setCenterPixel(strip_.Color(255, 255, 255));
         for (uint8_t i = 0; i < 60; i += 15)
           setRingPixel(RING_OUTER_60, i, strip_.Color(255, 255, 255));
@@ -1095,7 +1155,11 @@ class ClockRenderer {
 
   void setRingPixel(const RingConfig &ring, uint8_t logicalIndex, uint32_t color) {
     if (logicalIndex >= ring.count) return;
-    uint8_t physical = ring.clockwise ? logicalIndex : (ring.count - 1 - logicalIndex);
+    uint8_t rot = settings_.get().outerRingOffset;
+    uint8_t rotated = rot
+        ? static_cast<uint8_t>((static_cast<uint32_t>(logicalIndex) + rot * ring.count / 60) % ring.count)
+        : logicalIndex;
+    uint8_t physical = ring.clockwise ? rotated : (ring.count - 1 - rotated);
     strip_.setPixelColor(ring.offset + physical, color);
   }
 
@@ -1398,6 +1462,7 @@ class WebUi {
       if (server_.hasArg("halfHourAnimation")) settings.halfHourAnimation = clampByte(server_.arg("halfHourAnimation").toInt(), 0, 3);
       if (server_.hasArg("hourAnimation")) settings.hourAnimation = clampByte(server_.arg("hourAnimation").toInt(), 0, 5);
       if (server_.hasArg("intervalAnimationsEnabled")) settings.intervalAnimationsEnabled = server_.arg("intervalAnimationsEnabled").toInt() ? 1 : 0;
+      if (server_.hasArg("outerRingOffset")) settings.outerRingOffset = clampByte(server_.arg("outerRingOffset").toInt(), 0, 59);
       if (server_.hasArg("focusReminder_enabled")) settings.focusReminder_enabled = server_.arg("focusReminder_enabled").toInt() ? 1 : 0;
       if (server_.hasArg("focusReminder_startHour")) settings.focusReminder_startHour = clampByte(server_.arg("focusReminder_startHour").toInt(), 0, 23);
       if (server_.hasArg("focusReminder_endHour")) settings.focusReminder_endHour = clampByte(server_.arg("focusReminder_endHour").toInt(), 0, 23);
@@ -1619,7 +1684,8 @@ function uploadFirmware(){
            ",\"focusReminder_intervalMinutes\":" + s.focusReminder_intervalMinutes +
            ",\"focusReminder_daysMask\":" + s.focusReminder_daysMask +
            ",\"focusReminder_animation\":" + s.focusReminder_animation +
-           ",\"focusReminder_durationSeconds\":" + s.focusReminder_durationSeconds + "}";
+           ",\"focusReminder_durationSeconds\":" + s.focusReminder_durationSeconds +
+           ",\"outerRingOffset\":" + s.outerRingOffset + "}";
   }
 
   static String boolJson(bool value) {
@@ -1732,6 +1798,7 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
 <div class='ringrow'><span>Center</span><input id='centerColor' type='color'><input id='centerLevel' type='range' min='0' max='255'><output id='centerLevelOut'></output></div>
 <div class='row'><div><label>Theme</label><select id='colorTheme'><option value='0'>Classic</option><option value='1'>Aqua</option><option value='2'>Magenta</option></select></div></div>
 <div class='toggle'><label><input id='secondTrail' type='checkbox'>Second trail</label><label><input id='progressSeconds' type='checkbox'>Progress ring</label><label><input id='hourlyChime' type='checkbox'>Hourly chime</label><label><input id='statusAnimations' type='checkbox'>Status</label></div>
+<div class='row'><div><label>Ring rotation offset (0-59 LEDs)</label><input id='outerRingOffset' type='number' min='0' max='59' style='width:70px'></div></div>
 <div class='row'><button class='primary' onclick='saveSettings()'>Save display</button></div>
 </div>
 <div class='panel'><h2>Auto-Brightness</h2>
@@ -1807,13 +1874,13 @@ function level(id){return Number(qs(id+'Level')?.value||180)} function color(id)
 function draw(){clearRing('middle');clearRing('inner');for(let i=0;i<60;i++){const mark=i%5===0;setLed(leds.outer[i],mark?color('outerMarker'):color('outerFiller'),mark?level('outerMarker'):level('outerFiller'),mark?'marker':'ghost')}let s=current.second,m=current.minute,h=current.hour%12,hoff=current.minute>=30?1:0,h24=(h*2+hoff)%24;const mode=qs('previewMode')?.value||'live',tick=Math.floor(Date.now()/90);if(settings.progressSeconds){for(let i=0;i<=s;i++)setLed(leds.outer[i],color('seconds'),38,'ghost')}if(settings.secondTrail||mode==='trail'){for(let i=1;i<7;i++)setLed(leds.outer[(s+60-i)%60],color('seconds'),Math.max(20,level('seconds')-(i*32)),'ghost')}if(mode==='trail'){for(let i=1;i<5;i++){setLed(leds.outer[(m+60-i)%60],color('minutes'),Math.max(25,level('minutes')-(i*42)),'ghost');setLed(leds.middle[(h24+24-i)%24],color('hours'),Math.max(25,level('hours')-(i*42)),'ghost');setLed(leds.inner[(h+12-i)%12],color('hours'),Math.max(25,level('hours')-(i*52)),'ghost')}}if(mode==='spark'){for(let i=0;i<10;i++){setLed(leds.outer[(tick+i*6)%60],i%2?color('hours'):color('minutes'),90+(i*10),'ghost')}}for(let i=0;i<24;i++)setLed(leds.middle[i],color('hours'),22,'marker');for(let i=0;i<12;i++)setLed(leds.inner[i],color('center'),24,'marker');setLed(leds.outer[s],color('seconds'),level('seconds'));setLed(leds.outer[m],color('minutes'),level('minutes'));setLed(leds.middle[h24],color('hours'),level('hours'));setLed(leds.inner[h],color('hours'),level('hours'));setLed(leds.inner[(h+hoff)%12],color('hours'),level('hours'));const pulse=45+Math.floor((Math.sin(Date.now()/450)+1)*85);setLed(qs('centerLed'),color('center'),Math.min(level('center'),pulse),'on')}
 async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;qs('now').textContent=`${pad(t.hour)}:${pad(t.minute)}:${pad(t.second)}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}
 async function loadNet(){const r=await fetch('/net');const n=await r.json();qs('net').textContent=`${n.hostname} | ${n.ssid} | IP ${n.ip} | GW ${n.gateway} | RSSI ${n.rssi} dBm`}
-async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}
+async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('outerRingOffset').value=settings.outerRingOffset||0;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}
 async function refreshLux(){const r=await fetch('/lux');const data=await r.json();if(data.available){qs('luxValue').textContent=data.lux.toFixed(1)}}
 function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()}}
 async function post(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});await refresh()}
 function setTime(){post('/set',`hour=${h.value}&minute=${m.value}&second=${s.value}`)}
 function syncBrowser(){const d=new Date();post('/syncBrowser',`hour=${d.getHours()}&minute=${d.getMinutes()}&second=${d.getSeconds()}`)}
-function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);post('/settings',p.toString()).then(loadSettings)}
+function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);p.set('outerRingOffset',qs('outerRingOffset').value);post('/settings',p.toString()).then(loadSettings)}
 function saveFocusReminder(){const p=new URLSearchParams();p.set('focusReminder_enabled',qs('focusReminder_enabled').checked?1:0);p.set('focusReminder_startHour',qs('focusReminder_startHour').value);p.set('focusReminder_endHour',qs('focusReminder_endHour').value);p.set('focusReminder_intervalMinutes',qs('focusReminder_intervalMinutes').value);p.set('focusReminder_animation',qs('focusReminder_animation').value);let daysMask=0;for(let i=0;i<7;i++){if(qs('focusReminder_day'+i).checked)daysMask|=(1<<i)}p.set('focusReminder_daysMask',daysMask);post('/settings',p.toString()).then(loadSettings)}
 makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);
 </script></body></html>)HTML";
@@ -1927,14 +1994,42 @@ static void logRuntimeStatus(uint32_t now) {
   if (now - lastStatusLogMs < 10000) return;
   lastStatusLogMs = now;
 
-  Serial.printf("[Status] uptime=%lus wifi=%d host=%s ssid=%s ip=%s rssi=%d heap=%lu\n",
-                now / 1000,
-                WiFi.status(),
-                DEVICE_HOSTNAME,
-                WiFi.SSID().c_str(),
-                WiFi.localIP().toString().c_str(),
-                WiFi.RSSI(),
+  ClockTime t = timeModel.get();
+  uint32_t uptimeSec = now / 1000;
+  const ClockSettings &s = settingsStore.get();
+
+  Serial.printf("\n[%02d:%02d:%02d] uptime=%02lu:%02lu:%02lu  heap=%lu B free\n",
+                t.hour, t.minute, t.second,
+                uptimeSec / 3600, (uptimeSec % 3600) / 60, uptimeSec % 60,
                 static_cast<unsigned long>(ESP.getFreeHeap()));
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.printf("  WiFi  : %s  IP=%s  RSSI=%d dBm\n",
+                  WiFi.SSID().c_str(),
+                  WiFi.localIP().toString().c_str(),
+                  WiFi.RSSI());
+  } else {
+    Serial.printf("  WiFi  : OFFLINE (status=%d)\n", WiFi.status());
+  }
+
+#if LUX_SENSOR_ENABLED
+  if (luxSensor.available()) {
+    float lx = luxSensor.lux();
+    uint8_t brRamped = luxSensor.autoBrightnessCached(now);
+    uint8_t brTarget = luxSensor.autoBrightnessTarget();
+    uint8_t brEffective = constrain((int)brRamped, s.minAutoBrightness, s.maxAutoBrightness);
+    Serial.printf("  Lux   : %.1f lux  br=%d->%d(eff=%d)  mode=%d  min=%d  max=%d\n",
+                  lx, brTarget, brRamped, brEffective,
+                  s.autoBrightnessMode, s.minAutoBrightness, s.maxAutoBrightness);
+  } else {
+    Serial.println("  Lux   : VEML7700 not available");
+  }
+#endif
+
+  Serial.printf("  LEDs  : count=%d  ringOffset(hw)=%d  rotOffset(sw)=%d  center=%d  sac=%s\n",
+                CLOCK_PIXEL_COUNT, RING_PIXEL_OFFSET, s.outerRingOffset,
+                CENTER_PIXEL_INDEX, SACRIFICIAL_PIXEL_ENABLED ? "yes" : "no");
+  Serial.printf("  NTP   : %s\n", timeSync.synced() ? "synced" : "waiting");
 }
 
 void setup() {
@@ -1950,6 +2045,22 @@ void setup() {
   }
   Serial.println();
   Serial.println("NeoPixelClock v3 booting...");
+  {
+    esp_reset_reason_t rr = esp_reset_reason();
+    const char *rrStr = "unknown";
+    switch (rr) {
+      case ESP_RST_POWERON:  rrStr = "power-on";         break;
+      case ESP_RST_SW:       rrStr = "software reset";   break;
+      case ESP_RST_PANIC:    rrStr = "panic/exception";  break;
+      case ESP_RST_INT_WDT:  rrStr = "interrupt WDT";   break;
+      case ESP_RST_TASK_WDT: rrStr = "task WDT";        break;
+      case ESP_RST_WDT:      rrStr = "watchdog";        break;
+      case ESP_RST_BROWNOUT: rrStr = "brownout";        break;
+      case ESP_RST_DEEPSLEEP:rrStr = "deep-sleep wake"; break;
+      default: break;
+    }
+    Serial.printf("Reset reason: %s (%d)\n", rrStr, (int)rr);
+  }
   Serial.print("Build target: ");
   Serial.println(DEVICE_TITLE);
   Serial.print("LED count: ");

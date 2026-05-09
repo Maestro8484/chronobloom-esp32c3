@@ -1,5 +1,135 @@
 # ChronoBloom ESP32-C3 — Firmware Review
-Date: 2026-05-04
+Date: 2026-05-04 (updated 2026-05-09)
+
+---
+
+## Session S?? — 2026-05-09 Issues, Causes, and Fixes
+
+### Issue A: Noon mark 1 LED off + center LED static / inner-12 LED pulsing
+
+**Symptom**: At 12:00:00, the outer-ring hour marker appeared 1 LED counterclockwise of
+true top. The center pixel was dark; the LED at inner-ring position 11 (12 o'clock on
+the inner ring) was pulsing with the center animation color.
+
+**Root cause**: User physically added a sacrificial WS2812B LED at the start of the LED
+chain (physical index 0) to protect the data line. The build config was NOT updated.
+With `RING_PIXEL_OFFSET=0` and a sacrificial pixel at physical 0:
+- All three rings shifted 1 LED counterclockwise (outer ring started at physical 0 =
+  sacrificial pixel instead of the first real outer ring LED at physical 1).
+- `CENTER_PIXEL_INDEX=96` pointed to physical 96, which was the LAST LED of the inner
+  ring (inner ring occupied physical 85-96 with sacrificial shift), not the center LED.
+- The center idle pulse animation ran on inner-ring LED 11 (12 o'clock inner position).
+- The actual center LED at physical 97 was beyond `CLOCK_PIXEL_COUNT=97` — never written.
+
+**Fix** (`platformio.ini`, `esp32c3_v3_8inch` env):
+```
+CLOCK_PIXEL_COUNT  97 → 98
+CENTER_PIXEL_INDEX 96 → 97
+RING_PIXEL_OFFSET   0 → 1
+SACRIFICIAL_PIXEL_ENABLED 0 → 1
+SACRIFICIAL_PIXEL_INDEX = 0  (new)
+```
+Settings version bumped 9 → 10 (wipes stale EEPROM on first boot).
+
+**Why sacrificial LED helps**: The WS2812B data input requires a signal voltage close to
+its VDD. When the ESP32-C3 drives at 3.3V but LEDs run at 5V, the first LED's input
+threshold may be marginal, causing corrupted data to cascade through the chain. The
+sacrificial LED level-shifts the data line via its own output stage (5V-logic output
+after the first pixel), so all subsequent pixels receive a clean 5V signal.
+
+---
+
+### Issue B: Runtime clock rotation offset (new feature)
+
+**Symptom**: After the physical layout fix above, fine-tuning the 12-o'clock position
+without re-flashing was requested.
+
+**Fix**: Added `outerRingOffset` (uint8_t, 0–59) to `ClockSettings`. Applied
+proportionally in `setRingPixel()` across all three rings at render time. Exposed as
+"Ring rotation offset" number field in the Web UI Rings panel. Saved to EEPROM.
+
+---
+
+### Issue C: VEML7700 brightness pulsing / middle ring going wild during lux transitions
+
+**Symptom**: When ambient lux dropped from ~220 → 45 → 0.3 (dimming room), the 24-LED
+middle ring pulsed wildly and the outer ring timing appeared jittery. All effects
+disappeared once lux stabilised at 0.3.
+
+**Root cause — two bugs**:
+
+**Bug C1: Gain state machine oscillation**
+The gain-switching code had no hysteresis and a wrong direct transition:
+```cpp
+// OLD (buggy):
+if (reading > 1000 && gain != GAIN_1_8) → set GAIN_1_8
+else if (reading < 100 && gain != GAIN_2) → set GAIN_2
+```
+When on `GAIN_1_8` and lux dropped below 100, `gain != GAIN_2` was TRUE so the code
+jumped from GAIN_1_8 directly to GAIN_2 (bypassing GAIN_1). With GAIN_2's doubled
+sensitivity the same scene read >1000 lux, switched back to GAIN_1_8, read <100 again,
+back to GAIN_2 → oscillation at ~3–6 Hz. Each gain switch produced an invalid reading
+followed by a 150ms lockout, during which stale `luxAvg_` was returned. With the
+smoothing alpha at 0.05, each valid reading barely moved the average, so the oscillation
+propagated directly to brightness as a flutter.
+
+**Bug C2: No brightness ramping**
+`autoBrightnessCached()` recalculated and immediately applied the new brightness every
+500ms. A lux change of 220→0.3 in one poll interval caused brightness to snap from ~192
+to ~21 in a single frame — visible as a sharp flash/dark on all rings.
+
+**Fixes**:
+
+*C1 fix — proper 3-state gain machine with hysteresis:*
+```
+GAIN_2  → GAIN_1  only when reading > 200 lux  (entry threshold was < 50)
+GAIN_1  → GAIN_2  when reading < 50 lux
+GAIN_1  → GAIN_1_8 when reading > 900 lux
+GAIN_1_8 → GAIN_1  when reading < 300 lux  (never jumps direct to GAIN_2)
+Settle lockout after gain change: 150ms → 400ms
+```
+
+*C2 fix — brightness ramping at ≤50 units/second:*
+Added `rampedBrightness_` float to `LuxSensor`. `autoBrightnessCached()` computes the
+lux-derived target every 500ms into `cachedBrightness_`, then each call ramps
+`rampedBrightness_` toward that target by at most 50 units per second. Full range
+(15→255) now takes ≈4.8 seconds. First call snaps to target (no startup ramp).
+`autoBrightness()` now calls `autoBrightnessCached()` for consistency.
+
+Serial `Lux` line now shows `br=TARGET->RAMPED(eff=EFFECTIVE)` so both values are visible.
+
+*C3 fix — faster lux smoothing:*
+`luxAvg_` exponential smoothing alpha increased from 0.05 to 0.15. At 0.05, a large
+lux drop took ~65 readings (8 seconds) to converge to 63% of target. At 0.15 it takes
+~19 readings (2.3 seconds) — still smooth but tracks real changes instead of lagging far behind.
+
+---
+
+### Hardware question: VEML7700 vs LDR photoresistor
+
+**Asked**: Would a simple analog light-dependent resistor (LDR/photoresistor) be more
+stable and smooth?
+
+**Comparison**:
+
+| | VEML7700 (I2C digital) | LDR + voltage divider (analog) |
+|---|---|---|
+| Accuracy | Calibrated lux, ±10% | Uncalibrated ADC counts, varies by part |
+| Noise | Low (digital, oversampling) | Higher (ADC noise, RF interference) |
+| Speed | 100ms integration time minimum | ADC reads in microseconds |
+| Smoothing | Software only | Hardware RC capacitor possible (free smoothing) |
+| Complexity | I2C driver, gain management | Single resistor + ADC pin |
+| Failure mode | I2C lockup possible | Resistor open/short, ADC noise floor |
+| Oscillation risk | Gain switching (fixed above) | None — no gain stages |
+| ESP32-C3 gotcha | Stable | ADC1 channels preferred; avoid GPIO0/2/1 |
+
+**Recommendation**: The VEML7700 is the better choice for this application — it gives
+true lux values which allow the log-scaled brightness curve to be meaningful. The LDR
+would work but would require per-unit calibration and wouldn't eliminate flicker
+(ESP32 ADC has ~1-2% noise without external RC filter). The software fixes above
+(gain hysteresis + brightness ramping) should resolve the instability without changing
+hardware. If instability persists after these fixes, add a 100nF cap between VEML7700
+VIN and GND on the I2C lines to reduce noise pickup.
 
 ---
 
