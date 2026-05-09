@@ -279,7 +279,7 @@ struct ClockSettings {
 };
 
 constexpr uint8_t SETTINGS_MAGIC = 0xC1;
-constexpr uint8_t SETTINGS_VERSION = 8;
+constexpr uint8_t SETTINGS_VERSION = 9;
 constexpr size_t EEPROM_BYTES = 256;
 
 class SettingsStore {
@@ -311,7 +311,7 @@ class SettingsStore {
             255, 60,  0,   180,   // center:      warm orange-red
             1,   10,  255,        // autoBrightness: mode=auto, min=10, max=255
             3,   1,   4,   1,     // animations: shimmer, sweep, spiral, enabled
-            0,   8,   22,   60,   0, 0, 60, 0};  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
+            0,   8,   22,   60,   0, 0, 60, 60};  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
   }
 
   static bool valid(const ClockSettings &settings) {
