@@ -2174,7 +2174,15 @@ void loop() {
     renderer.render(timeModel.get());
     lastAnimationRenderMs = now;
   } else if (renderer.needsCenterAnimationFrame() && now - lastAnimationRenderMs >= 80) {
-    renderer.renderCenterAnimationFrame(timeModel.get());
+    // Full render instead of center-only: renderCenterAnimationFrame() called
+    // setBrightness() every 80ms which re-scales the whole pixel buffer via
+    // lossy integer division. Over ~12 frames/sec, ring pixels drifted ~7 units
+    // darker than their correct value. render() on tick snapped them back —
+    // creating a 1Hz brightness pulse on the outer ring. Inner ring ambient
+    // pixels (scale 22-24/255) were too dim to show the drift, making them
+    // appear "not in sync" with the outer ring. Full render here is safe:
+    // strip_.clear() only zeroes RAM — it never calls show() — so no blank frame.
+    renderer.render(timeModel.get());
     lastAnimationRenderMs = now;
   }
 }
