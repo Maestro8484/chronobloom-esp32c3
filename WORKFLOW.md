@@ -90,14 +90,37 @@ chronobloom-esp32c3/        ← repo folder name (ChronoBloom ESP32-C3 project)
 ├── WORKFLOW.md          ← This file (development workflow rules)
 ├── README.md            ← Build instructions, features, hardware specs
 ├── REVIEW.md            ← Technical issues, debugging notes, firmware audit
-├── CHANGELOG.md         ← Pointer to docs/CHANGELOG.md
+├── CLAUDE.md            ← Documentation router for Claude sessions
 ├── platformio.ini       ← Build configuration for 8" and 15" variants
 ├── src/
-│   └── main.cpp         ← Single-file monolith firmware (~2000 lines)
-└── .git/                ← Local git repo
+│   └── main.cpp         ← Single-file monolith firmware (~2200 lines, ~34k tokens)
+└── docs/
+    ├── PRIMER.md        ← Quick session primer (read first)
+    ├── FUNCTION_INVENTORY.md ← All 85 functions documented (purpose, lines, state, env effects)
+    ├── symmap.json      ← Machine-readable { name, start_line, end_line } symbol map
+    ├── HARDWARE.md      ← Pin maps, sensors, physical specs
+    ├── FEATURES.md      ← Current/planned/rejected features
+    ├── ANIMATIONS.md    ← Animation catalog and triggers
+    ├── API.md           ← Web endpoints, settings structure
+    ├── TROUBLESHOOTING.md ← Common issues and debugging
+    └── HISTORY.md       ← Project lineage
 ```
 
 **Documentation Priority**:
 1. Check WORKFLOW.md for development process
 2. Check REVIEW.md for known issues and debugging status
 3. Check README.md for build/flash commands and feature list
+
+---
+
+## Token Reduction — Reading main.cpp
+
+`src/main.cpp` is ~2200 lines (~34k tokens). Reading it whole exceeds context limits and wastes budget.
+
+**Required approach for any main.cpp work**:
+1. Find the relevant function in `docs/FUNCTION_INVENTORY.md` (purpose, state, dependencies)
+2. Get its exact line range from `docs/symmap.json`
+3. Use `Read` with `offset` and `limit` to fetch only those lines
+4. If `symmap.json` line ranges are stale (SHA256 mismatch), do a targeted `Grep` instead of a full read
+
+Never open `src/main.cpp` without a specific line target.

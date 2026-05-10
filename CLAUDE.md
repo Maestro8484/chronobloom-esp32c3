@@ -14,6 +14,12 @@
 - **[README.md](README.md)** — Build instructions, features, quick start
 - **[REVIEW.md](REVIEW.md)** — Technical audit, known issues, debugging notes
 
+### Code Navigation (use these before reading main.cpp)
+- **[docs/FUNCTION_INVENTORY.md](docs/FUNCTION_INVENTORY.md)** — Every function: purpose, line range, state reads/writes, build-env and WebUI effects
+- **[docs/symmap.json](docs/symmap.json)** — Machine-readable symbol map: `{ name, start_line, end_line }` for all 85 functions; SHA256-pinned to source
+
+**Token-reduction rule**: `src/main.cpp` is ~2200 lines (~34k tokens). Never read it whole. Use `FUNCTION_INVENTORY.md` to find the relevant function, get its line range from `symmap.json`, then `Read` with `offset`/`limit` targeting only those lines.
+
 ### Detailed Documentation (docs/)
 - **[docs/HARDWARE.md](docs/HARDWARE.md)** — Pin maps, sensors, physical construction, power specs
 - **[docs/FEATURES.md](docs/FEATURES.md)** — Current/planned/rejected features, settings structure

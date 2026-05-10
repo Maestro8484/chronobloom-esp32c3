@@ -56,6 +56,14 @@ pio device monitor                     # Serial monitor
 - WiFi: credentials set via `platformio.ini` build flags (`WIFI_SSID` / `WIFI_PASSWORD`)
 
 ## Documentation Map
+
+### Code navigation — read these before touching main.cpp
+- **[FUNCTION_INVENTORY.md](FUNCTION_INVENTORY.md)** — Every function: purpose, line range, state reads/writes, build-env and WebUI effects
+- **[symmap.json](symmap.json)** — Machine-readable `{ name, start_line, end_line }` for all 85 functions (SHA256-pinned)
+
+> `src/main.cpp` is ~2200 lines (~34k tokens). Never read it whole. Look up the function in `FUNCTION_INVENTORY.md`, get its line range from `symmap.json`, then `Read` with `offset`/`limit`.
+
+### Reference
 - **[HARDWARE.md](HARDWARE.md)** — Pin maps, sensors, physical specs
 - **[FEATURES.md](FEATURES.md)** — Current/planned/rejected features
 - **[ANIMATIONS.md](ANIMATIONS.md)** — Animation catalog and triggers
