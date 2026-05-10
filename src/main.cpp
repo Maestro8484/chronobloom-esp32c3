@@ -9,6 +9,7 @@
 #include <Update.h>
 #include <Adafruit_NeoPixel.h>
 #include <time.h>
+#include <esp_sntp.h>
 #include <WiFiManager.h>
 #include <ArduinoOTA.h>
 #if LUX_SENSOR_ENABLED
@@ -1193,18 +1194,27 @@ class TimeSync {
   void begin() {
 #if ENABLE_NTP
     configTzTime(NTP_TIMEZONE_TZ, "pool.ntp.org", "time.nist.gov", "time.google.com");
+    // Fire syncNow() from the Arduino loop task each time SNTP updates the system
+    // clock, rather than polling blindly. This closes the race where the system
+    // clock is set to UTC but localtime_r hasn't yet re-applied the TZ string.
+    sntp_set_time_sync_notification_cb([](struct timeval *) {
+      TimeSync::s_sntpPending_ = true;
+    });
 #endif
   }
 
   bool syncNow() {
 #if ENABLE_NTP
-    time_t now = time(nullptr);
-    if (now < 1700000000) return false;
+    time_t rawUtc = time(nullptr);
+    if (rawUtc < 1700000000) return false;
     struct tm localTime;
-    if (!localtime_r(&now, &localTime)) return false;
+    if (!localtime_r(&rawUtc, &localTime)) return false;
     model_.set(localTime.tm_hour, localTime.tm_min, localTime.tm_sec);
     lastSyncMs_ = millis();
     synced_ = true;
+    Serial.printf("[NTP] Time synced: %02d:%02d:%02d local  (UTC epoch %lu)\n",
+                  localTime.tm_hour, localTime.tm_min, localTime.tm_sec,
+                  (unsigned long)rawUtc);
     return true;
 #else
     return false;
@@ -1214,12 +1224,18 @@ class TimeSync {
   void loop() {
     if (WiFi.status() != WL_CONNECTED) return;
     const uint32_t now = millis();
-    if (!synced_ || now - lastSyncMs_ > syncIntervalMs_) {
+    // Consume SNTP callback flag (set from SNTP task, read here in Arduino task).
+    // On single-core ESP32-C3, volatile bool read/write is effectively atomic.
+    const bool sntpFired = s_sntpPending_;
+    if (sntpFired) s_sntpPending_ = false;
+    if (sntpFired || !synced_ || now - lastSyncMs_ > syncIntervalMs_) {
       syncNow();
     }
   }
 
   bool synced() const { return synced_; }
+
+  static volatile bool s_sntpPending_;
 
  private:
   TimeModel &model_;
@@ -1227,6 +1243,8 @@ class TimeSync {
   uint32_t lastSyncMs_ = 0;
   static constexpr uint32_t syncIntervalMs_ = 6UL * 60UL * 60UL * 1000UL;
 };
+
+volatile bool TimeSync::s_sntpPending_ = false;
 
 // ===================== WiFi Setup (WiFiManager) =====================
 bool setupWiFi() {
