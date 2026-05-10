@@ -2,6 +2,22 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.3] - 2026-05-09
+
+### Changed
+- **`renderHours`: thirds-based hour ring progression** (`src/main.cpp`)
+  - Middle ring (24 LED) now advances in three steps across each hour:
+    - `:00–:19` → single pixel at exact hour position (clean top-of-hour anchor)
+    - `:20–:39` → two-pixel straddle (mid-transit between positions)
+    - `:40–:59` → single pixel at advanced position (approaching next hour)
+  - Previously used a binary half-hour offset (`minute >= 30 ? +1 : 0`), which left `:15` visually ambiguous (straddling when it should have been a clean anchor)
+  - Inner ring (12 LED) unchanged in behaviour but clarified: single pixel at `:00–:29`, two-pixel straddle at `:30–:59`
+
+### Files changed
+- `src/main.cpp` — `ClockRenderer::renderHours` only
+
+---
+
 ## [2.0.2] - 2026-05-08
 
 ### Fixed
