@@ -31,7 +31,7 @@ See [REVIEW.md](REVIEW.md) for current technical issues and debugging notes.
 ## PlatformIO Environment
 
 Build variants:
-- `esp32c3_v3_8inch`: 8.5" clock variant (single NeoPixel strip, 97 LEDs total)
+- `esp32c3_v3_8inch`: 8.5" clock variant (single NeoPixel strip, 98 LEDs total — 97 active + 1 sacrificial)
 - `esp32c3_v3_15inch`: 15" clock variant (separate center pixel strip on GPIO20)
 
 Build:
@@ -86,14 +86,15 @@ During OTA update:
 - Device reboots automatically when complete
 - Inner ring shows green on success, red on failure
 
-## LED Mapping
+## LED Mapping (8" variant)
 
-- Seconds ring: indexes 0-59 (outer ring)
-- Minutes ring: indexes 60-83 (middle ring)
-- Hours ring: indexes 84-95 (inner ring)
-- Center pixel: index 96 (8" variant) or separate strip index 0 (15" variant)
+- Sacrificial pixel: physical index 0 (always dark — level-shifts data line to 5V logic)
+- Seconds ring: physical indexes 1–60 (outer ring, 60 LEDs)
+- Minutes ring: physical indexes 61–84 (middle ring, 24 LEDs)
+- Hours ring: physical indexes 85–96 (inner ring, 12 LEDs)
+- Center pixel: physical index 97 (8" variant) or separate strip index 0 (15" variant)
 
-> Note: no sacrificial pixel. Physical index 0 maps directly to the first ring LED (12 o'clock on the outer ring).
+> `RING_PIXEL_OFFSET=1` — ring LED 0 (12 o'clock on the outer ring) maps to physical index 1, not 0. Physical index 0 is the sacrificial WS2812B.
 
 ## XIAO ESP32C3 Pin Assignments
 

@@ -20,7 +20,7 @@
 
 ## Current Feature State
 - ✅ Analog clock (3 rings show time via LED position + color)
-- ✅ Web UI (live SVG preview, per-ring controls, settings persist EEPROM v8)
+- ✅ Web UI (live SVG preview, per-ring controls, settings persist EEPROM v10)
 - ✅ VEML7700 auto-brightness (manual/auto/scheduled modes)
 - ✅ Time-interval animations (quarter/half/hour escalating intensity)
 - ✅ NTP sync, WiFi, mDNS hostname (with reconnect handler)
@@ -35,7 +35,7 @@
 
 ## Quick Pin Reference
 ```
-GPIO10 → NeoPixel rings (300Ω resistor; index 0 = first ring LED, no sacrificial pixel)
+GPIO10 → NeoPixel rings (300Ω resistor; RING_PIXEL_OFFSET=1, sacrificial pixel at physical 0)
 GPIO20 → Center pixel (15" variant only)
 GPIO3  → Button UP (INPUT_PULLUP)
 GPIO4  → Button DOWN (INPUT_PULLUP)
