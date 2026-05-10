@@ -790,15 +790,28 @@ class ClockRenderer {
 
   void renderHours(const ClockTime &time, const ClockSettings &settings) {
     const uint8_t hour12 = time.hour % 12;
-    uint8_t hourOffset = 0;
-    if (time.minute >= 30) {
-      hourOffset = 1;
-    }
     const uint32_t color = ringColor(settings.hoursRed, settings.hoursGreen, settings.hoursBlue,
                                      settings.hoursLevel);
-    setRingPixel(RING_MIDDLE_24, (hour12 * 2 + hourOffset) % RING_MIDDLE_24.count, color);
+
+    // Middle ring (24 LED): thirds-based — 1 LED clean at :00–:19, 2-LED straddle at :20–:39,
+    // 1 LED advanced at :40–:59.
+    const uint8_t midBase = (hour12 * 2) % RING_MIDDLE_24.count;
+    if (time.minute < 20) {
+      setRingPixel(RING_MIDDLE_24, midBase, color);
+    } else if (time.minute < 40) {
+      setRingPixel(RING_MIDDLE_24, midBase, color);
+      setRingPixel(RING_MIDDLE_24, (midBase + 1) % RING_MIDDLE_24.count, color);
+    } else {
+      setRingPixel(RING_MIDDLE_24, (midBase + 1) % RING_MIDDLE_24.count, color);
+    }
+
+    // Inner ring (12 LED): 1 LED per hour.
+    // :00 and :15 → single pixel (clean top-of-hour anchor).
+    // :30 and :45 → two pixels straddling toward next hour.
     setRingPixel(RING_INNER_12, hour12, color);
-    setRingPixel(RING_INNER_12, (hour12 + hourOffset) % RING_INNER_12.count, color);
+    if (time.minute >= 30) {
+      setRingPixel(RING_INNER_12, (hour12 + 1) % RING_INNER_12.count, color);
+    }
   }
 
   uint32_t secondColor(uint8_t intensity) {
