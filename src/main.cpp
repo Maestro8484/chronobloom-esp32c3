@@ -641,6 +641,7 @@ class ClockRenderer {
     strip_.clear();
     tickAnimation(now);
     setSacrificialPixelDark();
+    logShow(now, "anim");
     strip_.show();
 #if CENTER_PIXEL_ENABLED && CENTER_PIXEL_SEPARATE_OUTPUT
     if (centerStrip_) centerStrip_->show();
@@ -707,6 +708,7 @@ class ClockRenderer {
     }
 
     setSacrificialPixelDark();
+    logShow(now, "face");
     strip_.show();
 #if CENTER_PIXEL_ENABLED && CENTER_PIXEL_SEPARATE_OUTPUT
     if (centerStrip_) {
@@ -1106,6 +1108,32 @@ class ClockRenderer {
     return statusMode_ != STATUS_NONE && static_cast<int32_t>(statusUntilMs_ - now) > 0;
   }
 
+  void logShow(uint32_t now, const char *src) {
+    if (lastShowMs_ != 0) {
+      uint32_t gap = now - lastShowMs_;
+      if (gap < minFrameMs_) minFrameMs_ = gap;
+      if (gap > maxFrameMs_) maxFrameMs_ = gap;
+      if (gap < 15) {
+        Serial.printf("[RENDER] RAPID %s gap=%lums\n", src, (unsigned long)gap);
+      }
+    }
+    ++renderCount_;
+    lastShowMs_ = now;
+    if (now - lastDiagMs_ >= 30000) {
+      if (lastDiagMs_ != 0) {
+        uint32_t dt = now - lastDiagMs_;
+        Serial.printf("[RENDER] src=%s fps=%.1f min=%lu max=%lu ms/frame\n",
+                      src, renderCount_ * 1000.0f / dt,
+                      minFrameMs_ == 0xFFFFFFFFu ? 0UL : (unsigned long)minFrameMs_,
+                      (unsigned long)maxFrameMs_);
+      }
+      renderCount_ = 0;
+      minFrameMs_ = 0xFFFFFFFFu;
+      maxFrameMs_ = 0;
+      lastDiagMs_ = now;
+    }
+  }
+
   uint32_t dim(uint32_t color, uint8_t divisor) {
     uint8_t r = (color >> 16) & 0xFF;
     uint8_t g = (color >> 8) & 0xFF;
@@ -1189,6 +1217,11 @@ class ClockRenderer {
   uint32_t animStartMs_ = 0;
   uint8_t animStep_ = 0;
   uint32_t animHue_ = 0;
+  uint32_t lastShowMs_ = 0;
+  uint32_t renderCount_ = 0;
+  uint32_t minFrameMs_ = 0xFFFFFFFFu;
+  uint32_t maxFrameMs_ = 0;
+  uint32_t lastDiagMs_ = 0;
 };
 
 // ===================== Temperature placeholder =====================
@@ -1363,6 +1396,7 @@ class WebUi {
       delay(2000);
       WiFi.setHostname(DEVICE_HOSTNAME);
       WiFi.mode(WIFI_STA);
+      WiFi.setSleep(false);  // prevent modem-sleep RMT interference with WS2812B
       Serial.printf("[WiFi] Hostname: %s\n", WiFi.getHostname());
       Serial.printf("[WiFi] SSID: %s\n", WiFi.SSID().c_str());
       Serial.printf("[WiFi] IP: %s\n", WiFi.localIP().toString().c_str());
