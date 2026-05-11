@@ -36,7 +36,7 @@
 - ✅ **Live SVG preview** — Clock updates every 90ms in web UI
 - ✅ **Animation toggles** — Enable/disable individual effects
 - ✅ **Theme selection** — Classic, Aqua, Magenta presets
-- ✅ **Manual time adjustment** — +/- minute buttons, H:M:S entry
+- ✅ **Manual time adjustment** — H:M:S entry and +/- minute controls via WebUI
 - ✅ **WiFi provisioning portal** — Captive portal on first boot; AP fallback at 192.168.4.1 if STA unavailable
 - ✅ **OTA firmware updates** — ArduinoOTA over WiFi (port 3232), no USB cable required after first flash
 - ✅ **mDNS reconnect** — Hostname re-advertised automatically after WiFi reconnect
@@ -51,7 +51,7 @@
   - Web UI panel: "Focus Reminders (ADHD)"
 
 ### Web UI Features
-- ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement
+- ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement (WebUI only; physical buttons removed in v2.0.4)
 - ✅ **Display settings** — Day/night brightness, schedule hours
 - ✅ **Ring controls** — 6 separate RGB + brightness: outer marker, outer fill, seconds, minutes, hours, center
 - ✅ **Animation controls** — Second trail, progress ring, hourly chime, status animations, interval animations
@@ -87,6 +87,18 @@
 - [ ] **Animation playlist** — Auto-rotate effects every N minutes in demo mode
 - [ ] **Custom schedules** — Different animations at different times/days
 - [ ] **Voice control** — Alexa/Google Assistant via MQTT bridge
+
+---
+
+## Removed Features (Was Implemented, Now Removed)
+
+**Physical buttons (GPIO3/GPIO4)** — removed v2.0.4
+- Originally: UP/DOWN buttons for manual minute adjustment
+- Removed because GPIO3/GPIO4 are JTAG TCK/TDI pins on the XIAO ESP32-C3;
+  USB connection caused spurious ISR fires producing backward minute-hand jumps
+- WebUI provides equivalent time adjustment without hardware risk
+- May be reintroduced on safe GPIO pins (not 3/4) using polled reads, not ISRs
+- See CHANGELOG [2.0.4] and REVIEW.md Section 1 for full context
 
 ---
 
@@ -195,6 +207,22 @@ struct ClockSettings {
   uint8_t statusAnimations;         // 0=off, 1=on
   
   // Ring colors (RGB + level for 6 elements)
+
+---
+
+## Stability / OTA Infrastructure (Maturation Track)
+
+Target state: device is flashable, debuggable, and verifiable entirely over WiFi with
+no USB cable or serial monitor required. See REVIEW.md -- Maturation Goal section for
+full task descriptions, priorities, and sequencing.
+
+### Planned
+- 🔲 **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count
+- 🔲 **Task 2** -- WiFi auto-reconnect explicit guard (`WiFi.setAutoReconnect(true)` confirmed or added)
+- 🔲 **Task 3** -- OTA error handler: `ArduinoOTA.onError()` calls `ESP.restart()` on stall
+- 🔲 **Task 4** -- Software watchdog feed in `loop()` with 10-second window
+- 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal; blocked on Task 6
+- 🔲 **Task 6** -- Physical buttons re-added on GPIO8/GPIO9, polled reads only, no ISRs; prerequisite for Task 5
   uint8_t outerMarkerRed, outerMarkerGreen, outerMarkerBlue, outerMarkerLevel;
   uint8_t outerFillerRed, outerFillerGreen, outerFillerBlue, outerFillerLevel;
   uint8_t secondsRed, secondsGreen, secondsBlue, secondsLevel;

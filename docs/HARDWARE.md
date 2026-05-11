@@ -34,10 +34,10 @@
 ### User Input
 | Pin    | GPIO   | Function     | Notes                  |
 |--------|--------|--------------|------------------------|
-| D1     | GPIO3  | Button UP    | INPUT_PULLUP, to GND   |
-| D2     | GPIO4  | Button DOWN  | INPUT_PULLUP, to GND   |
+| D1     | GPIO3  | (unused) formerly Button UP   | JTAG TCK -- removed v2.0.4, do not use for ISR inputs |
+| D2     | GPIO4  | (unused) formerly Button DOWN | JTAG TDI -- removed v2.0.4, do not use for ISR inputs |
 
-⚠️ **Known Issue**: GPIO3/GPIO4 are JTAG TCK/TDI pins. USB data connection can cause spurious button ISR fires.
+⚠️ **GPIO3/GPIO4 removed from use (v2.0.4)**: These are JTAG TCK/TDI pins. Physical buttons on these pins caused spurious ISR fires when USB data was connected, producing unintended minute-hand jumps. Buttons removed. If reintroducing physical input, use GPIO6, GPIO7, GPIO8, or GPIO9 with polled reads (not ISRs). See REVIEW.md Section 1 for the polling implementation template.
 
 ### I2C Bus (Sensors)
 | Pin    | GPIO   | Function  | Wire Color | Connected Devices   |

@@ -2,6 +2,36 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.4] - 2026-05-10
+
+### Removed
+- **Physical buttons removed (both variants)**
+  - GPIO3 (Button UP) and GPIO4 (Button DOWN) are no longer wired or used
+  - Removed from hardware on both 8" and 15" variants
+  - All manual time adjustment now handled exclusively via WebUI
+
+### Reason for removal
+  - GPIO3 and GPIO4 are JTAG TCK/TDI pins on the XIAO ESP32-C3
+  - USB data connection caused spurious ISR fires on both pins, triggering
+    unintended addMinutes(-1) calls and backward minute-hand jumps
+  - Buttons were not essential given full WebUI time control
+  - Removal eliminates the highest-confidence known input-corruption path
+    documented in REVIEW.md
+
+### Re-addition note
+  - Buttons may be reintroduced in a future version
+  - If re-added, implementation MUST use polled reads (not ISRs) and MUST
+    avoid GPIO3/GPIO4 -- use GPIO6, GPIO7, GPIO8, or GPIO9 instead
+  - See REVIEW.md Section 1 for full technical rationale and the polling
+    implementation template
+
+### Files changed
+- `platformio.ini` -- removed BUTTON_UP_PIN and BUTTON_DOWN_PIN build flags
+- `src/main.cpp` -- removed ButtonInput class, button poll/consume calls, button status animation
+- `docs/HARDWARE.md` -- removed button pin rows from pin table, added removal note
+- `docs/FEATURES.md` -- moved physical buttons to Removed Features section
+- `README.md` -- removed button references from hardware notes and pin table
+
 ## [2.0.3] - 2026-05-09
 
 ### Changed

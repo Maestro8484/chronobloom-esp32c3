@@ -103,8 +103,8 @@ XIAO Pin    GPIO    Function                Wire Color    Notes
 ────────────────────────────────────────────────────────────────
 D10         GPIO10  NeoPixel data (rings)   -             Through 300Ω resistor
 D7          GPIO20  NeoPixel data (center)  -             15" clock only
-D1          GPIO3   Button up               -             INPUT_PULLUP, to GND
-D2          GPIO4   Button down             -             INPUT_PULLUP, to GND
+D1          GPIO3   (removed) Button UP     -             JTAG TCK -- do not use for buttons
+D2          GPIO4   (removed) Button DOWN   -             JTAG TDI -- do not use for buttons
 D4          GPIO6   I2C SDA                 Green         VEML7700 + future sensors
 D5          GPIO7   I2C SCL                 Yellow        VEML7700 + future sensors
 5V/VIN      -       LED power rail          Red           External 5V supply
@@ -123,7 +123,7 @@ AVOID: GPIO2, GPIO8, GPIO9 (boot strapping pins)
 - SDA/SCL: GPIO6/GPIO7 (green/yellow wires)
 
 **Known Issues**:
-- GPIO3/GPIO4 button pins conflict with JTAG on ESP32-C3, may cause spurious button presses when USB cable connected (see REVIEW.md for mitigation)
+- GPIO3/GPIO4 are JTAG TCK/TDI pins. Physical buttons on these pins caused spurious ISR fires when USB connected. Buttons removed in v2.0.4. If re-adding buttons, use GPIO6-9 with polled reads. See REVIEW.md Section 1.
 
 ## Project History
 
