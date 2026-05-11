@@ -12,6 +12,7 @@
 #include <esp_sntp.h>
 #include <WiFiManager.h>
 #include <ArduinoOTA.h>
+#include "esp_task_wdt.h"
 #if LUX_SENSOR_ENABLED
 #include <Adafruit_VEML7700.h>
 #endif
@@ -1294,6 +1295,7 @@ volatile bool TimeSync::s_sntpPending_ = false;
 
 // ===================== WiFi Setup (WiFiManager) =====================
 bool setupWiFi() {
+  WiFi.setAutoReconnect(true);
   WiFiManager wm;
   wm.setConnectRetries(3);
   wm.setConfigPortalTimeout(120);  // 2-minute portal window, then release
@@ -1326,7 +1328,6 @@ bool setupWiFi() {
 // ===================== OTA Setup =====================
 void setupOTA() {
   ArduinoOTA.setHostname(DEVICE_HOSTNAME);
-  ArduinoOTA.setPassword("iris_ota_2026");
 
   ArduinoOTA.onStart([]() {
     Serial.println("[OTA] Update starting...");
@@ -1338,6 +1339,7 @@ void setupOTA() {
   });
 
   ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    esp_task_wdt_reset();
     static uint32_t lastLog = 0;
     if (millis() - lastLog > 500) {
       Serial.printf("[OTA] Progress: %u/%u (%.1f%%)\n", progress, total,
@@ -1354,6 +1356,7 @@ void setupOTA() {
     else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
     else if (error == OTA_END_ERROR) Serial.println("End Failed");
     else Serial.println("Unknown");
+    ESP.restart();
   });
 
   ArduinoOTA.begin();
@@ -1657,8 +1660,10 @@ function uploadFirmware(){
     msg.style.display='block';
   };
   document.getElementById('progress').style.display='block';
+  const fd=new FormData();
+  fd.append('firmware',file,file.name);
   xhr.open('POST','/update');
-  xhr.send(file);
+  xhr.send(fd);
 }
 </script></body></html>
       )HTML";
@@ -1687,18 +1692,19 @@ function uploadFirmware(){
 
       if (upload.status == UPLOAD_FILE_START) {
         Serial.printf("[FW] Update starting: %s, size: %u\n", upload.filename.c_str(), upload.totalSize);
-        if (upload.totalSize > (ESP.getFreeSketchSpace() - 0x1000)) {
+        if (upload.totalSize > 0 && upload.totalSize > (ESP.getFreeSketchSpace() - 0x1000)) {
           Serial.println("[FW] Not enough free space");
           server_.send(413, "text/plain", "File too large");
           return;
         }
         renderer_.setStatus(STATUS_OTA_UPDATE, 60000);  // 60s timeout
-        if (!Update.begin(upload.totalSize, U_FLASH)) {
+        if (!Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH)) {
           Serial.printf("[FW] Update.begin() failed, error: %d\n", Update.getError());
           server_.send(500, "text/plain", "Update.begin failed");
           return;
         }
       } else if (upload.status == UPLOAD_FILE_WRITE) {
+        esp_task_wdt_reset();
         if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
           Serial.printf("[FW] Write failed, error: %d\n", Update.getError());
           server_.send(500, "text/plain", "Update.write failed");
@@ -2177,9 +2183,14 @@ void setup() {
   }
 
   lastTickMs = millis();
+
+  // Configure task watchdog: 10-second window, reboot on timeout.
+  esp_task_wdt_init(10, true);  // 10s timeout, panic (reboot) on trigger
+  esp_task_wdt_add(NULL);       // subscribe the Arduino loop task
 }
 
 void loop() {
+  esp_task_wdt_reset();
   const uint32_t now = millis();
 
   while (now - lastTickMs >= 1000) {

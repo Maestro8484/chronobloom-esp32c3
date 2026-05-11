@@ -416,7 +416,7 @@ firmware rather than hang in OTA wait state.
 
 #### Task 4: Software Watchdog in loop()
 **Priority**: Medium
-**Status**: Not implemented
+**Status**: Done (Session 4, 2026-05-11)
 
 Add software watchdog feed in `loop()` with a 10-second window. If `loop()` stops
 executing (I2C blocking, WiFi manager blocking, deadlock), watchdog fires and reboots.
@@ -449,10 +449,17 @@ Buttons removed in 2.0.4 due to GPIO3/GPIO4 JTAG interference. Re-addition requi
 
 | Task | Status | Blocked By |
 |---|---|---|
-| Baseline OTA verified end-to-end | Pending | -- |
-| Task 1: `/diag` endpoint | Not started | OTA baseline |
-| Task 2: `WiFi.setAutoReconnect(true)` confirmed | Not verified | OTA baseline |
-| Task 3: `ArduinoOTA.onError()` handler confirmed | Not verified | OTA baseline |
-| Task 4: Software watchdog in `loop()` | Not started | OTA baseline |
+| Baseline OTA verified end-to-end | **Done** (Session 2, 2026-05-11) | -- |
+| Task 1: `/diag` endpoint | Not started | -- |
+| Task 2: `WiFi.setAutoReconnect(true)` confirmed | **Done** — added main.cpp:1297 | -- |
+| Task 3: `ArduinoOTA.onError()` handler confirmed | **Done** — `ESP.restart()` added main.cpp:1356 | -- |
+| Task 4: Software watchdog in `loop()` | **Done** — `esp_task_wdt` 10s window, Session 4 2026-05-11 | -- |
+| Web UI `/update` OTA | **Done** — FormData + UPDATE_SIZE_UNKNOWN fix, Session 4 2026-05-11 | -- |
 | Task 5: Button-hold factory reset on boot | Not started | Task 6 |
 | Task 6: Physical buttons re-added (GPIO8/9, polled) | Planned | Tasks 1, 2 |
+
+#### Session 2 OTA Test Finding (2026-05-11)
+Mid-transfer WiFi block (via router admin) left device **hung in OTA wait state** — `onError` never fired,
+web server became unresponsive, required power cycle to recover. This confirms Task 4 (software watchdog)
+is the critical fix for wall-mount reliability. `onError` + `ESP.restart()` (Task 3) only fires for
+library-detected errors; a silent TCP stall bypasses it entirely.
