@@ -1,7 +1,7 @@
 # Function Inventory — src/main.cpp
 
-**Source SHA256:** `52d8af3a811cebaa0bc073832f71de9c4910d47fe27a22d490ac1fcd3d5c498b`  
-**Status:** Draft — items marked [REVIEW] need confirmation.
+**Source SHA256:** `bb7d8a1c18153a9d5d079cc07cb3c7b97bf73178fec5135755d46bfeea209b40`  
+**Status:** Current as of 2026-05-11 (v2.0.4). Regenerated from live source.
 
 ---
 
@@ -36,7 +36,7 @@ Drives a GPIO status LED high or low. Compiled to a no-op when `STATUS_LED_PIN <
 ---
 
 ### `setupWiFi`
-**Lines:** 1251–1279
+**Lines:** 1296–1324
 
 Attempts to connect using build-time `WIFI_SSID`/`WIFI_PASSWORD` first; falls back to WiFiManager captive portal (`esp32c3-clock-setup`, open password) if credentials are the placeholder values or if the direct connect times out.
 
@@ -48,7 +48,7 @@ Attempts to connect using build-time `WIFI_SSID`/`WIFI_PASSWORD` first; falls ba
 ---
 
 ### `setupOTA`
-**Lines:** 1282–1316
+**Lines:** 1327–1361
 
 Registers ArduinoOTA handlers (start / end / progress / error) and calls `ArduinoOTA.begin()`. OTA password is hardcoded `"iris_ota_2026"`. Logs the exact `pio run ... --upload-port` command for convenience.
 
@@ -60,7 +60,7 @@ Registers ArduinoOTA handlers (start / end / progress / error) and calls `Arduin
 ---
 
 ### `logRuntimeStatus`
-**Lines:** 2012–2052
+**Lines:** 2060–2100
 
 Prints a status block to Serial every 10 seconds: current time, uptime, heap free, WiFi SSID/IP/RSSI, lux + brightness figures (if `LUX_SENSOR_ENABLED`), LED config, and NTP sync status.
 
@@ -72,7 +72,7 @@ Prints a status block to Serial every 10 seconds: current time, uptime, heap fre
 ---
 
 ### `setup`
-**Lines:** 2054–2132
+**Lines:** 2102–2180
 
 Arduino entry point. Initialises Serial, logs reset reason and build identity, starts I²C (if `LUX_SENSOR_ENABLED`), then calls `begin()` on every subsystem in dependency order: `settingsStore → temperature → luxSensor → renderer → webUi`. Sets `lastTickMs` for the 1 Hz ticker.
 
@@ -84,7 +84,7 @@ Arduino entry point. Initialises Serial, logs reset reason and build identity, s
 ---
 
 ### `loop`
-**Lines:** 2134–2189
+**Lines:** 2182–2237
 
 Arduino main loop. Responsibilities in order each iteration:
 
@@ -243,7 +243,7 @@ Increments the clock by one second (delegates to `incrementSecondNoLock`), marks
 ---
 
 ### `TimeModel::addMinutes` / `TimeModel::addHours`
-**Lines:** 490–510
+**Lines:** 490–509
 
 Adjusts hour or minute with day-wrap arithmetic. Used by `/addMinute` and `/subMinute` WebUI endpoints.
 
@@ -252,14 +252,14 @@ Adjusts hour or minute with day-wrap arithmetic. Used by `/addMinute` and `/subM
 ---
 
 ### `TimeModel::consumeDirty`
-**Lines:** 517–524
+**Lines:** 517–523
 
 Atomically reads and clears `dirty_`. The render loop uses this to decide whether to redraw.
 
 ---
 
 ### `TimeModel::incrementSecondNoLock`
-**Lines:** 527–536
+**Lines:** 526–536
 
 Private helper — cascades second→minute→hour with wrap-around. Must be called under interrupt lock.
 
@@ -272,7 +272,7 @@ Owns all LED output logic. Holds a reference to `ledStrip` (and optionally `cent
 ---
 
 ### `ClockRenderer::begin`
-**Lines:** 579–592
+**Lines:** 578–591
 
 Calls `strip_.begin()`, sets initial brightness from `dayBrightness`, clears and shows. Initialises `centerStrip_` identically if `CENTER_PIXEL_SEPARATE_OUTPUT` is active.
 
@@ -281,7 +281,7 @@ Calls `strip_.begin()`, sets initial brightness from `dayBrightness`, clears and
 ---
 
 ### `ClockRenderer::setStatus`
-**Lines:** 596–601
+**Lines:** 595–600
 
 Arms a timed status display. Ignored if `statusAnimations` is disabled. `durationMs` is added to `millis()` to set `statusUntilMs_`.
 
@@ -292,7 +292,7 @@ Arms a timed status display. Ignored if `statusAnimations` is disabled. `duratio
 ---
 
 ### `ClockRenderer::triggerQuarterAnimation` / `triggerHalfHourAnimation` / `triggerHourAnimation`
-**Lines:** 603–628
+**Lines:** 602–627
 
 Set `animPhase_` to the configured animation variant (0 = off), reset `animStartMs_` and `animStep_`. No-op when the setting is 0.
 
@@ -303,23 +303,23 @@ Set `animPhase_` to the configured animation variant (0 = off), reset `animStart
 ---
 
 ### `ClockRenderer::render`
-**Lines:** 681–717
+**Lines:** 681–718
 
-Full clock face render. Sequence: set brightness → clear → `renderFace` → `renderSeconds` → `renderMinutes` → `renderHours` → conditional chime or status or center-idle → `setSacrificialPixelDark` → `show()`.
+Full clock face render. Sequence: set brightness → clear → `renderFace` → `renderSeconds` → `renderMinutes` → `renderHours` → conditional chime or status or center-idle → `setSacrificialPixelDark` → `logShow` → `show()`.
 
 - **Reads:** `settings_`, `lux_`, `lastTime_` (updated at entry), all `ClockTime` fields
 - **Writes:** `lastTime_`, `ledStrip` pixel buffer, hardware SPI/PWM via `show()`
-- **Dependencies:** All private render helpers; `effectiveBrightness`
+- **Dependencies:** All private render helpers; `effectiveBrightness`, `logShow`
 
 ---
 
 ### `ClockRenderer::renderAnimFrame`
-**Lines:** 632–649
+**Lines:** 631–649
 
-Render path used during animations. Calls `tickAnimation()` instead of the clock face helpers. Always calls `setSacrificialPixelDark()` before `show()`.
+Render path used during animations. Calls `tickAnimation()` instead of the clock face helpers. Calls `logShow` then `show()`. Always calls `setSacrificialPixelDark()` before show.
 
 - **Reads:** `animPhase_`, `lastTime_`, `settings_`, `lux_`
-- **Writes:** pixel buffer; calls `tickAnimation()`
+- **Writes:** pixel buffer; calls `tickAnimation()`, `logShow()`
 
 ---
 
@@ -333,12 +333,12 @@ Returns true if a status animation is active or the hourly chime is showing. Use
 ### `ClockRenderer::needsCenterAnimationFrame`
 **Lines:** 655–657
 
-Returns true if `CENTER_PIXEL_ENABLED` and `statusAnimations` are both on. Triggers the 80 ms center-pulse re-render path in `loop()`.
+Returns true if `CENTER_PIXEL_ENABLED` and `statusAnimations` setting is on. Triggers the 80 ms center-pulse re-render path in `loop()`.
 
 ---
 
 ### `ClockRenderer::effectiveBrightness`
-**Lines:** 728–743
+**Lines:** 729–744
 
 Returns the LED strip brightness to apply, based on `autoBrightnessMode`:
 - 0 = manual (`dayBrightness`)
@@ -351,18 +351,17 @@ Returns the LED strip brightness to apply, based on `autoBrightnessMode`:
 ---
 
 ### `ClockRenderer::renderFace`
-**Lines:** 745–764
+**Lines:** 746–765
 
-Draws the static clock face: outer ring with 5-LED markers every 5 positions, middle ring dimly lit in hours color (scale 22/255), inner ring dimly in center color (scale 24/255). `colorTheme` field is read but unused (no-op, left as dead code stub [REVIEW: intentional placeholder?]).
+Draws the static clock face: outer ring with 5-LED markers every 5 positions, middle ring dimly lit in hours color (scale 22/255), inner ring dimly in center color (scale 24/255). `colorTheme` field is read but unused (no-op, left as dead code stub).
 
 - **Reads:** `settings_.outerMarkerRed/Green/Blue/Level`, `outerFillerRed/…`, `hoursRed/…`, `centerRed/…`, `colorTheme`
 - **Writes:** `ledStrip` pixels via `setRingPixel`
-- **Note:** `colorTheme` is accessed then immediately discarded via `(void)settings.colorTheme`. The private `secondColor()` helper (line 805) also references `colorTheme` but is never called — `renderSeconds` uses `ringColor()` directly. Both are dead code, left as stubs for a future theme-wide color override feature.
 
 ---
 
 ### `ClockRenderer::renderSeconds`
-**Lines:** 766–784
+**Lines:** 767–785
 
 Places the second hand on the outer ring. If `progressSeconds`: fills LEDs 0…second at 20/255 intensity. If `secondTrail`: paints 4 trailing pixels at decreasing intensities (52, 28, 14, 7 out of 255). Always places the full-intensity second dot last.
 
@@ -372,7 +371,7 @@ Places the second hand on the outer ring. If `progressSeconds`: fills LEDs 0…s
 ---
 
 ### `ClockRenderer::renderMinutes`
-**Lines:** 786–790
+**Lines:** 787–791
 
 Places one full-intensity pixel on the outer ring at `time.minute`.
 
@@ -381,18 +380,25 @@ Places one full-intensity pixel on the outer ring at `time.minute`.
 ---
 
 ### `ClockRenderer::renderHours`
-**Lines:** 792–803
+**Lines:** 793–817
 
-Places the hour hand on middle and inner rings. Uses 12-hour format. If minute ≥ 30, `hourOffset = 1` advances the position by one LED to show half-hour progression. Middle ring uses index `(hour12 * 2 + offset) % 24`; inner ring lights both `hour12` and `(hour12 + offset) % 12` (so two pixels when mid-hour).
+Places the hour hand on middle and inner rings using 12-hour format.
+
+Middle ring (24 LED): 1→2→1 LED pattern by thirds, base shifted +1 CW from hour position.
+- :00–:19 → 1 LED at `(hour12 * 2 + 1) % 24`
+- :20–:39 → 2 LEDs straddling that position
+- :40–:59 → 1 LED advanced one position
+
+Inner ring (12 LED): 1 LED at `hour12`. At :30+, a second pixel is added at `(hour12 + 1) % 12`.
 
 - **Reads:** `time.hour`, `time.minute`, `settings_.hoursRed/…/Level`
 
 ---
 
 ### `ClockRenderer::renderStatus`
-**Lines:** 822–859
+**Lines:** 836–873
 
-Draws a two-pixel rotating dot on the inner ring in a color keyed to `statusMode_` (blue=connecting, green=OK, red=fail, etc.) plus a pulsing center pixel.
+Draws a two-pixel rotating dot on the inner ring in a color keyed to `statusMode_` (blue=connecting, green=OK, red=fail, amber=button, teal=NTP sync, purple=settings saved, blue=OTA update, green=OTA success, red=OTA failed) plus a pulsing center pixel.
 
 - **Reads:** `statusMode_`, `lux_` indirectly via brightness
 - **WebUI effect:** Status colors are fixed in code; not user-configurable.
@@ -400,7 +406,7 @@ Draws a two-pixel rotating dot on the inner ring in a color keyed to `statusMode
 ---
 
 ### `ClockRenderer::renderHourlyChime`
-**Lines:** 861–866
+**Lines:** 875–880
 
 Draws a sweeping white dot on outer ring and proportional amber dot on middle ring, plus a pulsing gold center. Sweep period = 65 ms per position.
 
@@ -410,7 +416,7 @@ Draws a sweeping white dot on outer ring and proportional amber dot on middle ri
 ---
 
 ### `ClockRenderer::tickAnimation`
-**Lines:** 868–1087
+**Lines:** 882–1101
 
 State machine dispatching on `animPhase_`. Eleven animation cases:
 
@@ -433,36 +439,33 @@ State machine dispatching on `animPhase_`. Eleven animation cases:
 
 ---
 
-### `ClockRenderer::setRingPixel`
-**Lines:** 1158–1166
+### `ClockRenderer::chimeActive`
+**Lines:** 1103–1105
 
-Maps a logical ring index to a physical strip index, applying `outerRingOffset` rotation and clockwise/counter-clockwise direction from `RingConfig`. The rotation math scales `outerRingOffset` (0–59 outer-ring steps) to each ring's pixel count proportionally.
-
-- **Reads:** `settings_.outerRingOffset`, `ring.count`, `ring.offset`, `ring.clockwise`
-- **WebUI effect:** "Ring rotation offset" slider. Applies uniformly to all three rings.
+Returns true when `minute == 0 && second < 6`. Limits chime display to 6 seconds past the hour.
 
 ---
 
-### `ClockRenderer::setCenterPixel`
-**Lines:** 1134–1148
+### `ClockRenderer::statusActive`
+**Lines:** 1107–1109
 
-Writes to `centerStrip_` when `CENTER_PIXEL_SEPARATE_OUTPUT=1`, otherwise writes to the main `strip_` at `CENTER_PIXEL_INDEX`.
-
-- **Build-env effect:** 8inch env uses inline center pixel at index 1; separate-output path unused in standard builds.
+Returns true while `statusUntilMs_` is in the future.
 
 ---
 
-### `ClockRenderer::setSacrificialPixelDark`
-**Lines:** 1150–1156
+### `ClockRenderer::logShow`
+**Lines:** 1111–1135
 
-Forces pixel `SACRIFICIAL_PIXEL_INDEX` to 0 (black) every frame. Compiled out when `SACRIFICIAL_PIXEL_ENABLED=0`. The sacrificial pixel is a first-in-chain LED used to buffer signal integrity; it must stay dark.
+Frame-timing diagnostic logger. Called by both `render()` and `renderAnimFrame()` immediately before `strip_.show()`. Tracks per-frame gap in milliseconds, accumulates min/max frame time and render count, prints a fps/min/max report to Serial every 30 s. Also emits a `[RENDER] RAPID` warning when any frame gap drops below 15 ms (rapid consecutive shows risk WS2812B data corruption).
 
-- **Build-env effect:** 8inch env enables `SACRIFICIAL_PIXEL_ENABLED=1` at index 0.
+- **Reads:** `lastShowMs_`, `renderCount_`, `minFrameMs_`, `maxFrameMs_`, `lastDiagMs_`
+- **Writes:** `lastShowMs_`, `renderCount_`, `minFrameMs_`, `maxFrameMs_`, `lastDiagMs_`; Serial output
+- **Added in:** v2.0.3
 
 ---
 
 ### `ClockRenderer::dim` / `scale` / `pulse`
-**Lines:** 1097–1119
+**Lines:** 1137–1160
 
 Color math utilities:
 - `dim(color, divisor)` — divides each channel by `divisor`.
@@ -472,7 +475,7 @@ Color math utilities:
 ---
 
 ### `ClockRenderer::nightActive`
-**Lines:** 720–726
+**Lines:** 721–727
 
 Returns true if current hour is in the night window. Handles wrap-around (e.g., 22:00–07:00). Returns false if start == end (disabled).
 
@@ -480,33 +483,47 @@ Returns true if current hour is in the night window. Handles wrap-around (e.g., 
 
 ---
 
-### `ClockRenderer::chimeActive`
-**Lines:** 1089–1091
-
-Returns true when `minute == 0 && second < 6`. Limits chime display to 6 seconds past the hour.
-
----
-
-### `ClockRenderer::statusActive`
-**Lines:** 1093–1095
-
-Returns true while `statusUntilMs_` is in the future.
-
----
-
 ### `ClockRenderer::centerIdleActive`
-**Lines:** 1122–1124
+**Lines:** 1162–1164
 
 Returns true when `CENTER_PIXEL_ENABLED` and `statusAnimations` setting is on.
 
 ---
 
 ### `ClockRenderer::renderCenterIdle`
-**Lines:** 1126–1132
+**Lines:** 1166–1172
 
 Applies a slow 1800 ms period pulse (3→75 brightness range) on the center pixel using the center color setting.
 
 - **WebUI effect:** Enabled by the "Status" checkbox; color from the Center row in the Rings panel.
+
+---
+
+### `ClockRenderer::setCenterPixel`
+**Lines:** 1174–1188
+
+Writes to `centerStrip_` when `CENTER_PIXEL_SEPARATE_OUTPUT=1`, otherwise writes to the main `strip_` at `CENTER_PIXEL_INDEX`.
+
+- **Build-env effect:** 8inch env uses inline center pixel at index 1; separate-output path unused in standard builds.
+
+---
+
+### `ClockRenderer::setSacrificialPixelDark`
+**Lines:** 1190–1196
+
+Forces pixel `SACRIFICIAL_PIXEL_INDEX` to 0 (black) every frame. Compiled out when `SACRIFICIAL_PIXEL_ENABLED=0`. The sacrificial pixel is a first-in-chain LED used to buffer signal integrity; it must stay dark.
+
+- **Build-env effect:** 8inch env enables `SACRIFICIAL_PIXEL_ENABLED=1` at index 0.
+
+---
+
+### `ClockRenderer::setRingPixel`
+**Lines:** 1198–1206
+
+Maps a logical ring index to a physical strip index, applying `outerRingOffset` rotation and clockwise/counter-clockwise direction from `RingConfig`. The rotation math scales `outerRingOffset` (0–59 outer-ring steps) to each ring's pixel count proportionally.
+
+- **Reads:** `settings_.outerRingOffset`, `ring.count`, `ring.offset`, `ring.clockwise`
+- **WebUI effect:** "Ring rotation offset" slider. Applies uniformly to all three rings.
 
 ---
 
@@ -521,7 +538,7 @@ Stub class — `TEMP_SENSOR_ENABLED` is always 0 in current builds. `available()
 ---
 
 ### `TimeSync::begin`
-**Lines:** 1195–1205
+**Lines:** 1240–1250
 
 Calls `configTzTime()` with `NTP_TIMEZONE_TZ` and three NTP servers. Registers an SNTP notification callback that sets the static `s_sntpPending_` flag (volatile bool, safe on single-core ESP32-C3).
 
@@ -530,7 +547,7 @@ Calls `configTzTime()` with `NTP_TIMEZONE_TZ` and three NTP servers. Registers a
 ---
 
 ### `TimeSync::syncNow`
-**Lines:** 1207–1223
+**Lines:** 1252–1268
 
 Reads system UTC epoch, rejects values before epoch 1700000000 (avoids applying unsynced time). Calls `localtime_r` to convert to local time using the TZ string, then sets `timeModel`. Logs sync result.
 
@@ -540,7 +557,7 @@ Reads system UTC epoch, rejects values before epoch 1700000000 (avoids applying 
 ---
 
 ### `TimeSync::loop`
-**Lines:** 1225–1234
+**Lines:** 1270–1280
 
 Consumes `s_sntpPending_` flag and calls `syncNow()` on: SNTP callback, first sync, or 6-hour periodic re-sync. No-op if WiFi is down.
 
@@ -556,12 +573,12 @@ Owns `ClockWebServer` on port 80. Manages WiFi connect, mDNS, OTA setup, and all
 ---
 
 ### `WebUi::begin`
-**Lines:** 1333–1390
+**Lines:** 1378–1436
 
 Full bringup sequence (guarded by `ENABLE_WIFI_UI`):
 1. Sets renderer status to `STATUS_WIFI_CONNECTING`.
 2. Calls `setupWiFi()`; on failure switches to AP mode (`DEVICE_HOSTNAME`, open).
-3. On STA success: re-applies hostname, registers mDNS, attaches WiFi reconnect event for mDNS re-registration, calls `setupOTA()`, calls `timeSync_.begin()`, fires initial NTP sync.
+3. On STA success: re-applies hostname, disables modem sleep (`WiFi.setSleep(false)` — prevents RMT/WS2812B flicker), registers mDNS, attaches WiFi reconnect event for mDNS re-registration, calls `setupOTA()`, calls `timeSync_.begin()`, fires initial NTP sync.
 4. Always calls `setupRoutes()` and `server_.begin()`.
 
 - **Reads:** `DEVICE_HOSTNAME`, `WIFI_CONNECT_TIMEOUT_MS`
@@ -571,14 +588,14 @@ Full bringup sequence (guarded by `ENABLE_WIFI_UI`):
 ---
 
 ### `WebUi::loop`
-**Lines:** 1392–1396
+**Lines:** 1438–1442
 
 Calls `server_.handleClient()` and `ArduinoOTA.handle()`. No-op when `!enabled_`.
 
 ---
 
 ### `WebUi::setupRoutes`
-**Lines:** 1401–1668
+**Lines:** 1447–1714
 
 Registers all HTTP routes:
 
@@ -606,28 +623,28 @@ The POST `/update` handler checks free sketch space before beginning; flashes in
 ---
 
 ### `WebUi::settingsJson`
-**Lines:** 1670–1708
+**Lines:** 1716–1754
 
 Serializes all `ClockSettings` fields to a JSON string. Colors are formatted as `#RRGGBB` hex via `colorHex()`.
 
 ---
 
 ### `WebUi::htmlPage`
-**Lines:** 1773–1906
+**Lines:** 1819–1953
 
 Returns the full single-page app as a string literal. The UI is a two-column dark-themed grid: left column has an SVG clock preview (built in JS), right column has panels for Time, Display, Rings, Auto-Brightness, Time Animations, Focus Reminders, Network, and Admin (firmware update link). All settings round-trip via `/settings` GET+POST. JS re-renders the SVG at 90 ms intervals; time display refreshes at 1 s.
 
 ---
 
 ### `WebUi::parseColor`
-**Lines:** 1739–1750
+**Lines:** 1785–1796
 
 Parses a `#RRGGBB` hex string into R, G, B bytes. Silently ignores strings with wrong length or invalid hex digits (leaves r/g/b unchanged).
 
 ---
 
 ### `WebUi::clampByte` / `clampWord`
-**Lines:** 1714–1724
+**Lines:** 1760–1770
 
 Integer clamp helpers that return `uint8_t` / `uint16_t`. Used to sanitize all POST parameters before they reach `ClockSettings`.
 
@@ -638,7 +655,7 @@ Integer clamp helpers that return `uint8_t` / `uint16_t`. Used to sanitize all P
 ---
 
 ### `FocusReminderScheduler::checkAndFire`
-**Lines:** 1926–1961
+**Lines:** 1974–2009
 
 Evaluates whether a focus reminder should fire on each `loop()` call. Gate conditions (all must pass):
 1. `focusReminder_enabled` is set.
@@ -655,14 +672,14 @@ On fire: calls `triggerReminderAnimation()`, updates `focusReminder_lastFireMs` 
 ---
 
 ### `FocusReminderScheduler::getDayOfWeek`
-**Lines:** 1964–1969
+**Lines:** 2012–2017
 
 Returns `tm_wday` (0=Sun … 6=Sat) from POSIX `localtime_r`. **Latent bug:** unlike `TimeSync::syncNow`, this function has no guard for `time(nullptr) < 1700000000`. On a cold boot before NTP syncs, `localtime_r` returns a near-epoch date (Jan 1970) whose `tm_wday` is almost certainly wrong. The interval gate in `checkAndFire` prevents rapid re-fires, but the first reminder after boot can fire on the wrong day if `focusReminder_lastFireMs` is 0 and the day-mask happens to allow the epoch weekday (Thursday = 1970-01-01).
 
 ---
 
 ### `FocusReminderScheduler::triggerReminderAnimation`
-**Lines:** 1971–1982
+**Lines:** 2019–2030
 
 Maps `focusReminder_animation` (0–5) to the three animation tier methods. Values 0/3 → quarter, 1/4 → half-hour, 2/5 → hour. Cases 3–5 are intentional placeholder slots: the WebUI labels them `"(dup)"` explicitly and the source comment says "Duplicate for safety". They are reserved for distinct v2 animation types that haven't been implemented yet.
 
