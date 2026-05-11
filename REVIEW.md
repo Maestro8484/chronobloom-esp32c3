@@ -243,113 +243,6 @@ Call `buttons.poll(now)` at the top of `loop()`. Rising-edge on LOW (press leadi
 
 The implementation:
 
----
-
-## Maturation Goal: OTA-First Wall-Mounted Operation
-
-**Goal**: ChronoBloom should be flashable, debuggable, and verifiable entirely over WiFi
-with the clock mounted on the wall -- no USB cable, no serial monitor, no physical access
-required for normal development and testing cycles.
-
-This is the target state for the project to be considered stable for use beyond its
-creator.
-
----
-
-### Prerequisite: Baseline OTA Verification
-
-Before any stability work below, confirm OTA works end-to-end:
-
-1. Flash via USB once with current firmware
-2. Confirm `esp32c3-v3-8inch.local` resolves on the network
-3. Run: `pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232`
-4. Confirm it completes without timeout
-
-If this fails, all tasks below are premature.
-
----
-
-### OTA Stability Task List
-
-#### Task 1: `/diag` Endpoint
-**Priority**: High -- blocks all wall-mount verification workflows
-**Status**: Not implemented
-
-Add a `/diag` HTTP GET endpoint returning JSON with:
-- `uptime` (seconds since boot)
-- `firmware_version` (SETTINGS_VERSION or build timestamp)
-- `boot_reason` (OTA / power-on / watchdog / exception)
-- `free_heap` (bytes)
-- `wifi_ssid`
-- `wifi_rssi`
-- `wifi_ip`
-- `ntp_synced` (bool)
-- `ntp_last_delta` (seconds, last correction applied)
-- `button_events` (count since boot)
-
-OTA verification workflow once implemented:
-1. Note version at `/diag` before flash
-2. Run OTA
-3. Hit `/diag` after reboot -- confirm version changed and `boot_reason=OTA`
-
-#### Task 2: WiFi Auto-Reconnect Explicit Guard
-**Priority**: High -- OTA fails silently if WiFi drops
-**Status**: Unknown -- verify in main.cpp
-
-Confirm `WiFi.setAutoReconnect(true)` is explicitly called in `setupWiFi()`. Do not
-rely on SDK defaults. If absent, add it.
-
-#### Task 3: OTA Error Handler
-**Priority**: High
-**Status**: Unknown -- verify in main.cpp
-
-Confirm `ArduinoOTA.onError()` handler exists and calls `ESP.restart()`. If a transfer
-stalls mid-flash (network drop, power fluctuation), the device must reboot to last good
-firmware rather than hang in OTA wait state.
-
-#### Task 4: Software Watchdog in loop()
-**Priority**: Medium
-**Status**: Not implemented
-
-Add software watchdog feed in `loop()` with a 10-second window. If `loop()` stops
-executing (I2C blocking, WiFi manager blocking, deadlock), watchdog fires and reboots.
-Verify hardware watchdog is not being suppressed by a tight feed loop.
-
-#### Task 5: Button-Hold Factory Reset on Boot
-**Priority**: Medium -- eliminates last physical-access recovery path
-**Status**: Not implemented. Blocked on Task 6 (buttons must exist first).
-
-Hold UP + DOWN buttons during power-on for 3 seconds:
-- LEDs show all-red during hold
-- On release: clear EEPROM, reboot into WiFi provisioning portal
-- On completion: all-white flash
-
-Without this, corrupted EEPROM post-flash requires USB serial access to recover.
-
-#### Task 6: Physical Buttons Re-Added
-**Priority**: Medium -- prerequisite for Task 5; last-resort input when WiFi unavailable
-**Status**: Planned -- blocked on Tasks 1 and 2
-
-Buttons removed in 2.0.4 due to GPIO3/GPIO4 JTAG interference. Re-addition requirements:
-- Use polled reads in `loop()` -- no ISRs
-- Use GPIO8 and GPIO9 -- confirm no conflicts with existing pin assignments before wiring
-- Do not use GPIO3, GPIO4 (JTAG), GPIO6, GPIO7 (I2C SDA/SCL for VEML7700)
-- See REVIEW.md Section 1 for polling implementation template
-
----
-
-### Maturation Checklist
-
-| Task | Status | Blocked By |
-|---|---|---|
-| Baseline OTA verified end-to-end | Pending | -- |
-| Task 1: `/diag` endpoint | Not started | OTA baseline |
-| Task 2: `WiFi.setAutoReconnect(true)` confirmed | Not verified | OTA baseline |
-| Task 3: `ArduinoOTA.onError()` handler confirmed | Not verified | OTA baseline |
-| Task 4: Software watchdog in `loop()` | Not started | OTA baseline |
-| Task 5: Button-hold factory reset on boot | Not started | Task 6 |
-| Task 6: Physical buttons re-added (GPIO8/9, polled) | Planned | Tasks 1, 2 |
-
 ```cpp
 strip_.setBrightness(brightness);
 renderCenterIdle(millis());   // setCenterPixel() only
@@ -456,3 +349,110 @@ For immediate debugging, the current order is fine.
 5. **LED mapping test mode**: add a `/ledtest?pixel=N` or `/ledwalk` endpoint for physical verification of logical-to-physical mapping.
 
 6. **Explicit composite array**: replace the 4-pass outer-ring rendering with a single 60-element array pass. Implement in a separate commit after hardware is validated.
+
+---
+
+## Maturation Goal: OTA-First Wall-Mounted Operation
+
+**Goal**: ChronoBloom should be flashable, debuggable, and verifiable entirely over WiFi
+with the clock mounted on the wall -- no USB cable, no serial monitor, no physical access
+required for normal development and testing cycles.
+
+This is the target state for the project to be considered stable for use beyond its
+creator.
+
+---
+
+### Prerequisite: Baseline OTA Verification
+
+Before any stability work below, confirm OTA works end-to-end:
+
+1. Flash via USB once with current firmware
+2. Confirm `esp32c3-v3-8inch.local` resolves on the network
+3. Run: `pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232`
+4. Confirm it completes without timeout
+
+If this fails, all tasks below are premature.
+
+---
+
+### OTA Stability Task List
+
+#### Task 1: `/diag` Endpoint
+**Priority**: High -- blocks all wall-mount verification workflows
+**Status**: Not implemented
+
+Add a `/diag` HTTP GET endpoint returning JSON with:
+- `uptime` (seconds since boot)
+- `firmware_version` (SETTINGS_VERSION or build timestamp)
+- `boot_reason` (OTA / power-on / watchdog / exception)
+- `free_heap` (bytes)
+- `wifi_ssid`
+- `wifi_rssi`
+- `wifi_ip`
+- `ntp_synced` (bool)
+- `ntp_last_delta` (seconds, last correction applied)
+- `button_events` (count since boot)
+
+OTA verification workflow once implemented:
+1. Note version at `/diag` before flash
+2. Run OTA
+3. Hit `/diag` after reboot -- confirm version changed and `boot_reason=OTA`
+
+#### Task 2: WiFi Auto-Reconnect Explicit Guard
+**Priority**: High -- OTA fails silently if WiFi drops
+**Status**: Unknown -- verify in main.cpp
+
+Confirm `WiFi.setAutoReconnect(true)` is explicitly called in `setupWiFi()`. Do not
+rely on SDK defaults. If absent, add it.
+
+#### Task 3: OTA Error Handler
+**Priority**: High
+**Status**: Unknown -- verify in main.cpp
+
+Confirm `ArduinoOTA.onError()` handler exists and calls `ESP.restart()`. If a transfer
+stalls mid-flash (network drop, power fluctuation), the device must reboot to last good
+firmware rather than hang in OTA wait state.
+
+#### Task 4: Software Watchdog in loop()
+**Priority**: Medium
+**Status**: Not implemented
+
+Add software watchdog feed in `loop()` with a 10-second window. If `loop()` stops
+executing (I2C blocking, WiFi manager blocking, deadlock), watchdog fires and reboots.
+Verify hardware watchdog is not being suppressed by a tight feed loop.
+
+#### Task 5: Button-Hold Factory Reset on Boot
+**Priority**: Medium -- eliminates last physical-access recovery path
+**Status**: Not implemented. Blocked on Task 6 (buttons must exist first).
+
+Hold UP + DOWN buttons during power-on for 3 seconds:
+- LEDs show all-red during hold
+- On release: clear EEPROM, reboot into WiFi provisioning portal
+- On completion: all-white flash
+
+Without this, corrupted EEPROM post-flash requires USB serial access to recover.
+
+#### Task 6: Physical Buttons Re-Added
+**Priority**: Medium -- prerequisite for Task 5; last-resort input when WiFi unavailable
+**Status**: Planned -- blocked on Tasks 1 and 2
+
+Buttons removed in 2.0.4 due to GPIO3/GPIO4 JTAG interference. Re-addition requirements:
+- Use polled reads in `loop()` -- no ISRs
+- Use GPIO8 and GPIO9 -- confirm no conflicts with existing pin assignments before wiring
+- Do not use GPIO3, GPIO4 (JTAG), GPIO6, GPIO7 (I2C SDA/SCL for VEML7700)
+- See REVIEW.md Section 1 for polling implementation template
+
+---
+
+### Maturation Checklist
+
+| Task | Status | Blocked By |
+|---|---|---|
+| Baseline OTA verified end-to-end | Pending | -- |
+| Task 1: `/diag` endpoint | Not started | OTA baseline |
+| Task 2: `WiFi.setAutoReconnect(true)` confirmed | Not verified | OTA baseline |
+| Task 3: `ArduinoOTA.onError()` handler confirmed | Not verified | OTA baseline |
+| Task 4: Software watchdog in `loop()` | Not started | OTA baseline |
+| Task 5: Button-hold factory reset on boot | Not started | Task 6 |
+| Task 6: Physical buttons re-added (GPIO8/9, polled) | Planned | Tasks 1, 2 |

@@ -207,22 +207,6 @@ struct ClockSettings {
   uint8_t statusAnimations;         // 0=off, 1=on
   
   // Ring colors (RGB + level for 6 elements)
-
----
-
-## Stability / OTA Infrastructure (Maturation Track)
-
-Target state: device is flashable, debuggable, and verifiable entirely over WiFi with
-no USB cable or serial monitor required. See REVIEW.md -- Maturation Goal section for
-full task descriptions, priorities, and sequencing.
-
-### Planned
-- 🔲 **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count
-- 🔲 **Task 2** -- WiFi auto-reconnect explicit guard (`WiFi.setAutoReconnect(true)` confirmed or added)
-- 🔲 **Task 3** -- OTA error handler: `ArduinoOTA.onError()` calls `ESP.restart()` on stall
-- 🔲 **Task 4** -- Software watchdog feed in `loop()` with 10-second window
-- 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal; blocked on Task 6
-- 🔲 **Task 6** -- Physical buttons re-added on GPIO8/GPIO9, polled reads only, no ISRs; prerequisite for Task 5
   uint8_t outerMarkerRed, outerMarkerGreen, outerMarkerBlue, outerMarkerLevel;
   uint8_t outerFillerRed, outerFillerGreen, outerFillerBlue, outerFillerLevel;
   uint8_t secondsRed, secondsGreen, secondsBlue, secondsLevel;
@@ -264,3 +248,19 @@ When adding/removing/reordering fields:
 2. Update `SettingsStore::defaults()` with new defaults
 3. Increment `SETTINGS_VERSION` by 1
 4. **All clocks will reset to defaults on next boot** (by design, ensures clean state)
+
+---
+
+## Stability / OTA Infrastructure (Maturation Track)
+
+Target state: device is flashable, debuggable, and verifiable entirely over WiFi with
+no USB cable or serial monitor required. See REVIEW.md -- Maturation Goal section for
+full task descriptions, priorities, and sequencing.
+
+### Planned
+- 🔲 **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count
+- 🔲 **Task 2** -- WiFi auto-reconnect explicit guard (`WiFi.setAutoReconnect(true)` confirmed or added)
+- 🔲 **Task 3** -- OTA error handler: `ArduinoOTA.onError()` calls `ESP.restart()` on stall
+- 🔲 **Task 4** -- Software watchdog feed in `loop()` with 10-second window
+- 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal; blocked on Task 6
+- 🔲 **Task 6** -- Physical buttons re-added on GPIO8/GPIO9, polled reads only, no ISRs; prerequisite for Task 5
