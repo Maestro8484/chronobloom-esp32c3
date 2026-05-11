@@ -1,4 +1,4 @@
-#include <Arduino.h>
+﻿#include <Arduino.h>
 #include <EEPROM.h>
 #if !defined(ESP32)
 #error "NeoPixelClock v3 requires an ESP32-family Arduino core."
@@ -1583,7 +1583,7 @@ class WebUi {
     server_.on("/update", HTTP_GET, [&]() {
       String html = R"HTML(
 <!doctype html><html><head>
-<meta name='viewport' content='width=device-width,initial-scale=1'>
+<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
 <title>Firmware Update - ESP32 Ring Clock</title>
 <style>
 :root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
@@ -1606,7 +1606,7 @@ a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 </style></head>
 <body><main>
 <div class='panel'>
-<h1>🔧 Firmware Update</h1>
+<h1>&#128295; Firmware Update</h1>
 <p>Upload a new .bin firmware file to update the clock.</p>
 <div class='info-box'>
 <strong>Current Firmware:</strong> Latest<br>
@@ -1640,19 +1640,19 @@ function uploadFirmware(){
   xhr.onload=()=>{
     const msg=document.getElementById('status');
     if(xhr.status===200){
-      msg.textContent='✓ Upload successful! Device will reboot with new firmware...';
+      msg.innerHTML='&#10003; Upload successful! Device will reboot with new firmware...';
       msg.className='status success';
       document.getElementById('updateForm').style.display='none';
       setTimeout(()=>{window.location.href='/'},5000);
     }else{
-      msg.textContent='✗ Update failed: '+xhr.responseText;
+      msg.innerHTML='&#10007; Update failed: '+xhr.responseText;
       msg.className='status error';
     }
     msg.style.display='block';
   };
   xhr.onerror=()=>{
     const msg=document.getElementById('status');
-    msg.textContent='✗ Upload error (connection lost?)';
+    msg.innerHTML='&#10007; Upload error (connection lost?)';
     msg.className='status error';
     msg.style.display='block';
   };
@@ -1818,7 +1818,7 @@ function uploadFirmware(){
 
   String htmlPage() {
     return R"HTML(
-<!doctype html><html><head><meta name='viewport' content='width=device-width,initial-scale=1'>
+<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
 <title>ESP32 Ring Clock</title>
 <style>
 :root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
@@ -1879,6 +1879,7 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
     <div><label>Max bright</label><input id='maxAutoBrightness' type='number' min='5' max='255'></div>
   </div>
 </div>
+<div class='row'><button class='primary' onclick='saveSettings()'>Save auto-brightness</button></div>
 </div>
 <div class='panel'><h2>Time Animations</h2>
 <label><input id='intervalAnimationsEnabled' type='checkbox'> Enable interval animations</label>
@@ -1904,8 +1905,9 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
   <option value='4'>Rainbow spiral</option>
   <option value='5'>Breathing mandala</option>
 </select>
+<div class='row'><button class='primary' onclick='saveSettings()'>Save animations</button></div>
 </div>
-<div class='panel'><h2>🚀 Focus Reminders (ADHD)</h2>
+<div class='panel'><h2>Focus Reminders (ADHD)</h2>
 <p class='sub' style='font-size:12px;color:#92a0b5'>Visual nudge system for hyperfocus interruption. Fires animations at set intervals on selected days/times.</p>
 <div class='toggle'><label><input id='focusReminder_enabled' type='checkbox'> Enable focus reminders</label></div>
 <div class='row'>
@@ -1926,7 +1928,7 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
 <div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>
 </div>
 <div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>
-<div class='panel'><h2>⚙ Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a></div></div>
+<div class='panel'><h2>&#9881; Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a></div></div>
 </section></main>
 <script>
 const counts={outer:60,middle:24,inner:12}, radii={outer:182,middle:134,inner:88};
