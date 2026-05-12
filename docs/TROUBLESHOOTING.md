@@ -571,38 +571,42 @@ pio device list
 
 ## OTA (Over-The-Air) Updates
 
-### OTA port not responding
+OTA is the normal update path — no USB cable required after initial flash.
 
-**Symptoms**:
-- Upload command: `pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232`
-- Error: "Could not open esp32c3-v3-8inch.local:3232"
-- Timeout waiting for OTA server
+**Preferred method — Web UI**:
+1. Build in VS Code / PlatformIO
+2. Open `http://esp32c3-v3-8inch.local/update`
+3. Select `.pio/build/esp32c3_v3_8inch/firmware.bin` and upload
+4. Device reboots automatically on success
 
-**Fixes**:
-1. Verify device is on WiFi: `ping esp32c3-v3-8inch.local` should resolve
-2. Check firewall: OTA port 3232 may be blocked (try disabling WiFi firewall temporarily)
-3. Verify OTA is initialized: check serial monitor for `[OTA] Ready` message
-4. Try again: OTA server may take 30-60 seconds to fully initialize after boot
-
-**Alternative**: Flash via USB if OTA is unavailable
+**Alternative — PlatformIO espota** (default upload protocol):
 ```powershell
 pio run -e esp32c3_v3_8inch -t upload
 ```
+Targets IP `192.168.1.110` (hardcoded in `platformio.ini`). Update `upload_port` if device IP changes.
+
+**USB fallback** (first flash or recovery only):
+```powershell
+pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
+```
+
+### OTA not responding
+
+**Symptoms**: espota times out with "No response from ESP" or web UI shows connection error
+
+**Fixes**:
+1. Verify device is on WiFi: `ping 192.168.1.110`
+2. Verify OTA initialized: serial monitor should show `[OTA] Ready` after boot
+3. Power-cycle device to clear any stuck OTA state
+4. If device IP changed: update `upload_port` in `platformio.ini`
 
 ### Device reboots during OTA
 
-**Symptoms**:
-- OTA upload starts, device shows blue animation
-- Then reboots before completion
+**Symptoms**: upload starts (blue animation), then device reboots before completion
 
 **Possible causes**:
-- WiFi disconnected during upload (unstable connection)
-- Firmware binary too large for available RAM
-- Password incorrect for OTA (`iris_ota_2026` in `setupOTA()` — current firmware identifier, not renamed with project)
-
-**Fix**:
-- Try again with stronger WiFi signal
-- Check device is close to router during upload
+- WiFi instability — move device closer to router
+- Software watchdog fired (10s window) — should auto-recover on reboot
 
 ---
 

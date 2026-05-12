@@ -40,10 +40,10 @@ Build:
 pio run -e esp32c3_v3_8inch
 ```
 
-Upload over USB:
+Upload over USB (first flash or recovery only):
 
 ```powershell
-pio run -e esp32c3_v3_8inch -t upload
+pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 ```
 
 ## Wi-Fi Setup
@@ -70,19 +70,21 @@ The hostname also appears correctly in your router's device list (not as a MAC a
 
 ## OTA Firmware Updates
 
-After initial USB flash, firmware updates can be deployed over WiFi without USB cable:
+After initial USB flash, all firmware updates are deployed over WiFi.
 
+**Preferred — Web UI upload** (no terminal needed):
+1. Build: `pio run -e esp32c3_v3_8inch`
+2. Open `http://esp32c3-v3-8inch.local/update` in a browser
+3. Select `.pio/build/esp32c3_v3_8inch/firmware.bin` and click Upload
+
+**Alternative — PlatformIO upload** (espota, default protocol):
 ```powershell
-# Build new firmware
-pio run -e esp32c3_v3_8inch
-
-# Upload via OTA (device must be on WiFi)
-pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+pio run -e esp32c3_v3_8inch -t upload
 ```
+Uses IP `192.168.1.110` (set in `platformio.ini`). Update if the device IP changes.
 
 During OTA update:
 - Inner ring shows blue status animation
-- Serial monitor (if available) shows progress percentage
 - Device reboots automatically when complete
 - Inner ring shows green on success, red on failure
 

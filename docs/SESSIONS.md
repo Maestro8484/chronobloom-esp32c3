@@ -37,9 +37,10 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
 
@@ -62,9 +63,10 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
 
@@ -87,9 +89,10 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
 
@@ -112,9 +115,10 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
 
@@ -137,9 +141,10 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
 
@@ -162,9 +167,10 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
 
@@ -187,8 +193,9 @@ Rules: read WORKFLOW.md before any implementation work.
 Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
-Build:  pio run -e esp32c3_v3_8inch
-Flash:  pio run -e esp32c3_v3_8inch -t upload
-OTA:    pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
+Build:       pio run -e esp32c3_v3_8inch
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
 
 Read minimum files the task requires. State what you read and why.
