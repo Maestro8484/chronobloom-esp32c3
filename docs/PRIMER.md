@@ -13,8 +13,8 @@ Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
 Build:       pio run -e esp32c3_v3_8inch
-OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (default — espota to 192.168.1.110)
-Web UI OTA:  http://esp32c3-v3-8inch.local/update           (preferred — upload firmware.bin in browser)
-USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx
+OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (most convenient — upload firmware.bin in browser)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx  (first flash / recovery only)
 
 Read minimum files the task requires. State what you read and why.

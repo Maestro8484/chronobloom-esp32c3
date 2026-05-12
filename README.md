@@ -72,12 +72,12 @@ The hostname also appears correctly in your router's device list (not as a MAC a
 
 After initial USB flash, all firmware updates are deployed over WiFi.
 
-**Preferred — Web UI upload** (no terminal needed):
+**Web UI** (most convenient — no terminal needed):
 1. Build: `pio run -e esp32c3_v3_8inch`
 2. Open `http://esp32c3-v3-8inch.local/update` in a browser
 3. Select `.pio/build/esp32c3_v3_8inch/firmware.bin` and click Upload
 
-**Alternative — PlatformIO upload** (espota, default protocol):
+**PlatformIO / VS Code upload button** (espota, default protocol):
 ```powershell
 pio run -e esp32c3_v3_8inch -t upload
 ```
