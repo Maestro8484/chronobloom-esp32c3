@@ -2,6 +2,29 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.5] - 2026-05-11
+
+### Added
+- **Software watchdog** (`src/main.cpp`)
+  - `esp_task_wdt_init(10, true)` + `esp_task_wdt_add(NULL)` in `setup()` — 10-second window, reboot on timeout
+  - `esp_task_wdt_reset()` at top of `loop()`, in `ArduinoOTA.onProgress`, and in `UPLOAD_FILE_WRITE` handler
+  - Ensures device recovers automatically from OTA hang, I2C block, or WiFi manager stall
+- **Web UI firmware update (`/update` page)** (`src/main.cpp`)
+  - Fixed raw-binary XHR upload OOM crash at ~40% (switched to `FormData` for streaming multipart)
+  - Fixed `Update.begin(0)` failure with FormData by using `UPDATE_SIZE_UNKNOWN`
+  - Guard: skip too-large check when `upload.totalSize == 0` (FormData reports 0 at `UPLOAD_FILE_START`)
+
+### Changed
+- **OTA password removed** — `ArduinoOTA.setPassword("iris_ota_2026")` removed; no auth required
+- **`platformio.ini`** — consolidated `esp32c3_v3_8inch_ota` env into `esp32c3_v3_8inch`; `upload_protocol = espota` and `upload_port = 192.168.1.110` now default for 8" variant
+
+### Files changed
+- `src/main.cpp` — watchdog init/feed, FormData fix, UPDATE_SIZE_UNKNOWN, OTA password removed
+- `platformio.ini` — espota as default protocol, removed separate OTA env
+- `docs/PRIMER.md`, `docs/SESSIONS.md`, `docs/TROUBLESHOOTING.md`, `README.md` — OTA command references updated
+
+---
+
 ## [2.0.4] - 2026-05-10
 
 ### Removed

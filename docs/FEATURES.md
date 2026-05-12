@@ -38,7 +38,7 @@
 - ✅ **Theme selection** — Classic, Aqua, Magenta presets
 - ✅ **Manual time adjustment** — H:M:S entry and +/- minute controls via WebUI
 - ✅ **WiFi provisioning portal** — Captive portal on first boot; AP fallback at 192.168.4.1 if STA unavailable
-- ✅ **OTA firmware updates** — ArduinoOTA over WiFi (port 3232), no USB cable required after first flash
+- ✅ **OTA firmware updates** — ArduinoOTA (espota) and web UI `/update` page; no USB cable required after first flash
 - ✅ **mDNS reconnect** — Hostname re-advertised automatically after WiFi reconnect
 
 ### Focus Reminders
@@ -257,10 +257,13 @@ Target state: device is flashable, debuggable, and verifiable entirely over WiFi
 no USB cable or serial monitor required. See REVIEW.md -- Maturation Goal section for
 full task descriptions, priorities, and sequencing.
 
+### Done
+- ✅ **Task 2** — `WiFi.setAutoReconnect(true)` confirmed in `setupWiFi()`
+- ✅ **Task 3** — `ArduinoOTA.onError()` calls `ESP.restart()` on stall
+- ✅ **Task 4** — Software watchdog: `esp_task_wdt` 10s window in `loop()`
+- ✅ **Web UI firmware update** — `/update` page accepts `.bin` upload; fixed FormData + `UPDATE_SIZE_UNKNOWN`
+
 ### Planned
 - 🔲 **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count
-- 🔲 **Task 2** -- WiFi auto-reconnect explicit guard (`WiFi.setAutoReconnect(true)` confirmed or added)
-- 🔲 **Task 3** -- OTA error handler: `ArduinoOTA.onError()` calls `ESP.restart()` on stall
-- 🔲 **Task 4** -- Software watchdog feed in `loop()` with 10-second window
 - 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal; blocked on Task 6
 - 🔲 **Task 6** -- Physical buttons re-added on GPIO8/GPIO9, polled reads only, no ISRs; prerequisite for Task 5
