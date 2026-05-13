@@ -19,10 +19,20 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 7 | Task 7 | Button hold-to-repeat + GPIO swap (UP=5, DOWN=9) | Done (2026-05-13, v2.0.7) |
 | 8 | Docs close | Update maturation checklist to completed | Done (2026-05-13) |
 | 9 | WiFi web UI | /wifi page, Preferences creds tier, reconnect poll | Done (2026-05-13, v2.0.9) |
+| 10 | Docs audit fix | Fix 5 stale documentation entries from maturation audit | Done (2026-05-13) |
 
 ---
 
 ## Completed Sessions
+
+### Session 10 — Docs Audit Fix (Done 2026-05-13)
+- CHANGELOG [2.0.8]: corrected false entry claiming RING_PIXEL_OFFSET changed 1→2; offset confirmed 1 (offset 0 blocked by compile-time guard when SACRIFICIAL_PIXEL_ENABLED=1)
+- FEATURES.md Settings Structure: bumped version 8→10; corrected focus reminder field names (focusEnabled → focusReminder_enabled, etc.) and types to match main.cpp; added outerRingOffset field; extended version history with v9/v10 entries
+- FEATURES.md: removed stale "Diagnostic endpoint" Medium Priority planned entry (/diag shipped v2.0.6)
+- README.md: replaced espota/192.168.1.110 OTA upload command with esptool/COM6 (matches platformio.ini since v2.0.8)
+- ARCHITECTURE.md: focusReminder field names already matched main.cpp — no edit required
+
+
 
 ### Session 2 — OTA Baseline + Tasks 2 and 3 (Done 2026-05-11, v2.0.5)
 - WiFi.setAutoReconnect(true) confirmed present in setupWiFi()
