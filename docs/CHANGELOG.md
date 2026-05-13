@@ -2,6 +2,25 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.6] - 2026-05-13
+
+### Added
+- **`GET /diag` diagnostic endpoint** (`src/main.cpp`)
+  - Returns JSON with 10 fields: `uptime`, `firmware_version`, `boot_reason`, `free_heap`, `wifi_ssid`, `wifi_rssi`, `wifi_ip`, `ntp_synced`, `ntp_last_delta`, `button_events`
+  - `TimeSync::lastDeltaSec_`: tracks seconds delta between model time and NTP time at each sync
+  - `g_buttonEventCount`: global counter incremented on every consumed button press (up or down)
+- **`tools/gen_symmap.py`** — canonical script to regenerate `docs/symmap.json` and `docs/FUNCTION_INVENTORY.md` from `src/main.cpp`
+
+### Changed
+- **`docs/symmap.json` + `docs/FUNCTION_INVENTORY.md`** regenerated: 93 functions (was 87); ButtonInput class (4 methods) + 2 constructors newly tracked; all line numbers updated for S5 button re-add shift
+
+### Files changed
+- `src/main.cpp` — `/diag` route, `TimeSync::lastDeltaSec_`, `g_buttonEventCount`
+- `tools/gen_symmap.py` — new file
+- `docs/symmap.json`, `docs/FUNCTION_INVENTORY.md` — regenerated
+
+---
+
 ## [2.0.5] - 2026-05-11
 
 ### Added

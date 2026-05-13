@@ -264,6 +264,6 @@ full task descriptions, priorities, and sequencing.
 - ✅ **Web UI firmware update** — `/update` page accepts `.bin` upload; fixed FormData + `UPDATE_SIZE_UNKNOWN`
 
 ### Planned
-- 🔲 **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count
-- 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal; blocked on Task 6
-- 🔲 **Task 6** -- Physical buttons re-added on GPIO8/GPIO9, polled reads only, no ISRs; prerequisite for Task 5
+- ✅ **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count (2026-05-13)
+- ✅ **Task 6** -- Physical buttons re-added: GPIO9(UP)/GPIO5(DOWN), polled, 50ms debounce, `ButtonInput` class (2026-05-13)
+- 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal

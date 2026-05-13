@@ -453,7 +453,7 @@ Implementation:
 | Task | Status | Blocked By |
 |---|---|---|
 | Baseline OTA verified end-to-end | **Done** (Session 2, 2026-05-11) | -- |
-| Task 1: `/diag` endpoint | Not started | -- |
+| Task 1: `/diag` endpoint | **Done** — `GET /diag` returns 10-field JSON; `TimeSync::lastDeltaSec_`, `g_buttonEventCount` added; verified 2026-05-13 | -- |
 | Task 2: `WiFi.setAutoReconnect(true)` confirmed | **Done** — added main.cpp:1297 | -- |
 | Task 3: `ArduinoOTA.onError()` handler confirmed | **Done** — `ESP.restart()` added main.cpp:1356 | -- |
 | Task 4: Software watchdog in `loop()` | **Done** — `esp_task_wdt` 10s window, Session 4 2026-05-11 | -- |
