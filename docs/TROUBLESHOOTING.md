@@ -65,7 +65,9 @@ Serial.println(mdnsEnabled_ ? "YES" : "NO");
 
 ### Spurious button presses / time jumping backward
 
-**Symptoms**:
+> **Resolved v2.0.6**: Buttons moved to GPIO5(UP)/GPIO9(DOWN) with polled reads. Original root cause documented below for reference.
+
+**Symptoms (historical — ISR-based buttons on GPIO3/GPIO4)**:
 - Time jumps backward by 5 minutes without physical button press
 - Most common when USB cable connected
 - Less common when powered via 5V-only supply

@@ -102,11 +102,11 @@ using ClockWebServer = WebServer;
 #endif
 
 #ifndef BUTTON_UP_PIN
-#define BUTTON_UP_PIN 9
+#define BUTTON_UP_PIN 5
 #endif
 
 #ifndef BUTTON_DOWN_PIN
-#define BUTTON_DOWN_PIN 5
+#define BUTTON_DOWN_PIN 9
 #endif
 
 // Shared logical ring order. RING_PIXEL_OFFSET selects where logical outer LED 0

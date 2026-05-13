@@ -16,8 +16,8 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 4 | Task 4 | Software watchdog in loop() | Done (2026-05-11) |
 | 5 | Task 6 | Re-add physical buttons GPIO9/GPIO5 polled | Done (2026-05-13) |
 | 6 | Task 5 | Button-hold factory reset on boot | Pending — blocked on Task 6 wiring confirmation |
-| 7 | Task 8 | Button hold-to-repeat + no-WiFi time adjustment | Pending — new (planned 2026-05-13) |
-| 8 | Docs close | Update maturation checklist to completed | Pending |
+| 7 | Task 7 | Button hold-to-repeat + GPIO swap (UP=5, DOWN=9) | Done (2026-05-13, v2.0.7) |
+| 8 | Docs close | Update maturation checklist to completed | Done (2026-05-13) |
 
 ---
 
@@ -34,6 +34,14 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 - esp_task_wdt_reset() fed at top of loop(), in ArduinoOTA.onProgress, and in UPLOAD_FILE_WRITE handler
 - Web UI /update OTA fixed: FormData streaming multipart (was raw XHR, OOM at ~40%)
 - UPDATE_SIZE_UNKNOWN fix: skip too-large check when upload.totalSize == 0
+
+### Session 7 — Hold-to-Repeat + GPIO Swap (Done 2026-05-13, v2.0.7)
+- `ButtonInput` extended with hold-to-repeat state machine
+- `HoldPhase` enum: IDLE / REPEAT_MIN / REPEAT_HOUR per button
+- Hold >500ms: fires +1/-1 min every 150ms; hold >2000ms: fires +60/-60 min per fire
+- `consumeUp()`/`consumeDown()` return int delta; `loop()` passes directly to `addMinutes()`
+- GPIO swap: UP=GPIO5(D3), DOWN=GPIO9(D9) — both `platformio.ini` and `main.cpp` fallback defines
+- Verified: short press, 1s hold, 3s hold, release all behave per spec
 
 ### Session 5 — Buttons Re-Added (Done 2026-05-13, v2.0.x)
 - ButtonInput class re-added using polled reads -- no ISRs

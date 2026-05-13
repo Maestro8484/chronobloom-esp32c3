@@ -41,6 +41,14 @@
 - ✅ **OTA firmware updates** — ArduinoOTA (espota) and web UI `/update` page; no USB cable required after first flash
 - ✅ **mDNS reconnect** — Hostname re-advertised automatically after WiFi reconnect
 
+### Physical Buttons
+- ✅ **Physical UP/DOWN buttons** — GPIO5(UP) / GPIO9(DOWN), polled (no ISRs), 50ms debounce
+  - Short press: +1/-1 minute
+  - Hold >500ms: auto-repeat +1/-1 minute every 150ms
+  - Hold >2000ms: switches to +60/-60 minutes per fire (hour jump)
+  - Release: repeat stops immediately
+  - No-WiFi time adjustment without WebUI
+
 ### Focus Reminders
 - ✅ **Focus Reminders (ADHD support)** — Visual nudge animations at configurable intervals to interrupt hyperfocus
   - Single configurable rule: interval (1-1440 min), active hours window, days-of-week bitmask
@@ -51,7 +59,7 @@
   - Web UI panel: "Focus Reminders (ADHD)"
 
 ### Web UI Features
-- ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement (WebUI only; physical buttons removed in v2.0.4)
+- ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement (WebUI); physical buttons re-added v2.0.6 (GPIO5=UP, GPIO9=DOWN)
 - ✅ **Display settings** — Day/night brightness, schedule hours
 - ✅ **Ring controls** — 6 separate RGB + brightness: outer marker, outer fill, seconds, minutes, hours, center
 - ✅ **Animation controls** — Second trail, progress ring, hourly chime, status animations, interval animations
@@ -92,13 +100,11 @@
 
 ## Removed Features (Was Implemented, Now Removed)
 
-**Physical buttons (GPIO3/GPIO4)** — removed v2.0.4
-- Originally: UP/DOWN buttons for manual minute adjustment
-- Removed because GPIO3/GPIO4 are JTAG TCK/TDI pins on the XIAO ESP32-C3;
-  USB connection caused spurious ISR fires producing backward minute-hand jumps
-- WebUI provides equivalent time adjustment without hardware risk
-- May be reintroduced on safe GPIO pins (not 3/4) using polled reads, not ISRs
-- See CHANGELOG [2.0.4] and REVIEW.md Section 1 for full context
+**Physical buttons (GPIO3/GPIO4)** — removed v2.0.4, re-added v2.0.6 on safe pins
+- Originally GPIO3/GPIO4 (JTAG TCK/TDI): spurious ISR fires with USB connected → removed v2.0.4
+- Re-added v2.0.6 on GPIO5(UP)/GPIO9(DOWN) using polled reads, no ISRs
+- v2.0.7: GPIO swap to GPIO5=UP, GPIO9=DOWN; hold-to-repeat added (500ms→1min/150ms, 2s→60min/fire)
+- See CHANGELOG [2.0.4], [2.0.6], [2.0.7] and REVIEW.md Section 1 for full context
 
 ---
 

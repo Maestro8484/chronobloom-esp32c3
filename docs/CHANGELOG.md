@@ -2,6 +2,29 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.7] - 2026-05-13
+
+### Added
+- **`ButtonInput` hold-to-repeat** (`src/main.cpp`)
+  - Short press: +1/-1 minute (unchanged)
+  - Hold >500ms: auto-repeat at +1/-1 minute every 150ms
+  - Hold >2000ms: switches to +60/-60 minute per fire (hour jump)
+  - Release: stops repeat, resets all hold state
+  - New state per button: `pressedAt`, `lastRepeatAt`, `holdPhase` (enum `IDLE`/`REPEAT_MIN`/`REPEAT_HOUR`)
+  - New `consumeUp()`/`consumeDown()` return int delta; `loop()` passes delta to `addMinutes()`
+  - No ISRs, no mode changes, no LED feedback changes
+
+### Changed
+- **GPIO assignments swapped** (`platformio.ini`, `src/main.cpp` fallback defines)
+  - `BUTTON_UP_PIN`: 9 → 5 (GPIO5 / D3)
+  - `BUTTON_DOWN_PIN`: 5 → 9 (GPIO9 / D9)
+
+### Files changed
+- `src/main.cpp` — `ButtonInput` class (hold-to-repeat state machine, `consumeUp`/`consumeDown`), fallback `#define` for `BUTTON_DOWN_PIN` fixed (was 5, now 9)
+- `platformio.ini` — `BUTTON_UP_PIN`/`BUTTON_DOWN_PIN` values swapped
+
+---
+
 ## [2.0.6] - 2026-05-13
 
 ### Added

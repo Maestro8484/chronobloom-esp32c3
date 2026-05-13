@@ -107,13 +107,15 @@ D10         GPIO10  NeoPixel data (rings)   -             Through 300Ω resistor
 D7          GPIO20  NeoPixel data (center)  -             15" clock only
 D1          GPIO3   (removed) Button UP     -             JTAG TCK -- do not use for buttons
 D2          GPIO4   (removed) Button DOWN   -             JTAG TDI -- do not use for buttons
+D3          GPIO5   Button UP               -             Polled, INPUT_PULLUP, hold-to-repeat
+D9          GPIO9   Button DOWN             -             Polled, INPUT_PULLUP, hold-to-repeat
 D4          GPIO6   I2C SDA                 Green         VEML7700 + future sensors
 D5          GPIO7   I2C SCL                 Yellow        VEML7700 + future sensors
 5V/VIN      -       LED power rail          Red           External 5V supply
 GND         -       Common ground           Black         ESP32 + LED supply
 3V3         -       Logic only              -             Do NOT power LEDs
 ────────────────────────────────────────────────────────────────
-AVOID: GPIO2, GPIO8, GPIO9 (boot strapping pins)
+AVOID: GPIO2, GPIO8 (boot strapping); GPIO3/GPIO4 (JTAG TCK/TDI)
 ```
 
 ## Hardware Notes
@@ -125,7 +127,7 @@ AVOID: GPIO2, GPIO8, GPIO9 (boot strapping pins)
 - SDA/SCL: GPIO6/GPIO7 (green/yellow wires)
 
 **Known Issues**:
-- GPIO3/GPIO4 are JTAG TCK/TDI pins. Physical buttons on these pins caused spurious ISR fires when USB connected. Buttons removed in v2.0.4. If re-adding buttons, use GPIO6-9 with polled reads. See REVIEW.md Section 1.
+- GPIO3/GPIO4 are JTAG TCK/TDI pins. Physical buttons on these pins caused spurious ISR fires when USB connected (removed v2.0.4). Buttons re-added v2.0.6 on GPIO5(UP)/GPIO9(DOWN) with polled reads. See REVIEW.md Section 1.
 
 ## Project History
 

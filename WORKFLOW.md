@@ -113,6 +113,58 @@ chronobloom-esp32c3/        ← repo folder name (ChronoBloom ESP32-C3 project)
 
 ---
 
+## End-of-Session Close-the-Loop
+
+Run this checklist after every successful Claude Code deployment session before committing.
+
+### 1. Symmap regeneration (if `src/main.cpp` changed)
+```powershell
+cd C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3
+python tools/gen_symmap.py
+```
+This updates `docs/symmap.json` and `docs/FUNCTION_INVENTORY.md`. Always commit these alongside `main.cpp`.
+
+### 2. Doc sweep — update every affected file
+| File | What to update |
+|------|----------------|
+| `docs/CHANGELOG.md` | Add `[x.y.z] - date` entry: Added/Changed/Files changed |
+| `REVIEW.md` | Mark task Done in maturation checklist with date |
+| `docs/FEATURES.md` | Move Planned → Done; update or fix Removed section |
+| `docs/SESSIONS.md` | Mark session Done in status table; add Completed Session block |
+| `README.md` | Update pin table, hardware notes, known issues if hardware changed |
+| `docs/TROUBLESHOOTING.md` | Mark resolved issues; update code snippets if APIs changed |
+| `docs/PRIMER.md` | Update build/OTA commands only if workflow changed |
+| `memory/project_state.md` | Update version, milestones, maturation task status |
+
+Skip a file if it is genuinely unaffected. Do not open files just to check.
+
+### 3. Build + OTA flash
+```powershell
+pio run -e esp32c3_v3_8inch
+curl -s -F "image=@.pio\build\esp32c3_v3_8inch\firmware.bin" http://esp32c3-v3-8inch.local/update
+```
+Confirm `200 Update successful` before committing.
+
+### 4. Commit and push
+Stage only files that changed this session (never `git add -A`):
+```powershell
+git add src/main.cpp platformio.ini docs/CHANGELOG.md REVIEW.md docs/FEATURES.md docs/SESSIONS.md docs/symmap.json docs/FUNCTION_INVENTORY.md
+# add any other changed files explicitly
+git commit -m "feat/fix/docs(<scope>): <summary>
+
+Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+git push
+```
+
+### 5. Verify push
+```powershell
+git log --oneline -3
+git status
+```
+Clean working tree + commit appears in log = session closed.
+
+---
+
 ## Token Reduction — Reading main.cpp
 
 `src/main.cpp` is ~2200 lines (~34k tokens). Reading it whole exceeds context limits and wastes budget.

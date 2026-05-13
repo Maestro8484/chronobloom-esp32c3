@@ -460,6 +460,7 @@ Implementation:
 | Web UI `/update` OTA | **Done** — FormData + UPDATE_SIZE_UNKNOWN fix, Session 4 2026-05-11 | -- |
 | Task 5: Button-hold factory reset on boot | Not started | Task 6 |
 | Task 6: Physical buttons re-added (GPIO5/9, polled) | **Done** — `ButtonInput` polled class, GPIO9(UP)/GPIO5(DOWN), Session 5 2026-05-13 | Tasks 1, 2 |
+| Task 7: Button hold-to-repeat + no-WiFi time adjust | **Done** — hold >500ms→+1min/150ms repeat, >2000ms→+60min/fire; GPIO swap UP=5 DOWN=9; 2026-05-13 | Task 6 |
 
 #### Session 2 OTA Test Finding (2026-05-11)
 Mid-transfer WiFi block (via router admin) left device **hung in OTA wait state** — `onError` never fired,
