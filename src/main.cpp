@@ -101,6 +101,14 @@ using ClockWebServer = WebServer;
 #define NTP_TIMEZONE_TZ "MST7MDT,M3.2.0,M11.1.0"
 #endif
 
+#ifndef BUTTON_UP_PIN
+#define BUTTON_UP_PIN 9
+#endif
+
+#ifndef BUTTON_DOWN_PIN
+#define BUTTON_DOWN_PIN 5
+#endif
+
 // Shared logical ring order. RING_PIXEL_OFFSET selects where logical outer LED 0
 // lands in the physical chain for each clock variant.
 struct RingConfig {
@@ -808,13 +816,8 @@ class ClockRenderer {
       setRingPixel(RING_MIDDLE_24, (midBase + 1) % RING_MIDDLE_24.count, color);
     }
 
-    // Inner ring (12 LED): 1 LED per hour.
-    // :00 and :15 → single pixel (clean top-of-hour anchor).
-    // :30 and :45 → two pixels straddling toward next hour.
+    // Inner ring (12 LED): fixed 1 LED per hour. Middle ring carries sub-hour progression.
     setRingPixel(RING_INNER_12, hour12, color);
-    if (time.minute >= 30) {
-      setRingPixel(RING_INNER_12, (hour12 + 1) % RING_INNER_12.count, color);
-    }
   }
 
   uint32_t secondColor(uint8_t intensity) {
@@ -2040,6 +2043,35 @@ class FocusReminderScheduler {
   SettingsStore &settings_;
 };
 
+class ButtonInput {
+ public:
+  void begin() {
+    pinMode(BUTTON_UP_PIN, INPUT_PULLUP);
+    pinMode(BUTTON_DOWN_PIN, INPUT_PULLUP);
+  }
+
+  void poll(uint32_t now) {
+    bool upNow   = (digitalRead(BUTTON_UP_PIN)   == LOW);
+    bool downNow = (digitalRead(BUTTON_DOWN_PIN) == LOW);
+    if (upNow   && !lastUp_   && now - lastUpMs_   > kDebounceMs) { upPressed_   = true; lastUpMs_   = now; }
+    if (downNow && !lastDown_ && now - lastDownMs_ > kDebounceMs) { downPressed_ = true; lastDownMs_ = now; }
+    lastUp_   = upNow;
+    lastDown_ = downNow;
+  }
+
+  bool consumeUpPress()   { if (!upPressed_)   return false; upPressed_   = false; return true; }
+  bool consumeDownPress() { if (!downPressed_) return false; downPressed_ = false; return true; }
+
+ private:
+  static constexpr uint32_t kDebounceMs = 50;
+  bool upPressed_   = false;
+  bool downPressed_ = false;
+  bool lastUp_      = false;
+  bool lastDown_    = false;
+  uint32_t lastUpMs_   = 0;
+  uint32_t lastDownMs_ = 0;
+};
+
 // ===================== Globals =====================
 Adafruit_NeoPixel ledStrip(CLOCK_PIXEL_COUNT, LED_DATA_PIN, NEO_GRB + NEO_KHZ800);
 #if CENTER_PIXEL_ENABLED && CENTER_PIXEL_SEPARATE_OUTPUT
@@ -2057,6 +2089,7 @@ LuxSensor luxSensor;
 TimeSync timeSync(timeModel);
 WebUi webUi(timeModel, settingsStore, renderer, timeSync, temperature);
 FocusReminderScheduler reminderScheduler(timeModel, renderer, settingsStore);
+ButtonInput buttons;
 
 uint32_t lastTickMs = 0;
 uint32_t lastAnimationRenderMs = 0;
@@ -2164,6 +2197,7 @@ void setup() {
 #if LUX_SENSOR_ENABLED
   Wire.begin(LUX_SENSOR_I2C_SDA, LUX_SENSOR_I2C_SCL);
 #endif
+  buttons.begin();
   settingsStore.begin();
   temperature.begin();
   luxSensor.begin();
@@ -2192,6 +2226,7 @@ void setup() {
 void loop() {
   esp_task_wdt_reset();
   const uint32_t now = millis();
+  buttons.poll(now);
 
   while (now - lastTickMs >= 1000) {
     timeModel.tickOneSecond();
@@ -2220,6 +2255,15 @@ void loop() {
         renderer.triggerQuarterAnimation(now);
       }
     }
+  }
+
+  if (buttons.consumeUpPress()) {
+    timeModel.addMinutes(1);
+    renderer.setStatus(STATUS_BUTTON, 700);
+  }
+  if (buttons.consumeDownPress()) {
+    timeModel.addMinutes(-1);
+    renderer.setStatus(STATUS_BUTTON, 700);
   }
 
   if (renderer.animating()) {

@@ -437,10 +437,13 @@ Without this, corrupted EEPROM post-flash requires USB serial access to recover.
 **Priority**: Medium -- prerequisite for Task 5; last-resort input when WiFi unavailable
 **Status**: Planned -- blocked on Tasks 1 and 2
 
-Buttons removed in 2.0.4 due to GPIO3/GPIO4 JTAG interference. Re-addition requirements:
-- Use polled reads in `loop()` -- no ISRs
-- Use GPIO8 and GPIO9 -- confirm no conflicts with existing pin assignments before wiring
-- Do not use GPIO3, GPIO4 (JTAG), GPIO6, GPIO7 (I2C SDA/SCL for VEML7700)
+Buttons removed in 2.0.4 due to GPIO3/GPIO4 JTAG interference. Re-added Session 5.
+
+Implementation:
+- GPIO9 (D9) = UP, GPIO5 (D3) = DOWN — momentary buttons, shared GND
+- Polled reads in `loop()` via `ButtonInput` class — no ISRs, 50ms debounce
+- GPIO8 ruled out: Seeedstudio docs confirm GPIO8=0 + GPIO9=0 simultaneously = invalid
+  boot-strapping state. GPIO5 has no conflicts.
 - See REVIEW.md Section 1 for polling implementation template
 
 ---
@@ -456,7 +459,7 @@ Buttons removed in 2.0.4 due to GPIO3/GPIO4 JTAG interference. Re-addition requi
 | Task 4: Software watchdog in `loop()` | **Done** — `esp_task_wdt` 10s window, Session 4 2026-05-11 | -- |
 | Web UI `/update` OTA | **Done** — FormData + UPDATE_SIZE_UNKNOWN fix, Session 4 2026-05-11 | -- |
 | Task 5: Button-hold factory reset on boot | Not started | Task 6 |
-| Task 6: Physical buttons re-added (GPIO8/9, polled) | Planned | Tasks 1, 2 |
+| Task 6: Physical buttons re-added (GPIO5/9, polled) | **Done** — `ButtonInput` polled class, GPIO9(UP)/GPIO5(DOWN), Session 5 2026-05-13 | Tasks 1, 2 |
 
 #### Session 2 OTA Test Finding (2026-05-11)
 Mid-transfer WiFi block (via router admin) left device **hung in OTA wait state** — `onError` never fired,
