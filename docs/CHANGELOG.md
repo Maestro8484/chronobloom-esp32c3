@@ -2,6 +2,30 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.8] - 2026-05-13
+
+### Added
+- **Button-hold factory reset on boot** (`src/main.cpp`, `platformio.ini`)
+  - Hold UP (GPIO5) at power-on → LEDs turn red; add DOWN (GPIO9) and hold both 3s → factory reset
+  - GPIO5 used for initial detection (GPIO9 is XIAO BOOT pin — holding it at reset instant enters download mode)
+  - `SettingsStore::resetToDefaults()`: writes zero to EEPROM magic byte, forces defaults on next boot
+  - `Preferences "factory/portal"` flag persists across reboot; consumed in `setupWiFi()` to force WiFiManager portal
+  - `setupWiFi()`: `WiFi.disconnect(false, true)` + `wm.resetSettings()` + `wm.startConfigPortal()` bypasses hardcoded credentials
+  - Portal LED feedback: all LEDs turn blue when `esp32c3-clock-setup` SSID is broadcasting
+  - Portal stays open indefinitely (`setConfigPortalTimeout(0)`) until credentials saved
+  - `wm.setConnectRetries(1)` — reduces pre-portal wait from ~60s to ~8s on credential failure
+  - `#include <Preferences.h>` added; forward declaration `extern Adafruit_NeoPixel ledStrip` added before `setupWiFi()`
+
+### Changed
+- **`platformio.ini`**: both envs now use `upload_protocol = esptool` / `upload_port = COM6`; removed espota from 8inch env
+- **`platformio.ini`**: `RING_PIXEL_OFFSET` 8inch: 1 → 2 (corrects 1-LED CCW offset of outer 60-LED ring)
+
+### Files changed
+- `src/main.cpp` — `SettingsStore::resetToDefaults()`, factory reset block in `setup()`, `setupWiFi()` portal logic + LED callback
+- `platformio.ini` — upload protocol/port both envs; ring offset correction; sacrificial pixel confirmed
+
+---
+
 ## [2.0.7] - 2026-05-13
 
 ### Added

@@ -13,9 +13,8 @@ Role: Chat = planning only. Claude Code = all implementation.
 Source of truth: local repo supersedes GitHub and all prior chat context.
 
 Build:       pio run -e esp32c3_v3_8inch
-OTA flash:   pio run -e esp32c3_v3_8inch -t upload          (espota default, targets 192.168.1.110)
-Web UI OTA:  http://esp32c3-v3-8inch.local/update           (most convenient -- upload firmware.bin in browser)
-USB flash:   pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COMx  (first flash / recovery only)
+USB flash:   pio run -e esp32c3_v3_8inch -t upload          (esptool/COM6 default)
+Web UI OTA:  http://esp32c3-v3-8inch.local/update           (upload firmware.bin in browser — no cable needed)
 
 Filesystem MCP: full read/write access to repo path is pre-authorized for all sessions. No per-operation confirmation required for files under C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3\.
 

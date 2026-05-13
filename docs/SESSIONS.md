@@ -15,7 +15,7 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 3 | Task 1 | Implement /diag endpoint | Done (2026-05-13) |
 | 4 | Task 4 | Software watchdog in loop() | Done (2026-05-11) |
 | 5 | Task 6 | Re-add physical buttons GPIO9/GPIO5 polled | Done (2026-05-13) |
-| 6 | Task 5 | Button-hold factory reset on boot | Pending — blocked on Task 6 wiring confirmation |
+| 6 | Task 5 | Button-hold factory reset on boot | Done (2026-05-13, v2.0.8) |
 | 7 | Task 7 | Button hold-to-repeat + GPIO swap (UP=5, DOWN=9) | Done (2026-05-13, v2.0.7) |
 | 8 | Docs close | Update maturation checklist to completed | Done (2026-05-13) |
 

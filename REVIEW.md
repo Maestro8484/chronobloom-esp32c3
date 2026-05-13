@@ -424,12 +424,14 @@ Verify hardware watchdog is not being suppressed by a tight feed loop.
 
 #### Task 5: Button-Hold Factory Reset on Boot
 **Priority**: Medium -- eliminates last physical-access recovery path
-**Status**: Not implemented. Blocked on Task 6 (buttons must exist first).
+**Status**: Done (Session 6, 2026-05-13). `SettingsStore::resetToDefaults()` invalidates EEPROM magic; `Preferences "factory/portal"` flag checked in `setupWiFi()` to force WiFiManager portal and skip build-time credentials.
 
-Hold UP + DOWN buttons during power-on for 3 seconds:
-- LEDs show all-red during hold
-- On release: clear EEPROM, reboot into WiFi provisioning portal
-- On completion: all-white flash
+Hold UP (GPIO5) at power-on, then add DOWN (GPIO9) and hold both for 3 seconds:
+- GPIO9 is the XIAO BOOT pin — holding it LOW at the reset instant enters USB download mode.
+  GPIO5 has no strapping conflict, so it is safe to hold from power-on.
+- LEDs show all-red once UP is detected; 5-second window to add DOWN
+- If both held for 3 continuous seconds: clear EEPROM, reboot into WiFi provisioning portal
+- On confirmation: all-white flash x2
 
 Without this, corrupted EEPROM post-flash requires USB serial access to recover.
 
@@ -458,7 +460,7 @@ Implementation:
 | Task 3: `ArduinoOTA.onError()` handler confirmed | **Done** — `ESP.restart()` added main.cpp:1356 | -- |
 | Task 4: Software watchdog in `loop()` | **Done** — `esp_task_wdt` 10s window, Session 4 2026-05-11 | -- |
 | Web UI `/update` OTA | **Done** — FormData + UPDATE_SIZE_UNKNOWN fix, Session 4 2026-05-11 | -- |
-| Task 5: Button-hold factory reset on boot | Not started | Task 6 |
+| Task 5: Button-hold factory reset on boot | **Done** — hold UP+DOWN 3s at power-on: all-red LEDs during hold, EEPROM magic invalidated, `Preferences "factory/portal"` flag forces WiFiManager portal on reboot, white flash x2; Session 6 2026-05-13 | -- |
 | Task 6: Physical buttons re-added (GPIO5/9, polled) | **Done** — `ButtonInput` polled class, GPIO9(UP)/GPIO5(DOWN), Session 5 2026-05-13 | Tasks 1, 2 |
 | Task 7: Button hold-to-repeat + no-WiFi time adjust | **Done** — hold >500ms→+1min/150ms repeat, >2000ms→+60min/fire; GPIO swap UP=5 DOWN=9; 2026-05-13 | Task 6 |
 

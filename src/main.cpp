@@ -13,6 +13,7 @@
 #include <WiFiManager.h>
 #include <ArduinoOTA.h>
 #include "esp_task_wdt.h"
+#include <Preferences.h>
 #if LUX_SENSOR_ENABLED
 #include <Adafruit_VEML7700.h>
 #endif
@@ -386,6 +387,13 @@ class SettingsStore {
   void update(const ClockSettings &settings) {
     settings_ = sanitize(settings);
     save();
+  }
+
+  void resetToDefaults() {
+    uint8_t zero = 0;
+    EEPROM.put(0, zero);  // invalidate magic so begin() resets on next boot
+    EEPROM.commit();
+    settings_ = defaults();
   }
 
  private:
@@ -1307,12 +1315,39 @@ class TimeSync {
 
 volatile bool TimeSync::s_sntpPending_ = false;
 
+// Forward declaration — defined in the globals section below
+extern Adafruit_NeoPixel ledStrip;
+
 // ===================== WiFi Setup (WiFiManager) =====================
 bool setupWiFi() {
+  Preferences prefs;
+  prefs.begin("factory", false);
+  const bool forcePortal = prefs.getBool("portal", false);
+  if (forcePortal) prefs.putBool("portal", false);
+  prefs.end();
+
   WiFi.setAutoReconnect(true);
   WiFiManager wm;
-  wm.setConnectRetries(3);
-  wm.setConfigPortalTimeout(120);  // 2-minute portal window, then release
+  wm.setConnectRetries(1);
+
+  // Blue LEDs while portal is open — visible from across the room
+  wm.setAPCallback([](WiFiManager *) {
+    ledStrip.setBrightness(150);
+    ledStrip.fill(ledStrip.Color(0, 60, 255));
+    ledStrip.show();
+    Serial.println("[WiFi] Portal open — connect to esp32c3-clock-setup");
+  });
+
+  if (forcePortal) {
+    Serial.println("[WiFi] Factory-reset flag set — launching provisioning portal.");
+    WiFi.disconnect(false, true);  // erase saved AP from NVS
+    delay(200);
+    wm.resetSettings();
+    wm.setConfigPortalTimeout(0);  // stay open until user configures
+    return wm.startConfigPortal("esp32c3-clock-setup", "");
+  }
+
+  wm.setConfigPortalTimeout(120);  // 2-minute portal window for normal fallback
 
   if (strcmp(WIFI_SSID, "clock-ssid") != 0) {
     Serial.printf("[WiFi] Trying build-time SSID: %s\n", WIFI_SSID);
@@ -2325,6 +2360,61 @@ void setup() {
   luxSensor.begin();
   renderer.setLuxSensor(&luxSensor);
   renderer.begin();
+
+  // Factory reset: hold UP (GPIO5) at power-on to enter prompt, then hold DOWN (GPIO9)
+  // for 3 continuous seconds to confirm.  GPIO9 is the XIAO BOOT pin — it must NOT be
+  // held at the reset instant or the chip enters download mode.  Requiring UP-only at
+  // power-on avoids this; DOWN can safely be added once firmware is running.
+  if (digitalRead(BUTTON_UP_PIN) == LOW) {
+    Serial.println("[FactoryReset] UP held at boot — add DOWN within 5s and hold both 3s to reset.");
+    ledStrip.setBrightness(200);
+    ledStrip.fill(ledStrip.Color(255, 0, 0));
+    ledStrip.show();
+
+    bool confirmed = false;
+    const uint32_t windowStart = millis();
+    uint32_t bothHeldSince = 0;
+    bool bothHeld = false;
+
+    while (millis() - windowStart < 5000) {
+      const bool upLow  = (digitalRead(BUTTON_UP_PIN)   == LOW);
+      const bool downLow = (digitalRead(BUTTON_DOWN_PIN) == LOW);
+
+      if (!upLow) break;  // UP released: cancel immediately
+
+      if (upLow && downLow) {
+        if (!bothHeld) { bothHeld = true; bothHeldSince = millis(); }
+        if (millis() - bothHeldSince >= 3000) { confirmed = true; break; }
+      } else {
+        bothHeld = false;  // DOWN released: reset hold timer
+      }
+      delay(50);
+    }
+
+    if (confirmed) {
+      Serial.println("[FactoryReset] Confirmed — clearing settings, forcing WiFi portal, rebooting.");
+      settingsStore.resetToDefaults();
+      Preferences prefs;
+      prefs.begin("factory", false);
+      prefs.putBool("portal", true);
+      prefs.end();
+      for (int i = 0; i < 2; i++) {
+        ledStrip.fill(ledStrip.Color(255, 255, 255));
+        ledStrip.show();
+        delay(400);
+        ledStrip.clear();
+        ledStrip.show();
+        delay(200);
+      }
+      ESP.restart();
+    } else {
+      Serial.println("[FactoryReset] Cancelled — resuming normal boot.");
+      ledStrip.setBrightness(settingsStore.get().dayBrightness);
+      ledStrip.clear();
+      ledStrip.show();
+    }
+  }
+
   webUi.setLuxSensor(&luxSensor);
   webUi.begin();
   if (webUi.enabled()) {

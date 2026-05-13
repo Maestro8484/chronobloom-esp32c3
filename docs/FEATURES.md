@@ -272,4 +272,4 @@ full task descriptions, priorities, and sequencing.
 ### Planned
 - ✅ **Task 1** -- `/diag` endpoint: uptime, firmware version, boot reason, free heap, WiFi stats, NTP sync status, NTP last delta, button event count (2026-05-13)
 - ✅ **Task 6** -- Physical buttons re-added: GPIO9(UP)/GPIO5(DOWN), polled, 50ms debounce, `ButtonInput` class (2026-05-13)
-- 🔲 **Task 5** -- Button-hold factory reset on boot (UP+DOWN held 3s): clears EEPROM, enters provisioning portal
+- ✅ **Task 5** -- Button-hold factory reset on boot (2026-05-13): hold UP at power-on → red LEDs; add DOWN, hold both 3s → clears EEPROM, blue LEDs while portal broadcasts `esp32c3-clock-setup`
