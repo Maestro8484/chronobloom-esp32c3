@@ -83,7 +83,6 @@
 - [ ] **MQTT for Home Assistant** — Publish state, subscribe to commands
 - [ ] **Sunrise alarm** — 5-minute gradual brightness increase simulating dawn
 - [ ] **Pomodoro timer mode** — 25/5 work/break visual countdown on outer ring
-- [ ] **Diagnostic endpoint** — `/debug` with uptime, heap, NTP sync count, button press counters
 
 ### Low Priority
 - [ ] **Lux history graph** — 60-minute trend chart in web UI (canvas or SVG)
@@ -186,18 +185,18 @@ The clock's purpose is **elegant analog timekeeping through light and color**. T
 
 ---
 
-## Settings Structure (EEPROM v8)
+## Settings Structure (EEPROM v10)
 
 ### Stored Configuration
 **Total size**: 256 bytes  
 **Magic byte**: 0xC1  
-**Version**: 8
+**Version**: 10
 
 **Fields**:
 ```cpp
 struct ClockSettings {
   uint8_t magic;                    // 0xC1 (validation)
-  uint8_t version;                  // 8 (current)
+  uint8_t version;                  // 10 (current)
   
   // Brightness
   uint8_t dayBrightness;            // 0-255
@@ -231,14 +230,18 @@ struct ClockSettings {
   uint8_t hourAnimation;            // 0=off, 1=chime, 2=firework, 3=cascade, 4=spiral, 5=mandala
   uint8_t intervalAnimationsEnabled; // 0=off, 1=on
 
-  // Focus Reminders (added v8, 16 bytes: 13 used + 3 reserved)
-  uint8_t focusEnabled;             // 0=off, 1=on
-  uint8_t focusIntervalMinutes;     // 1-255 (minutes between nudges)
-  uint8_t focusStartHour;           // 0-23 (active window start)
-  uint8_t focusEndHour;             // 0-23 (active window end)
-  uint8_t focusDaysMask;            // bitmask Sun(bit0)…Sat(bit6)
-  uint8_t focusAnimationMode;       // reuses quarter/half/hour animation enum
-  uint8_t focusReserved[3];         // reserved for v2.1 multi-rule expansion
+  // Focus Reminders (added v8)
+  uint8_t focusReminder_enabled;             // 0=off, 1=on
+  uint8_t focusReminder_startHour;           // 0-23 (active window start)
+  uint8_t focusReminder_endHour;             // 0-23 (active window end)
+  uint16_t focusReminder_intervalMinutes;    // 1-1440 (minutes between nudges)
+  uint8_t focusReminder_daysMask;            // bitmask Sun(bit0)…Sat(bit6)
+  uint8_t focusReminder_animation;           // 0-5 (reuses animation enum)
+  uint8_t focusReminder_durationSeconds;     // 1-60 (animation duration, added v9)
+  uint32_t focusReminder_lastFireMs;         // millis() timestamp of last fire
+
+  // Ring rotation (added v10)
+  uint8_t outerRingOffset;          // 0-59: clockwise LED rotation applied to all rings at render time
 };
 ```
 
@@ -247,6 +250,8 @@ struct ClockSettings {
 - **v6**: Initial ESP32-C3 release (March 2026)
 - **v7**: Added VEML7700 auto-brightness + time-interval animations (May 2026)
 - **v8**: Added Focus Reminders scheduler (May 2026); v7 settings auto-reset to v8 defaults on first boot
+- **v9**: Added `focusReminder_durationSeconds` (animation duration 1-60s; repurposed from reserved block)
+- **v10**: Added `outerRingOffset` (software ring rotation 0-59 LEDs; web UI "Ring rotation offset" control)
 
 ### Bumping Settings Version
 When adding/removing/reordering fields:

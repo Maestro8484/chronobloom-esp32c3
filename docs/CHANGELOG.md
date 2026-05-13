@@ -40,7 +40,7 @@
 
 ### Changed
 - **`platformio.ini`**: both envs now use `upload_protocol = esptool` / `upload_port = COM6`; removed espota from 8inch env
-- **`platformio.ini`**: `RING_PIXEL_OFFSET` 8inch: 1 → 2 (corrects 1-LED CCW offset of outer 60-LED ring)
+- **`platformio.ini`**: `RING_PIXEL_OFFSET` remains 1 — confirmed correct; offset 0 is invalid when `SACRIFICIAL_PIXEL_ENABLED=1`
 
 ### Files changed
 - `src/main.cpp` — `SettingsStore::resetToDefaults()`, factory reset block in `setup()`, `setupWiFi()` portal logic + LED callback

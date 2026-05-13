@@ -77,11 +77,11 @@ After initial USB flash, all firmware updates are deployed over WiFi.
 2. Open `http://esp32c3-v3-8inch.local/update` in a browser
 3. Select `.pio/build/esp32c3_v3_8inch/firmware.bin` and click Upload
 
-**PlatformIO / VS Code upload button** (espota, default protocol):
+**PlatformIO / VS Code upload button** (esptool, COM6):
 ```powershell
 pio run -e esp32c3_v3_8inch -t upload
 ```
-Uses IP `192.168.1.110` (set in `platformio.ini`). Update if the device IP changes.
+Uses esptool via COM6 (set in `platformio.ini`).
 
 During OTA update:
 - Inner ring shows blue status animation
