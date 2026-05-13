@@ -2089,6 +2089,8 @@ class FocusReminderScheduler {
 
 class ButtonInput {
  public:
+  enum class HoldPhase : uint8_t { IDLE, REPEAT_MIN, REPEAT_HOUR };
+
   void begin() {
     pinMode(BUTTON_UP_PIN, INPUT_PULLUP);
     pinMode(BUTTON_DOWN_PIN, INPUT_PULLUP);
@@ -2097,23 +2099,99 @@ class ButtonInput {
   void poll(uint32_t now) {
     bool upNow   = (digitalRead(BUTTON_UP_PIN)   == LOW);
     bool downNow = (digitalRead(BUTTON_DOWN_PIN) == LOW);
-    if (upNow   && !lastUp_   && now - lastUpMs_   > kDebounceMs) { upPressed_   = true; lastUpMs_   = now; }
-    if (downNow && !lastDown_ && now - lastDownMs_ > kDebounceMs) { downPressed_ = true; lastDownMs_ = now; }
+
+    // --- UP button ---
+    if (upNow && !lastUp_ && now - lastUpMs_ > kDebounceMs) {
+      // Fresh press: debounce passed, leading edge
+      upPressed_     = true;
+      upPressedAt_   = now;
+      upLastRepeat_  = now;
+      upPhase_       = HoldPhase::IDLE;
+      lastUpMs_      = now;
+    } else if (upNow && lastUp_) {
+      // Held: advance hold phase and fire repeats
+      uint32_t held = now - upPressedAt_;
+      if (held >= kHoldHourMs) {
+        upPhase_ = HoldPhase::REPEAT_HOUR;
+      } else if (held >= kHoldRepeatMs) {
+        if (upPhase_ == HoldPhase::IDLE) upPhase_ = HoldPhase::REPEAT_MIN;
+      }
+      if (upPhase_ != HoldPhase::IDLE && now - upLastRepeat_ >= kRepeatIntervalMs) {
+        upRepeat_     = true;
+        upLastRepeat_ = now;
+      }
+    } else if (!upNow) {
+      // Released
+      upPhase_ = HoldPhase::IDLE;
+    }
+
+    // --- DOWN button ---
+    if (downNow && !lastDown_ && now - lastDownMs_ > kDebounceMs) {
+      downPressed_     = true;
+      downPressedAt_   = now;
+      downLastRepeat_  = now;
+      downPhase_       = HoldPhase::IDLE;
+      lastDownMs_      = now;
+    } else if (downNow && lastDown_) {
+      uint32_t held = now - downPressedAt_;
+      if (held >= kHoldHourMs) {
+        downPhase_ = HoldPhase::REPEAT_HOUR;
+      } else if (held >= kHoldRepeatMs) {
+        if (downPhase_ == HoldPhase::IDLE) downPhase_ = HoldPhase::REPEAT_MIN;
+      }
+      if (downPhase_ != HoldPhase::IDLE && now - downLastRepeat_ >= kRepeatIntervalMs) {
+        downRepeat_     = true;
+        downLastRepeat_ = now;
+      }
+    } else if (!downNow) {
+      downPhase_ = HoldPhase::IDLE;
+    }
+
     lastUp_   = upNow;
     lastDown_ = downNow;
   }
 
-  bool consumeUpPress()   { if (!upPressed_)   return false; upPressed_   = false; ++g_buttonEventCount; return true; }
-  bool consumeDownPress() { if (!downPressed_) return false; downPressed_ = false; ++g_buttonEventCount; return true; }
+  // Returns non-zero delta if a press or repeat fired, 0 otherwise.
+  // Positive = UP direction, negative = DOWN direction.
+  int consumeUp() {
+    if (upPressed_) { upPressed_ = false; ++g_buttonEventCount; return 1; }
+    if (upRepeat_)  { upRepeat_  = false; ++g_buttonEventCount;
+                      return (upPhase_ == HoldPhase::REPEAT_HOUR) ? 60 : 1; }
+    return 0;
+  }
+  int consumeDown() {
+    if (downPressed_) { downPressed_ = false; ++g_buttonEventCount; return -1; }
+    if (downRepeat_)  { downRepeat_  = false; ++g_buttonEventCount;
+                        return (downPhase_ == HoldPhase::REPEAT_HOUR) ? -60 : -1; }
+    return 0;
+  }
+
+  // Legacy single-press API kept for any callers that only care about edge.
+  bool consumeUpPress()   { return consumeUp()   != 0; }
+  bool consumeDownPress() { return consumeDown() != 0; }
 
  private:
-  static constexpr uint32_t kDebounceMs = 50;
+  static constexpr uint32_t kDebounceMs      =  50;
+  static constexpr uint32_t kHoldRepeatMs    = 500;
+  static constexpr uint32_t kRepeatIntervalMs= 150;
+  static constexpr uint32_t kHoldHourMs      = 2000;
+
   bool upPressed_   = false;
   bool downPressed_ = false;
+  bool upRepeat_    = false;
+  bool downRepeat_  = false;
   bool lastUp_      = false;
   bool lastDown_    = false;
-  uint32_t lastUpMs_   = 0;
-  uint32_t lastDownMs_ = 0;
+
+  uint32_t lastUpMs_      = 0;
+  uint32_t lastDownMs_    = 0;
+  uint32_t upPressedAt_   = 0;
+  uint32_t downPressedAt_ = 0;
+  uint32_t upLastRepeat_  = 0;
+  uint32_t downLastRepeat_= 0;
+
+  HoldPhase upPhase_   = HoldPhase::IDLE;
+  HoldPhase downPhase_ = HoldPhase::IDLE;
 };
 
 // ===================== Globals =====================
@@ -2301,13 +2379,13 @@ void loop() {
     }
   }
 
-  if (buttons.consumeUpPress()) {
-    timeModel.addMinutes(1);
-    renderer.setStatus(STATUS_BUTTON, 700);
+  {
+    int upDelta = buttons.consumeUp();
+    if (upDelta != 0) { timeModel.addMinutes(upDelta); renderer.setStatus(STATUS_BUTTON, 700); }
   }
-  if (buttons.consumeDownPress()) {
-    timeModel.addMinutes(-1);
-    renderer.setStatus(STATUS_BUTTON, 700);
+  {
+    int downDelta = buttons.consumeDown();
+    if (downDelta != 0) { timeModel.addMinutes(downDelta); renderer.setStatus(STATUS_BUTTON, 700); }
   }
 
   if (renderer.animating()) {
