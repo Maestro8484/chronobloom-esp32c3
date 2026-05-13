@@ -1342,9 +1342,36 @@ bool setupWiFi() {
     Serial.println("[WiFi] Factory-reset flag set — launching provisioning portal.");
     WiFi.disconnect(false, true);  // erase saved AP from NVS
     delay(200);
+    { Preferences wprefs; wprefs.begin("wifi", false); wprefs.clear(); wprefs.end(); }
     wm.resetSettings();
     wm.setConfigPortalTimeout(0);  // stay open until user configures
     return wm.startConfigPortal("esp32c3-clock-setup", "");
+  }
+
+  // Priority 1: credentials saved via /wifi web page
+  {
+    Preferences wprefs;
+    wprefs.begin("wifi", true);
+    String savedSsid = wprefs.getString("ssid", "");
+    String savedPass = wprefs.getString("pass", "");
+    wprefs.end();
+    if (savedSsid.length() > 0) {
+      Serial.printf("[WiFi] Trying saved SSID: %s\n", savedSsid.c_str());
+      WiFi.begin(savedSsid.c_str(), savedPass.c_str());
+      const uint32_t start = millis();
+      while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
+        Serial.print(".");
+        delay(500);
+      }
+      Serial.println();
+      if (WiFi.status() == WL_CONNECTED) {
+        Serial.println("[WiFi] Connected with saved credentials");
+        return true;
+      }
+      Serial.printf("[WiFi] Saved credentials failed, status=%d.\n", WiFi.status());
+      WiFi.disconnect(false);
+      delay(250);
+    }
   }
 
   wm.setConfigPortalTimeout(120);  // 2-minute portal window for normal fallback
@@ -1493,10 +1520,21 @@ class WebUi {
   void loop() {
     if (!enabled_) return;
     server_.handleClient();
-    ArduinoOTA.handle();  // Handle OTA updates
+    ArduinoOTA.handle();
+
+    if (!apMode_) {
+      static uint32_t lastReconnectMs = 0;
+      const uint32_t now = millis();
+      if (WiFi.status() != WL_CONNECTED && now - lastReconnectMs >= 30000) {
+        lastReconnectMs = now;
+        Serial.println("[WiFi] Not connected — attempting reconnect...");
+        WiFi.reconnect();
+      }
+    }
   }
 
   bool enabled() const { return enabled_; }
+  bool apMode() const { return apMode_; }
 
  private:
   void setupRoutes() {
@@ -1662,6 +1700,83 @@ class WebUi {
       model_.addMinutes(-1);
       renderer_.setStatus(STATUS_BUTTON, 700);
       server_.send(200, "text/plain", "ok");
+    });
+
+    // ===== WiFi Settings Page (GET /wifi) =====
+    server_.on("/wifi", HTTP_GET, [&]() {
+      Preferences wprefs;
+      wprefs.begin("wifi", true);
+      String savedSsid = wprefs.getString("ssid", "");
+      wprefs.end();
+      String dispSsid = savedSsid.length() > 0 ? savedSsid : String("(none saved)");
+      String wifiSt = String(wifiStatusText(WiFi.status()));
+      if (WiFi.status() == WL_CONNECTED) wifiSt += " (" + WiFi.SSID() + ")";
+      String html = R"HTML(<!doctype html><html><head>
+<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
+<title>WiFi Settings</title>
+<style>
+:root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}
+main{max-width:480px;margin:40px auto;padding:20px}
+.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;padding:24px;box-shadow:0 18px 45px #0008}
+h1{font-size:18px;margin:0 0 16px}
+.info{background:#0c1017;border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:20px;font-size:13px;color:var(--muted);line-height:1.8}
+label{display:block;color:var(--muted);font-size:12px;margin:12px 0 4px}
+input{width:100%;font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px 10px;min-height:38px}
+.row{display:flex;gap:10px;margin-top:20px}
+button{font:inherit;border-radius:6px;cursor:pointer;padding:10px 20px;min-height:40px;border:1px solid #42546d;background:#203146;color:var(--text)}
+button.primary{background:#145875;border-color:#2d9ccb;color:white}
+#status{margin-top:14px;min-height:18px;font-size:13px;color:var(--accent)}
+a{color:var(--accent);text-decoration:none;font-size:13px}a:hover{text-decoration:underline}
+</style></head><body><main>
+<div class='panel'>
+<h1>&#128246; WiFi Settings</h1>
+<div class='info'><strong>Saved SSID:</strong> PLACEHOLDER_SSID<br><strong>Status:</strong> PLACEHOLDER_STATUS</div>
+<form onsubmit='save();return false;'>
+<label>SSID</label><input id='ssid' type='text' maxlength='32' placeholder='Network name' required>
+<label>Password</label><input id='pass' type='password' maxlength='64' placeholder='Leave blank for open network'>
+<div class='row'><button type='submit' class='primary'>Save &amp; Connect</button><button type='button' onclick='history.back()'>Cancel</button></div>
+</form>
+<div id='status'></div>
+<p style='margin-top:20px'><a href='/'>&#8592; Back to clock</a></p>
+</div></main>
+<script>
+async function save(){
+  const ssid=document.getElementById('ssid').value.trim();
+  const pass=document.getElementById('pass').value;
+  if(!ssid){alert('SSID required');return}
+  document.getElementById('status').textContent='Saving...';
+  try{
+    const r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass)});
+    document.getElementById('status').textContent=await r.text();
+  }catch(e){document.getElementById('status').textContent='Saved. Device reconnecting — you may need to rejoin the network.';}
+}
+</script></body></html>)HTML";
+      html.replace("PLACEHOLDER_SSID", dispSsid);
+      html.replace("PLACEHOLDER_STATUS", wifiSt);
+      server_.send(200, "text/html", html);
+    });
+
+    // ===== WiFi Save Handler (POST /wifi) =====
+    server_.on("/wifi", HTTP_POST, [&]() {
+      String ssid = server_.arg("ssid");
+      String pass = server_.arg("pass");
+      ssid.trim();
+      if (ssid.length() < 1 || ssid.length() > 32) {
+        server_.send(400, "text/plain", "SSID must be 1-32 characters");
+        return;
+      }
+      Preferences wprefs;
+      wprefs.begin("wifi", false);
+      wprefs.putString("ssid", ssid);
+      wprefs.putString("pass", pass);
+      wprefs.end();
+      Serial.printf("[WiFi] Credentials saved via web UI: SSID=%s\n", ssid.c_str());
+      server_.send(200, "text/plain", "Saved. Reconnecting to " + ssid + "...");
+      delay(300);
+      WiFi.disconnect(false);
+      delay(100);
+      WiFi.begin(ssid.c_str(), pass.c_str());
     });
 
     // ===== Firmware Update Web Page (GET /update) =====
@@ -2016,7 +2131,7 @@ svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:
 <div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>
 </div>
 <div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>
-<div class='panel'><h2>&#9881; Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a></div></div>
+<div class='panel'><h2>&#9881; Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a><a href='/wifi' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>WiFi Settings</a></div></div>
 </section></main>
 <script>
 const counts={outer:60,middle:24,inner:12}, radii={outer:182,middle:134,inner:88};

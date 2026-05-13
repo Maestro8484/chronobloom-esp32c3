@@ -18,6 +18,7 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 6 | Task 5 | Button-hold factory reset on boot | Done (2026-05-13, v2.0.8) |
 | 7 | Task 7 | Button hold-to-repeat + GPIO swap (UP=5, DOWN=9) | Done (2026-05-13, v2.0.7) |
 | 8 | Docs close | Update maturation checklist to completed | Done (2026-05-13) |
+| 9 | WiFi web UI | /wifi page, Preferences creds tier, reconnect poll | Done (2026-05-13, v2.0.9) |
 
 ---
 

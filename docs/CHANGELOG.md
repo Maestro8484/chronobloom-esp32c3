@@ -2,6 +2,28 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.0.9] - 2026-05-13
+
+### Added
+- **`GET /wifi` — WiFi settings page** (`WebUi::setupRoutes`)
+  - Dark-themed standalone page matching `/update` visual style
+  - Shows current saved SSID and live WiFi status; password never echoed
+  - SSID/password form POSTs to `/wifi`; JS handles response and reconnect feedback
+- **`POST /wifi` — credential save + reconnect** (`WebUi::setupRoutes`)
+  - Validates SSID length (1–32 chars); saves `ssid`/`pass` to Preferences `"wifi"` namespace
+  - Responds 200, then `WiFi.disconnect()` + `WiFi.begin()` with new credentials
+- **Preferences `"wifi"` tier in `setupWiFi()`** — priority 1 before build-time SSID
+  - On forcePortal (factory reset): `"wifi"` namespace cleared before launching portal
+- **30s non-blocking STA reconnect poll** in `WebUi::loop()` — skipped if `apMode_` is true
+- **`WebUi::apMode() const`** accessor
+- **WiFi Settings link** added to Admin panel in `htmlPage()`
+
+### Files changed
+- `src/main.cpp` — `setupWiFi()`, `WebUi::loop()`, `WebUi::apMode()`, `WebUi::setupRoutes()`, `WebUi::htmlPage()`
+- `docs/symmap.json`, `docs/FUNCTION_INVENTORY.md` — regenerated (98 functions)
+
+---
+
 ## [2.0.8] - 2026-05-13
 
 ### Added

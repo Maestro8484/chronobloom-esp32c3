@@ -1,487 +1,497 @@
 {
   "generated_by": "tools/gen_symmap.py",
   "source_file": "src/main.cpp",
-  "source_sha256": "ea29b74f1abf6aae06b1b545f0f6c995bb1111377184e012e1c492d70d318260",
+  "source_sha256": "69f8f905cd52134534fd4856533f6ab0df04262d97db30b396dbae25a2133575",
   "functions": [
     {
       "name": "configureWiFiHostname",
-      "start_line": 156,
-      "end_line": 161
+      "start_line": 157,
+      "end_line": 162
     },
     {
       "name": "writeStatusLed",
-      "start_line": 163,
-      "end_line": 169
+      "start_line": 164,
+      "end_line": 170
     },
     {
       "name": "LuxSensor::begin",
-      "start_line": 178,
-      "end_line": 191
+      "start_line": 179,
+      "end_line": 192
     },
     {
       "name": "LuxSensor::available",
-      "start_line": 193,
-      "end_line": 193
+      "start_line": 194,
+      "end_line": 194
     },
     {
       "name": "LuxSensor::lux",
-      "start_line": 195,
-      "end_line": 245
+      "start_line": 196,
+      "end_line": 246
     },
     {
       "name": "LuxSensor::autoBrightness",
-      "start_line": 249,
-      "end_line": 251
+      "start_line": 250,
+      "end_line": 252
     },
     {
       "name": "LuxSensor::autoBrightnessTarget",
-      "start_line": 254,
-      "end_line": 256
+      "start_line": 255,
+      "end_line": 257
     },
     {
       "name": "LuxSensor::autoBrightnessCached",
-      "start_line": 258,
-      "end_line": 295
+      "start_line": 259,
+      "end_line": 296
     },
     {
       "name": "SettingsStore::begin",
-      "start_line": 375,
-      "end_line": 382
+      "start_line": 376,
+      "end_line": 383
     },
     {
       "name": "SettingsStore::get",
-      "start_line": 384,
-      "end_line": 384
+      "start_line": 385,
+      "end_line": 385
     },
     {
       "name": "SettingsStore::update",
-      "start_line": 386,
-      "end_line": 389
+      "start_line": 387,
+      "end_line": 390
+    },
+    {
+      "name": "SettingsStore::resetToDefaults",
+      "start_line": 392,
+      "end_line": 397
     },
     {
       "name": "SettingsStore::defaults",
-      "start_line": 392,
-      "end_line": 404
+      "start_line": 400,
+      "end_line": 412
     },
     {
       "name": "SettingsStore::valid",
-      "start_line": 406,
-      "end_line": 424
+      "start_line": 414,
+      "end_line": 432
     },
     {
       "name": "SettingsStore::sanitize",
-      "start_line": 426,
-      "end_line": 456
+      "start_line": 434,
+      "end_line": 464
     },
     {
       "name": "SettingsStore::save",
-      "start_line": 458,
-      "end_line": 461
+      "start_line": 466,
+      "end_line": 469
     },
     {
       "name": "TimeModel::get",
-      "start_line": 475,
-      "end_line": 480
+      "start_line": 483,
+      "end_line": 488
     },
     {
       "name": "TimeModel::set",
-      "start_line": 482,
-      "end_line": 490
+      "start_line": 490,
+      "end_line": 498
     },
     {
       "name": "TimeModel::tickOneSecond",
-      "start_line": 492,
-      "end_line": 497
+      "start_line": 500,
+      "end_line": 505
     },
     {
       "name": "TimeModel::addMinutes",
-      "start_line": 499,
-      "end_line": 509
+      "start_line": 507,
+      "end_line": 517
     },
     {
       "name": "TimeModel::addHours",
-      "start_line": 511,
-      "end_line": 518
+      "start_line": 519,
+      "end_line": 526
     },
     {
       "name": "TimeModel::markDirty",
-      "start_line": 520,
-      "end_line": 524
-    },
-    {
-      "name": "TimeModel::consumeDirty",
-      "start_line": 526,
+      "start_line": 528,
       "end_line": 532
     },
     {
+      "name": "TimeModel::consumeDirty",
+      "start_line": 534,
+      "end_line": 540
+    },
+    {
       "name": "TimeModel::incrementSecondNoLock",
-      "start_line": 535,
-      "end_line": 545
+      "start_line": 543,
+      "end_line": 553
     },
     {
       "name": "ClockRenderer::ClockRenderer",
-      "start_line": 582,
-      "end_line": 585
+      "start_line": 590,
+      "end_line": 593
     },
     {
       "name": "ClockRenderer::begin",
-      "start_line": 587,
-      "end_line": 600
+      "start_line": 595,
+      "end_line": 608
     },
     {
       "name": "ClockRenderer::setLuxSensor",
-      "start_line": 602,
-      "end_line": 602
+      "start_line": 610,
+      "end_line": 610
     },
     {
       "name": "ClockRenderer::setStatus",
-      "start_line": 604,
-      "end_line": 609
+      "start_line": 612,
+      "end_line": 617
     },
     {
       "name": "ClockRenderer::triggerQuarterAnimation",
-      "start_line": 611,
-      "end_line": 618
+      "start_line": 619,
+      "end_line": 626
     },
     {
       "name": "ClockRenderer::triggerHalfHourAnimation",
-      "start_line": 620,
-      "end_line": 627
+      "start_line": 628,
+      "end_line": 635
     },
     {
       "name": "ClockRenderer::triggerHourAnimation",
-      "start_line": 629,
-      "end_line": 636
+      "start_line": 637,
+      "end_line": 644
     },
     {
       "name": "ClockRenderer::animating",
-      "start_line": 638,
-      "end_line": 638
+      "start_line": 646,
+      "end_line": 646
     },
     {
       "name": "ClockRenderer::renderAnimFrame",
-      "start_line": 640,
-      "end_line": 658
-    },
-    {
-      "name": "ClockRenderer::needsFullAnimationFrame",
-      "start_line": 660,
-      "end_line": 662
-    },
-    {
-      "name": "ClockRenderer::needsCenterAnimationFrame",
-      "start_line": 664,
+      "start_line": 648,
       "end_line": 666
     },
     {
-      "name": "ClockRenderer::renderCenterAnimationFrame",
+      "name": "ClockRenderer::needsFullAnimationFrame",
       "start_line": 668,
-      "end_line": 688
+      "end_line": 670
+    },
+    {
+      "name": "ClockRenderer::needsCenterAnimationFrame",
+      "start_line": 672,
+      "end_line": 674
+    },
+    {
+      "name": "ClockRenderer::renderCenterAnimationFrame",
+      "start_line": 676,
+      "end_line": 696
     },
     {
       "name": "ClockRenderer::render",
-      "start_line": 690,
-      "end_line": 727
+      "start_line": 698,
+      "end_line": 735
     },
     {
       "name": "ClockRenderer::nightActive",
-      "start_line": 730,
-      "end_line": 736
+      "start_line": 738,
+      "end_line": 744
     },
     {
       "name": "ClockRenderer::effectiveBrightness",
-      "start_line": 738,
-      "end_line": 753
+      "start_line": 746,
+      "end_line": 761
     },
     {
       "name": "ClockRenderer::renderFace",
-      "start_line": 755,
-      "end_line": 774
+      "start_line": 763,
+      "end_line": 782
     },
     {
       "name": "ClockRenderer::renderSeconds",
-      "start_line": 776,
-      "end_line": 794
+      "start_line": 784,
+      "end_line": 802
     },
     {
       "name": "ClockRenderer::renderMinutes",
-      "start_line": 796,
-      "end_line": 800
+      "start_line": 804,
+      "end_line": 808
     },
     {
       "name": "ClockRenderer::renderHours",
-      "start_line": 802,
-      "end_line": 821
+      "start_line": 810,
+      "end_line": 829
     },
     {
       "name": "ClockRenderer::secondColor",
-      "start_line": 823,
-      "end_line": 832
+      "start_line": 831,
+      "end_line": 840
     },
     {
       "name": "ClockRenderer::ringColor",
-      "start_line": 834,
-      "end_line": 838
+      "start_line": 842,
+      "end_line": 846
     },
     {
       "name": "ClockRenderer::renderStatus",
-      "start_line": 840,
-      "end_line": 877
+      "start_line": 848,
+      "end_line": 885
     },
     {
       "name": "ClockRenderer::renderHourlyChime",
-      "start_line": 879,
-      "end_line": 884
+      "start_line": 887,
+      "end_line": 892
     },
     {
       "name": "ClockRenderer::tickAnimation",
-      "start_line": 886,
-      "end_line": 1105
-    },
-    {
-      "name": "ClockRenderer::chimeActive",
-      "start_line": 1107,
-      "end_line": 1109
-    },
-    {
-      "name": "ClockRenderer::statusActive",
-      "start_line": 1111,
+      "start_line": 894,
       "end_line": 1113
     },
     {
-      "name": "ClockRenderer::logShow",
+      "name": "ClockRenderer::chimeActive",
       "start_line": 1115,
-      "end_line": 1139
+      "end_line": 1117
+    },
+    {
+      "name": "ClockRenderer::statusActive",
+      "start_line": 1119,
+      "end_line": 1121
+    },
+    {
+      "name": "ClockRenderer::logShow",
+      "start_line": 1123,
+      "end_line": 1147
     },
     {
       "name": "ClockRenderer::dim",
-      "start_line": 1141,
-      "end_line": 1146
+      "start_line": 1149,
+      "end_line": 1154
     },
     {
       "name": "ClockRenderer::scale",
-      "start_line": 1148,
-      "end_line": 1155
+      "start_line": 1156,
+      "end_line": 1163
     },
     {
       "name": "ClockRenderer::pulse",
-      "start_line": 1157,
-      "end_line": 1164
+      "start_line": 1165,
+      "end_line": 1172
     },
     {
       "name": "ClockRenderer::centerIdleActive",
-      "start_line": 1166,
-      "end_line": 1168
-    },
-    {
-      "name": "ClockRenderer::renderCenterIdle",
-      "start_line": 1170,
+      "start_line": 1174,
       "end_line": 1176
     },
     {
-      "name": "ClockRenderer::setCenterPixel",
+      "name": "ClockRenderer::renderCenterIdle",
       "start_line": 1178,
-      "end_line": 1192
+      "end_line": 1184
     },
     {
-      "name": "ClockRenderer::setSacrificialPixelDark",
-      "start_line": 1194,
+      "name": "ClockRenderer::setCenterPixel",
+      "start_line": 1186,
       "end_line": 1200
     },
     {
-      "name": "ClockRenderer::setRingPixel",
+      "name": "ClockRenderer::setSacrificialPixelDark",
       "start_line": 1202,
-      "end_line": 1210
+      "end_line": 1208
+    },
+    {
+      "name": "ClockRenderer::setRingPixel",
+      "start_line": 1210,
+      "end_line": 1218
     },
     {
       "name": "TemperatureInput::begin",
-      "start_line": 1234,
-      "end_line": 1234
-    },
-    {
-      "name": "TemperatureInput::available",
-      "start_line": 1235,
-      "end_line": 1235
-    },
-    {
-      "name": "TemperatureInput::celsius",
-      "start_line": 1236,
-      "end_line": 1236
-    },
-    {
-      "name": "TimeSync::TimeSync",
       "start_line": 1242,
       "end_line": 1242
     },
     {
-      "name": "TimeSync::begin",
+      "name": "TemperatureInput::available",
+      "start_line": 1243,
+      "end_line": 1243
+    },
+    {
+      "name": "TemperatureInput::celsius",
       "start_line": 1244,
-      "end_line": 1254
+      "end_line": 1244
+    },
+    {
+      "name": "TimeSync::TimeSync",
+      "start_line": 1250,
+      "end_line": 1250
+    },
+    {
+      "name": "TimeSync::begin",
+      "start_line": 1252,
+      "end_line": 1262
     },
     {
       "name": "TimeSync::syncNow",
-      "start_line": 1256,
-      "end_line": 1280
+      "start_line": 1264,
+      "end_line": 1288
     },
     {
       "name": "TimeSync::loop",
-      "start_line": 1282,
-      "end_line": 1292
+      "start_line": 1290,
+      "end_line": 1300
     },
     {
       "name": "TimeSync::synced",
-      "start_line": 1294,
-      "end_line": 1294
+      "start_line": 1302,
+      "end_line": 1302
     },
     {
       "name": "TimeSync::lastDeltaSec",
-      "start_line": 1296,
-      "end_line": 1296
+      "start_line": 1304,
+      "end_line": 1304
     },
     {
       "name": "setupWiFi",
-      "start_line": 1311,
-      "end_line": 1340
+      "start_line": 1322,
+      "end_line": 1402
     },
     {
       "name": "setupOTA",
-      "start_line": 1343,
-      "end_line": 1378
+      "start_line": 1405,
+      "end_line": 1440
     },
     {
       "name": "WebUi::setLuxSensor",
-      "start_line": 1396,
-      "end_line": 1396
+      "start_line": 1458,
+      "end_line": 1458
     },
     {
       "name": "WebUi::begin",
-      "start_line": 1398,
-      "end_line": 1456
+      "start_line": 1460,
+      "end_line": 1518
     },
     {
       "name": "WebUi::loop",
-      "start_line": 1458,
-      "end_line": 1462
+      "start_line": 1520,
+      "end_line": 1534
     },
     {
       "name": "WebUi::enabled",
-      "start_line": 1464,
-      "end_line": 1464
+      "start_line": 1536,
+      "end_line": 1536
+    },
+    {
+      "name": "WebUi::apMode",
+      "start_line": 1537,
+      "end_line": 1537
     },
     {
       "name": "WebUi::setupRoutes",
-      "start_line": 1467,
-      "end_line": 1767
+      "start_line": 1540,
+      "end_line": 1917
     },
     {
       "name": "WebUi::settingsJson",
-      "start_line": 1769,
-      "end_line": 1807
+      "start_line": 1919,
+      "end_line": 1957
     },
     {
       "name": "WebUi::boolJson",
-      "start_line": 1809,
-      "end_line": 1811
+      "start_line": 1959,
+      "end_line": 1961
     },
     {
       "name": "WebUi::clampByte",
-      "start_line": 1813,
-      "end_line": 1817
+      "start_line": 1963,
+      "end_line": 1967
     },
     {
       "name": "WebUi::clampWord",
-      "start_line": 1819,
-      "end_line": 1823
+      "start_line": 1969,
+      "end_line": 1973
     },
     {
       "name": "WebUi::colorHex",
-      "start_line": 1825,
-      "end_line": 1829
+      "start_line": 1975,
+      "end_line": 1979
     },
     {
       "name": "WebUi::hexNibble",
-      "start_line": 1831,
-      "end_line": 1836
+      "start_line": 1981,
+      "end_line": 1986
     },
     {
       "name": "WebUi::parseColor",
-      "start_line": 1838,
-      "end_line": 1849
+      "start_line": 1988,
+      "end_line": 1999
     },
     {
       "name": "WebUi::wifiStatusText",
-      "start_line": 1851,
-      "end_line": 1870
+      "start_line": 2001,
+      "end_line": 2020
     },
     {
       "name": "WebUi::htmlPage",
-      "start_line": 1872,
-      "end_line": 2007
+      "start_line": 2022,
+      "end_line": 2157
     },
     {
       "name": "FocusReminderScheduler::FocusReminderScheduler",
-      "start_line": 2024,
-      "end_line": 2025
+      "start_line": 2174,
+      "end_line": 2175
     },
     {
       "name": "FocusReminderScheduler::checkAndFire",
-      "start_line": 2027,
-      "end_line": 2062
+      "start_line": 2177,
+      "end_line": 2212
     },
     {
       "name": "FocusReminderScheduler::getDayOfWeek",
-      "start_line": 2065,
-      "end_line": 2070
+      "start_line": 2215,
+      "end_line": 2220
     },
     {
       "name": "FocusReminderScheduler::triggerReminderAnimation",
-      "start_line": 2072,
-      "end_line": 2083
+      "start_line": 2222,
+      "end_line": 2233
     },
     {
       "name": "ButtonInput::begin",
-      "start_line": 2094,
-      "end_line": 2097
+      "start_line": 2244,
+      "end_line": 2247
     },
     {
       "name": "ButtonInput::poll",
-      "start_line": 2099,
-      "end_line": 2152
+      "start_line": 2249,
+      "end_line": 2302
     },
     {
       "name": "ButtonInput::consumeUp",
-      "start_line": 2156,
-      "end_line": 2161
+      "start_line": 2306,
+      "end_line": 2311
     },
     {
       "name": "ButtonInput::consumeDown",
-      "start_line": 2162,
-      "end_line": 2167
+      "start_line": 2312,
+      "end_line": 2317
     },
     {
       "name": "ButtonInput::consumeUpPress",
-      "start_line": 2170,
-      "end_line": 2170
+      "start_line": 2320,
+      "end_line": 2320
     },
     {
       "name": "ButtonInput::consumeDownPress",
-      "start_line": 2171,
-      "end_line": 2171
+      "start_line": 2321,
+      "end_line": 2321
     },
     {
       "name": "logRuntimeStatus",
-      "start_line": 2221,
-      "end_line": 2261
+      "start_line": 2371,
+      "end_line": 2411
     },
     {
       "name": "setup",
-      "start_line": 2263,
-      "end_line": 2346
+      "start_line": 2413,
+      "end_line": 2551
     },
     {
       "name": "loop",
-      "start_line": 2348,
-      "end_line": 2414
+      "start_line": 2553,
+      "end_line": 2619
     }
   ]
 }
