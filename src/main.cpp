@@ -1259,6 +1259,14 @@ class TimeSync {
     if (rawUtc < 1700000000) return false;
     struct tm localTime;
     if (!localtime_r(&rawUtc, &localTime)) return false;
+    {
+      ClockTime old = model_.get();
+      int32_t oldSec = old.hour * 3600 + old.minute * 60 + old.second;
+      int32_t newSec = localTime.tm_hour * 3600 + localTime.tm_min * 60 + localTime.tm_sec;
+      lastDeltaSec_ = newSec - oldSec;
+      if (lastDeltaSec_ > 43200)  lastDeltaSec_ -= 86400;
+      if (lastDeltaSec_ < -43200) lastDeltaSec_ += 86400;
+    }
     model_.set(localTime.tm_hour, localTime.tm_min, localTime.tm_sec);
     lastSyncMs_ = millis();
     synced_ = true;
@@ -1285,12 +1293,15 @@ class TimeSync {
 
   bool synced() const { return synced_; }
 
+  int32_t lastDeltaSec() const { return lastDeltaSec_; }
+
   static volatile bool s_sntpPending_;
 
  private:
   TimeModel &model_;
   bool synced_ = false;
   uint32_t lastSyncMs_ = 0;
+  int32_t lastDeltaSec_ = 0;
   static constexpr uint32_t syncIntervalMs_ = 6UL * 60UL * 60UL * 1000UL;
 };
 
@@ -1365,6 +1376,9 @@ void setupOTA() {
   ArduinoOTA.begin();
   Serial.printf("[OTA] Ready. Upload: pio run -e esp32c3_v3_8inch -t upload --upload-port %s.local:3232\n", DEVICE_HOSTNAME);
 }
+
+// Incremented by ButtonInput on each consume. Readable from WebUi /diag handler.
+static uint32_t g_buttonEventCount = 0;
 
 // ===================== Web UI =====================
 class WebUi {
@@ -1496,6 +1510,36 @@ class WebUi {
                        "\",\"dns\":\"" + WiFi.dnsIP().toString() +
                        "\",\"rssi\":" + WiFi.RSSI() +
                        ",\"status\":" + WiFi.status() + "}";
+      server_.send(200, "application/json", payload);
+    });
+
+    server_.on("/diag", HTTP_GET, [&]() {
+      uint32_t uptimeSec = millis() / 1000;
+      esp_reset_reason_t rr = esp_reset_reason();
+      const char *bootReason = "unknown";
+      switch (rr) {
+        case ESP_RST_POWERON:  bootReason = "power-on";  break;
+        case ESP_RST_SW:       bootReason = "software";  break;
+        case ESP_RST_PANIC:    bootReason = "panic";     break;
+        case ESP_RST_INT_WDT:  bootReason = "int-wdt";  break;
+        case ESP_RST_TASK_WDT: bootReason = "task-wdt"; break;
+        case ESP_RST_WDT:      bootReason = "watchdog";  break;
+        case ESP_RST_BROWNOUT: bootReason = "brownout";  break;
+        case ESP_RST_DEEPSLEEP:bootReason = "deepsleep"; break;
+        default: break;
+      }
+      String payload = String("{")
+        + "\"uptime\":"          + uptimeSec
+        + ",\"firmware_version\":" + SETTINGS_VERSION
+        + ",\"boot_reason\":\""  + bootReason + "\""
+        + ",\"free_heap\":"      + ESP.getFreeHeap()
+        + ",\"wifi_ssid\":\""    + WiFi.SSID() + "\""
+        + ",\"wifi_rssi\":"      + WiFi.RSSI()
+        + ",\"wifi_ip\":\""      + WiFi.localIP().toString() + "\""
+        + ",\"ntp_synced\":"     + boolJson(timeSync_.synced())
+        + ",\"ntp_last_delta\":" + timeSync_.lastDeltaSec()
+        + ",\"button_events\":"  + g_buttonEventCount
+        + "}";
       server_.send(200, "application/json", payload);
     });
 
@@ -2059,8 +2103,8 @@ class ButtonInput {
     lastDown_ = downNow;
   }
 
-  bool consumeUpPress()   { if (!upPressed_)   return false; upPressed_   = false; return true; }
-  bool consumeDownPress() { if (!downPressed_) return false; downPressed_ = false; return true; }
+  bool consumeUpPress()   { if (!upPressed_)   return false; upPressed_   = false; ++g_buttonEventCount; return true; }
+  bool consumeDownPress() { if (!downPressed_) return false; downPressed_ = false; ++g_buttonEventCount; return true; }
 
  private:
   static constexpr uint32_t kDebounceMs = 50;
