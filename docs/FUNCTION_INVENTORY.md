@@ -1,700 +1,104 @@
-# Function Inventory — src/main.cpp
+# ChronoBloom Function Inventory
+
+Auto-generated from `src/main.cpp`. Do not edit manually — run `tools/gen_symmap.py` to regenerate.
+
+Total functions: 93
+
+| # | Function | Lines | Span |
+|---|----------|-------|------|
+| 1 | `configureWiFiHostname` | 156–161 | 6 |
+| 2 | `writeStatusLed` | 163–169 | 7 |
+| 3 | `LuxSensor::begin` | 178–191 | 14 |
+| 4 | `LuxSensor::available` | 193–193 | 1 |
+| 5 | `LuxSensor::lux` | 195–245 | 51 |
+| 6 | `LuxSensor::autoBrightness` | 249–251 | 3 |
+| 7 | `LuxSensor::autoBrightnessTarget` | 254–256 | 3 |
+| 8 | `LuxSensor::autoBrightnessCached` | 258–295 | 38 |
+| 9 | `SettingsStore::begin` | 375–382 | 8 |
+| 10 | `SettingsStore::get` | 384–384 | 1 |
+| 11 | `SettingsStore::update` | 386–389 | 4 |
+| 12 | `SettingsStore::defaults` | 392–404 | 13 |
+| 13 | `SettingsStore::valid` | 406–424 | 19 |
+| 14 | `SettingsStore::sanitize` | 426–456 | 31 |
+| 15 | `SettingsStore::save` | 458–461 | 4 |
+| 16 | `TimeModel::get` | 475–480 | 6 |
+| 17 | `TimeModel::set` | 482–490 | 9 |
+| 18 | `TimeModel::tickOneSecond` | 492–497 | 6 |
+| 19 | `TimeModel::addMinutes` | 499–509 | 11 |
+| 20 | `TimeModel::addHours` | 511–518 | 8 |
+| 21 | `TimeModel::markDirty` | 520–524 | 5 |
+| 22 | `TimeModel::consumeDirty` | 526–532 | 7 |
+| 23 | `TimeModel::incrementSecondNoLock` | 535–545 | 11 |
+| 24 | `ClockRenderer::ClockRenderer` | 582–585 | 4 |
+| 25 | `ClockRenderer::begin` | 587–600 | 14 |
+| 26 | `ClockRenderer::setLuxSensor` | 602–602 | 1 |
+| 27 | `ClockRenderer::setStatus` | 604–609 | 6 |
+| 28 | `ClockRenderer::triggerQuarterAnimation` | 611–618 | 8 |
+| 29 | `ClockRenderer::triggerHalfHourAnimation` | 620–627 | 8 |
+| 30 | `ClockRenderer::triggerHourAnimation` | 629–636 | 8 |
+| 31 | `ClockRenderer::animating` | 638–638 | 1 |
+| 32 | `ClockRenderer::renderAnimFrame` | 640–658 | 19 |
+| 33 | `ClockRenderer::needsFullAnimationFrame` | 660–662 | 3 |
+| 34 | `ClockRenderer::needsCenterAnimationFrame` | 664–666 | 3 |
+| 35 | `ClockRenderer::renderCenterAnimationFrame` | 668–688 | 21 |
+| 36 | `ClockRenderer::render` | 690–727 | 38 |
+| 37 | `ClockRenderer::nightActive` | 730–736 | 7 |
+| 38 | `ClockRenderer::effectiveBrightness` | 738–753 | 16 |
+| 39 | `ClockRenderer::renderFace` | 755–774 | 20 |
+| 40 | `ClockRenderer::renderSeconds` | 776–794 | 19 |
+| 41 | `ClockRenderer::renderMinutes` | 796–800 | 5 |
+| 42 | `ClockRenderer::renderHours` | 802–821 | 20 |
+| 43 | `ClockRenderer::secondColor` | 823–832 | 10 |
+| 44 | `ClockRenderer::ringColor` | 834–838 | 5 |
+| 45 | `ClockRenderer::renderStatus` | 840–877 | 38 |
+| 46 | `ClockRenderer::renderHourlyChime` | 879–884 | 6 |
+| 47 | `ClockRenderer::tickAnimation` | 886–1105 | 220 |
+| 48 | `ClockRenderer::chimeActive` | 1107–1109 | 3 |
+| 49 | `ClockRenderer::statusActive` | 1111–1113 | 3 |
+| 50 | `ClockRenderer::logShow` | 1115–1139 | 25 |
+| 51 | `ClockRenderer::dim` | 1141–1146 | 6 |
+| 52 | `ClockRenderer::scale` | 1148–1155 | 8 |
+| 53 | `ClockRenderer::pulse` | 1157–1164 | 8 |
+| 54 | `ClockRenderer::centerIdleActive` | 1166–1168 | 3 |
+| 55 | `ClockRenderer::renderCenterIdle` | 1170–1176 | 7 |
+| 56 | `ClockRenderer::setCenterPixel` | 1178–1192 | 15 |
+| 57 | `ClockRenderer::setSacrificialPixelDark` | 1194–1200 | 7 |
+| 58 | `ClockRenderer::setRingPixel` | 1202–1210 | 9 |
+| 59 | `TemperatureInput::begin` | 1234–1234 | 1 |
+| 60 | `TemperatureInput::available` | 1235–1235 | 1 |
+| 61 | `TemperatureInput::celsius` | 1236–1236 | 1 |
+| 62 | `TimeSync::TimeSync` | 1242–1242 | 1 |
+| 63 | `TimeSync::begin` | 1244–1254 | 11 |
+| 64 | `TimeSync::syncNow` | 1256–1272 | 17 |
+| 65 | `TimeSync::loop` | 1274–1284 | 11 |
+| 66 | `TimeSync::synced` | 1286–1286 | 1 |
+| 67 | `setupWiFi` | 1300–1329 | 30 |
+| 68 | `setupOTA` | 1332–1367 | 36 |
+| 69 | `WebUi::setLuxSensor` | 1382–1382 | 1 |
+| 70 | `WebUi::begin` | 1384–1442 | 59 |
+| 71 | `WebUi::loop` | 1444–1448 | 5 |
+| 72 | `WebUi::enabled` | 1450–1450 | 1 |
+| 73 | `WebUi::setupRoutes` | 1453–1723 | 271 |
+| 74 | `WebUi::settingsJson` | 1725–1763 | 39 |
+| 75 | `WebUi::boolJson` | 1765–1767 | 3 |
+| 76 | `WebUi::clampByte` | 1769–1773 | 5 |
+| 77 | `WebUi::clampWord` | 1775–1779 | 5 |
+| 78 | `WebUi::colorHex` | 1781–1785 | 5 |
+| 79 | `WebUi::hexNibble` | 1787–1792 | 6 |
+| 80 | `WebUi::parseColor` | 1794–1805 | 12 |
+| 81 | `WebUi::wifiStatusText` | 1807–1826 | 20 |
+| 82 | `WebUi::htmlPage` | 1828–1963 | 136 |
+| 83 | `FocusReminderScheduler::FocusReminderScheduler` | 1980–1981 | 2 |
+| 84 | `FocusReminderScheduler::checkAndFire` | 1983–2018 | 36 |
+| 85 | `FocusReminderScheduler::getDayOfWeek` | 2021–2026 | 6 |
+| 86 | `FocusReminderScheduler::triggerReminderAnimation` | 2028–2039 | 12 |
+| 87 | `ButtonInput::begin` | 2048–2051 | 4 |
+| 88 | `ButtonInput::poll` | 2053–2060 | 8 |
+| 89 | `ButtonInput::consumeUpPress` | 2062–2062 | 1 |
+| 90 | `ButtonInput::consumeDownPress` | 2063–2063 | 1 |
+| 91 | `logRuntimeStatus` | 2099–2139 | 41 |
+| 92 | `setup` | 2141–2224 | 84 |
+| 93 | `loop` | 2226–2292 | 67 |
 
-**Source SHA256:** `bb7d8a1c18153a9d5d079cc07cb3c7b97bf73178fec5135755d46bfeea209b40`  
-**Status:** Current as of 2026-05-11 (v2.0.4). Regenerated from live source.
-
----
-
-## Free Functions
-
----
-
-### `configureWiFiHostname`
-**Lines:** 147–152
-
-Sets `INADDR_NONE` for all address fields then calls `WiFi.setHostname()` with `DEVICE_HOSTNAME`.  
-Called once during WiFi bringup; hostname must be applied before the stack negotiates DHCP.
-
-- **Reads:** `DEVICE_HOSTNAME` (build-time define)
-- **Writes:** WiFi driver hostname slot
-- **Build-env effect:** `DEVICE_HOSTNAME` is `esp32c3-v3-8inch` for the 8inch env and `esp32c3-v3-15inch` for the 15inch env (set in each env's `build_flags` in `platformio.ini`).
-- **WebUI effect:** None directly; determines the mDNS hostname visible in the browser URL bar (e.g. `http://esp32c3-v3-8inch.local/`).
-- **Dependencies:** Called inside `WebUi::begin`; the ESP WiFi stack requires hostname to be set before DHCP negotiation.
-
----
-
-### `writeStatusLed`
-**Lines:** 154–160
-
-Drives a GPIO status LED high or low. Compiled to a no-op when `STATUS_LED_PIN < 0`.
-
-- **Reads:** `STATUS_LED_PIN` (build-time define)
-- **Writes:** GPIO `STATUS_LED_PIN`
-- **Build-env effect:** `STATUS_LED_PIN=-1` is defined in `[common]` in `platformio.ini` — compiled to a no-op on **both** variants. Neither XIAO ESP32-C3 build uses a hardware status LED.
-- **Dependencies:** Called from `setup()` after WiFi connects.
-
----
-
-### `setupWiFi`
-**Lines:** 1296–1324
-
-Attempts to connect using build-time `WIFI_SSID`/`WIFI_PASSWORD` first; falls back to WiFiManager captive portal (`esp32c3-clock-setup`, open password) if credentials are the placeholder values or if the direct connect times out.
-
-- **Reads:** `WIFI_SSID`, `WIFI_PASSWORD`, `WIFI_CONNECT_TIMEOUT_MS` (all build-time defines)
-- **Writes:** WiFi driver state
-- **Build-env effect:** Both envs supply real SSID/password via `platformio.ini` `-D` flags; placeholder guard (`strcmp` check) prevents attempting the captive portal when credentials are real.
-- **Dependencies:** Called by `WebUi::begin`. Returns `bool` success; caller promotes device to AP mode on failure.
-
----
-
-### `setupOTA`
-**Lines:** 1327–1361
-
-Registers ArduinoOTA handlers (start / end / progress / error) and calls `ArduinoOTA.begin()`. OTA password is hardcoded `"iris_ota_2026"`. Logs the exact `pio run ... --upload-port` command for convenience.
-
-- **Reads:** `DEVICE_HOSTNAME` (build-time define)
-- **Writes:** ArduinoOTA global state; Serial log
-- **Build-env effect:** Hostname in the log message reflects the active env.
-- **Dependencies:** Called inside `WebUi::begin` only when STA mode succeeds (not in AP mode).
-
----
-
-### `logRuntimeStatus`
-**Lines:** 2060–2100
-
-Prints a status block to Serial every 10 seconds: current time, uptime, heap free, WiFi SSID/IP/RSSI, lux + brightness figures (if `LUX_SENSOR_ENABLED`), LED config, and NTP sync status.
-
-- **Reads:** `timeModel`, `settingsStore`, `luxSensor`, `timeSync`, `WiFi`, `lastStatusLogMs` (global)
-- **Writes:** `lastStatusLogMs`; Serial output only
-- **Build-env effect:** Lux block is compiled out when `LUX_SENSOR_ENABLED=0`.
-- **Dependencies:** Called every `loop()` tick; reads globals directly.
-
----
-
-### `setup`
-**Lines:** 2102–2180
-
-Arduino entry point. Initialises Serial, logs reset reason and build identity, starts I²C (if `LUX_SENSOR_ENABLED`), then calls `begin()` on every subsystem in dependency order: `settingsStore → temperature → luxSensor → renderer → webUi`. Sets `lastTickMs` for the 1 Hz ticker.
-
-- **Reads:** `ESP_RST_*` reset reason; all build-time defines for diagnostic prints
-- **Writes:** `lastTickMs`; configures GPIO for `STATUS_LED_PIN` if ≥ 0
-- **Build-env effect:** I²C `Wire.begin(LUX_SENSOR_I2C_SDA, LUX_SENSOR_I2C_SCL)` only when `LUX_SENSOR_ENABLED=1`. Center pixel separate-output strip is only instantiated for the 8inch env.
-- **Dependencies:** All global objects must be constructed before `setup()` runs (they are — all globals are static storage).
-
----
-
-### `loop`
-**Lines:** 2182–2237
-
-Arduino main loop. Responsibilities in order each iteration:
-
-1. **1 Hz ticker** — calls `timeModel.tickOneSecond()` for every 1000 ms elapsed since `lastTickMs` (drift-free, accumulates rather than resets to `now`).
-2. **NTP sync** — `timeSync.loop()` checks the SNTP callback flag and periodic 6-hour re-sync.
-3. **Web server** — `webUi.loop()` dispatches HTTP requests and runs `ArduinoOTA.handle()`.
-4. **Status logging** — `logRuntimeStatus()` every 10 s.
-5. **Focus reminder** — `reminderScheduler.checkAndFire()`.
-6. **Interval animation triggers** — checks for minute transitions at :00/:15/:30/:45 when `intervalAnimationsEnabled`.
-7. **Render decision** (priority order):
-   - If animation is active → `renderAnimFrame()`, then `markDirty()` on completion.
-   - Else if time model dirty → `render()`.
-   - Else if status/chime active and ≥80 ms since last render → `render()`.
-   - Else if center animation needed and ≥80 ms → `render()` (full render to avoid brightness desync — see comment in source).
-
-- **Reads:** `lastTickMs`, `lastAnimationRenderMs`, `lastMinute` (all globals); `timeModel`, `renderer`, `webUi`, `timeSync`, `settingsStore`
-- **Writes:** `lastTickMs`, `lastAnimationRenderMs`, `lastMinute`
-- **Build-env effect:** None directly; render path adapts via renderer's `CENTER_PIXEL_*` compile guards.
-
----
-
-## Class: `LuxSensor`
-
-Wraps VEML7700 ambient light sensor with a 3-state gain state machine, EMA smoothing, and a 50-units/sec brightness ramp. Compiled to stubs when `LUX_SENSOR_ENABLED=0`.
-
----
-
-### `LuxSensor::begin`
-**Lines:** 169–182
-
-Calls `veml_.begin()`, sets initial gain to `VEML7700_GAIN_1` and integration time to 100 ms, marks sensor available. Prints result to Serial.
-
-- **Reads:** `LUX_SENSOR_ENABLED` (compile-time)
-- **Writes:** `available_`, VEML7700 hardware registers
-- **Build-env effect:** Entire body compiled out when `LUX_SENSOR_ENABLED=0`; `available_` stays `false`.
-
----
-
-### `LuxSensor::lux`
-**Lines:** 186–236
-
-Returns a smoothed lux reading. Key behaviors:
-- Rate-limited to one hardware read per 120 ms.
-- 400 ms settling guard after any gain change (prevents oscillation that plagued earlier firmware).
-- 3-state gain machine: GAIN_2 (dark) → GAIN_1 (normal) → GAIN_1_8 (bright) with asymmetric hysteresis bands (50/200 and 300/900 lux thresholds).
-- EMA alpha 0.15 (was 0.05; raised to track scene changes faster post gain-switch).
-
-- **Reads:** `available_`, `lastReadMs_`, `lastGainChangeMs_`, `luxAvg_`; VEML7700 hardware
-- **Writes:** `lastReadMs_`, `lastGainChangeMs_`, `luxAvg_`; VEML7700 gain register
-
----
-
-### `LuxSensor::autoBrightness`
-**Lines:** 240–242
-
-Thin wrapper — returns `autoBrightnessCached(millis())`.
-
----
-
-### `LuxSensor::autoBrightnessTarget`
-**Lines:** 245–247
-
-Returns `cachedBrightness_` (the lux-derived target before ramping). Used by `logRuntimeStatus` for diagnostics.
-
----
-
-### `LuxSensor::autoBrightnessCached`
-**Lines:** 249–286
-
-Converts lux to LED brightness (log10 curve, 15–255 range) every 500 ms, then applies a 50 units/sec ramp toward the target. On first call, snaps directly to target (no initial ramp-from-128). `dt` is capped at 200 ms to absorb stalls without a jump.
-
-- **Reads:** `available_`, `luxAvg_`, `cachedBrightness_`, `rampedBrightness_`, `lastBrightnessMs_`, `lastRampMs_`
-- **Writes:** `cachedBrightness_`, `rampedBrightness_`, `lastBrightnessMs_`, `lastRampMs_`
-- **WebUI effect:** `minAutoBrightness` / `maxAutoBrightness` are applied by the caller (`effectiveBrightness`), not here.
-
----
-
-## Class: `SettingsStore`
-
-Owns the 256-byte EEPROM region. Validates magic+version on load; writes defaults on mismatch. All mutations go through `sanitize()` before saving.
-
----
-
-### `SettingsStore::begin`
-**Lines:** 366–373
-
-Opens EEPROM, reads settings, replaces with defaults if invalid.
-
-- **Reads:** EEPROM byte 0…sizeof(ClockSettings)
-- **Writes:** `settings_`; EEPROM (only on invalid load)
-
----
-
-### `SettingsStore::update`
-**Lines:** 377–380
-
-Sanitizes and saves the given settings struct.
-
-- **Reads:** incoming `ClockSettings`
-- **Writes:** `settings_`; EEPROM via `save()`
-
----
-
-### `SettingsStore::defaults`
-**Lines:** 383–395
-
-Returns a hardcoded `ClockSettings` with `SETTINGS_MAGIC = 0xC1`, `SETTINGS_VERSION = 10`, and the default palette (blue-white markers, royal-blue filler, ice-blue seconds, orange minutes, hot-pink hours, warm-orange center).
-
----
-
-### `SettingsStore::valid`
-**Lines:** 397–415
-
-Validates magic, version, and all field ranges. Returns `false` on any out-of-range value, triggering a full defaults reset.
-
-- **Build-env effect:** None — validation ranges are independent of hardware variant.
-
----
-
-### `SettingsStore::sanitize`
-**Lines:** 417–447
-
-Clamps all fields to valid ranges; never rejects a POST silently. Notable: `minAutoBrightness > maxAutoBrightness` resets both to (10, 255).
-
----
-
-## Class: `TimeModel`
-
-Thread-safe (interrupt-safe) time store. Uses `noInterrupts()`/`interrupts()` guards on every read and write. All call sites are currently in `loop()` (no ISR usage), but the guards are correct defensive practice: on single-core ESP32-C3 they cost ~2 cycles and ensure correctness if `tickOneSecond` is ever promoted to a hardware timer ISR.
-
----
-
-### `TimeModel::get`
-**Lines:** 466–471
-
-Returns a copy of `time_` under interrupt lock.
-
----
-
-### `TimeModel::set`
-**Lines:** 473–481
-
-Validates h/m/s ranges then sets all three fields and marks dirty.
-
-- **Writes:** `time_`, `dirty_`
-
----
-
-### `TimeModel::tickOneSecond`
-**Lines:** 483–488
-
-Increments the clock by one second (delegates to `incrementSecondNoLock`), marks dirty.
-
-- **Writes:** `time_`, `dirty_`
-
----
-
-### `TimeModel::addMinutes` / `TimeModel::addHours`
-**Lines:** 490–509
-
-Adjusts hour or minute with day-wrap arithmetic. Used by `/addMinute` and `/subMinute` WebUI endpoints.
-
-- **Writes:** `time_`, `dirty_`
-
----
-
-### `TimeModel::consumeDirty`
-**Lines:** 517–523
-
-Atomically reads and clears `dirty_`. The render loop uses this to decide whether to redraw.
-
----
-
-### `TimeModel::incrementSecondNoLock`
-**Lines:** 526–536
-
-Private helper — cascades second→minute→hour with wrap-around. Must be called under interrupt lock.
-
----
-
-## Class: `ClockRenderer`
-
-Owns all LED output logic. Holds a reference to `ledStrip` (and optionally `centerStrip_` for separate-output center pixel). Operates in two modes: normal clock render (`render()`) and animation render (`renderAnimFrame()`).
-
----
-
-### `ClockRenderer::begin`
-**Lines:** 578–591
-
-Calls `strip_.begin()`, sets initial brightness from `dayBrightness`, clears and shows. Initialises `centerStrip_` identically if `CENTER_PIXEL_SEPARATE_OUTPUT` is active.
-
-- **Build-env effect:** `CENTER_PIXEL_SEPARATE_OUTPUT` is only set in specific configs; 8inch uses inline center pixel.
-
----
-
-### `ClockRenderer::setStatus`
-**Lines:** 595–600
-
-Arms a timed status display. Ignored if `statusAnimations` is disabled. `durationMs` is added to `millis()` to set `statusUntilMs_`.
-
-- **Reads:** `settings_.statusAnimations`
-- **Writes:** `statusMode_`, `statusUntilMs_`, `lastAnimationMs_`
-- **WebUI effect:** Controlled by the "Status" checkbox in the Display panel.
-
----
-
-### `ClockRenderer::triggerQuarterAnimation` / `triggerHalfHourAnimation` / `triggerHourAnimation`
-**Lines:** 602–627
-
-Set `animPhase_` to the configured animation variant (0 = off), reset `animStartMs_` and `animStep_`. No-op when the setting is 0.
-
-- **Reads:** `settings_.quarterAnimation` / `halfHourAnimation` / `hourAnimation`
-- **Writes:** `animPhase_`, `animStartMs_`, `animStep_`, `animHue_`
-- **WebUI effect:** Controlled by the Time Animations panel selectors.
-
----
-
-### `ClockRenderer::render`
-**Lines:** 681–718
-
-Full clock face render. Sequence: set brightness → clear → `renderFace` → `renderSeconds` → `renderMinutes` → `renderHours` → conditional chime or status or center-idle → `setSacrificialPixelDark` → `logShow` → `show()`.
-
-- **Reads:** `settings_`, `lux_`, `lastTime_` (updated at entry), all `ClockTime` fields
-- **Writes:** `lastTime_`, `ledStrip` pixel buffer, hardware SPI/PWM via `show()`
-- **Dependencies:** All private render helpers; `effectiveBrightness`, `logShow`
-
----
-
-### `ClockRenderer::renderAnimFrame`
-**Lines:** 631–649
-
-Render path used during animations. Calls `tickAnimation()` instead of the clock face helpers. Calls `logShow` then `show()`. Always calls `setSacrificialPixelDark()` before show.
-
-- **Reads:** `animPhase_`, `lastTime_`, `settings_`, `lux_`
-- **Writes:** pixel buffer; calls `tickAnimation()`, `logShow()`
-
----
-
-### `ClockRenderer::needsFullAnimationFrame`
-**Lines:** 651–653
-
-Returns true if a status animation is active or the hourly chime is showing. Used by `loop()` to schedule re-renders at 12.5 Hz even when time hasn't ticked.
-
----
-
-### `ClockRenderer::needsCenterAnimationFrame`
-**Lines:** 655–657
-
-Returns true if `CENTER_PIXEL_ENABLED` and `statusAnimations` setting is on. Triggers the 80 ms center-pulse re-render path in `loop()`.
-
----
-
-### `ClockRenderer::effectiveBrightness`
-**Lines:** 729–744
-
-Returns the LED strip brightness to apply, based on `autoBrightnessMode`:
-- 0 = manual (`dayBrightness`)
-- 1 = lux sensor (`autoBrightnessCached`, clamped to min/max)
-- 2 = scheduled (`nightBrightness` or `dayBrightness` depending on hour)
-
-- **Reads:** `settings_.autoBrightnessMode`, `settings_.dayBrightness`, `settings_.nightBrightness`, `settings_.minAutoBrightness`, `settings_.maxAutoBrightness`, `lux_`; `nightActive()` for mode 2
-- **WebUI effect:** Controlled by the Auto-Brightness panel.
-
----
-
-### `ClockRenderer::renderFace`
-**Lines:** 746–765
-
-Draws the static clock face: outer ring with 5-LED markers every 5 positions, middle ring dimly lit in hours color (scale 22/255), inner ring dimly in center color (scale 24/255). `colorTheme` field is read but unused (no-op, left as dead code stub).
-
-- **Reads:** `settings_.outerMarkerRed/Green/Blue/Level`, `outerFillerRed/…`, `hoursRed/…`, `centerRed/…`, `colorTheme`
-- **Writes:** `ledStrip` pixels via `setRingPixel`
-
----
-
-### `ClockRenderer::renderSeconds`
-**Lines:** 767–785
-
-Places the second hand on the outer ring. If `progressSeconds`: fills LEDs 0…second at 20/255 intensity. If `secondTrail`: paints 4 trailing pixels at decreasing intensities (52, 28, 14, 7 out of 255). Always places the full-intensity second dot last.
-
-- **Reads:** `time.second`, `settings_.progressSeconds`, `settings_.secondTrail`, `settings_.secondsRed/…/Level`
-- **WebUI effect:** "Second trail" and "Progress ring" checkboxes.
-
----
-
-### `ClockRenderer::renderMinutes`
-**Lines:** 787–791
-
-Places one full-intensity pixel on the outer ring at `time.minute`.
-
-- **Reads:** `time.minute`, `settings_.minutesRed/…/Level`
-
----
-
-### `ClockRenderer::renderHours`
-**Lines:** 793–817
-
-Places the hour hand on middle and inner rings using 12-hour format.
-
-Middle ring (24 LED): 1→2→1 LED pattern by thirds, base shifted +1 CW from hour position.
-- :00–:19 → 1 LED at `(hour12 * 2 + 1) % 24`
-- :20–:39 → 2 LEDs straddling that position
-- :40–:59 → 1 LED advanced one position
-
-Inner ring (12 LED): 1 LED at `hour12`. At :30+, a second pixel is added at `(hour12 + 1) % 12`.
-
-- **Reads:** `time.hour`, `time.minute`, `settings_.hoursRed/…/Level`
-
----
-
-### `ClockRenderer::renderStatus`
-**Lines:** 836–873
-
-Draws a two-pixel rotating dot on the inner ring in a color keyed to `statusMode_` (blue=connecting, green=OK, red=fail, amber=button, teal=NTP sync, purple=settings saved, blue=OTA update, green=OTA success, red=OTA failed) plus a pulsing center pixel.
-
-- **Reads:** `statusMode_`, `lux_` indirectly via brightness
-- **WebUI effect:** Status colors are fixed in code; not user-configurable.
-
----
-
-### `ClockRenderer::renderHourlyChime`
-**Lines:** 875–880
-
-Draws a sweeping white dot on outer ring and proportional amber dot on middle ring, plus a pulsing gold center. Sweep period = 65 ms per position.
-
-- **Reads:** `now` (millis)
-- **Dependencies:** Called by both `render()` (when `hourlyChime` active) and `tickAnimation()` for `ANIM_HR1`.
-
----
-
-### `ClockRenderer::tickAnimation`
-**Lines:** 882–1101
-
-State machine dispatching on `animPhase_`. Eleven animation cases:
-
-| Phase | Name | Duration | Description |
-|---|---|---|---|
-| ANIM_Q1 | Sparkle burst | 600 ms | White flash on 15-pixel markers, rapid fade |
-| ANIM_Q2 | Quarter pulse | 2500 ms | Outer 5-position markers pulse between full/half brightness (1 Hz) |
-| ANIM_Q3 | Ring shimmer | 2500 ms | Full face re-draw with brightness strobe |
-| ANIM_H1 | Rainbow sweep | 5000 ms | HSV rainbow fills outer→middle→inner in sequence |
-| ANIM_H2 | Dual flash | 5000 ms | Outer ring alternates cyan/red halves at 300 ms |
-| ANIM_H3 | Tidal pulse | 5000 ms | Sine-wave brightness on cyan outer ring, 3 waves |
-| ANIM_HR1 | Chime sweep | 10000 ms | Reuses `renderHourlyChime()` for 10 s |
-| ANIM_HR2 | Firework burst | 10000 ms | Step-gated ring fill from center outward, random HSV; trailing spark |
-| ANIM_HR3 | Zenith cascade | 10000 ms | Gold fills outer ring from both ends to center, then fades symmetrically |
-| ANIM_HR4 | Rainbow spiral | 10000 ms | Outer CW rainbow fills, then middle CCW, then inner CW |
-| ANIM_HR5 | Breathing mandala | 10000 ms | Hue-shifted HSV all rings, sin-wave brightness, 6 breath cycles |
-
-- **Reads:** `animPhase_`, `animStartMs_`, `animStep_`, `animHue_`, `settings_`
-- **Writes:** `animPhase_` (sets ANIM_IDLE on timeout), `animStep_`, pixel buffer
-
----
-
-### `ClockRenderer::chimeActive`
-**Lines:** 1103–1105
-
-Returns true when `minute == 0 && second < 6`. Limits chime display to 6 seconds past the hour.
-
----
-
-### `ClockRenderer::statusActive`
-**Lines:** 1107–1109
-
-Returns true while `statusUntilMs_` is in the future.
-
----
-
-### `ClockRenderer::logShow`
-**Lines:** 1111–1135
-
-Frame-timing diagnostic logger. Called by both `render()` and `renderAnimFrame()` immediately before `strip_.show()`. Tracks per-frame gap in milliseconds, accumulates min/max frame time and render count, prints a fps/min/max report to Serial every 30 s. Also emits a `[RENDER] RAPID` warning when any frame gap drops below 15 ms (rapid consecutive shows risk WS2812B data corruption).
-
-- **Reads:** `lastShowMs_`, `renderCount_`, `minFrameMs_`, `maxFrameMs_`, `lastDiagMs_`
-- **Writes:** `lastShowMs_`, `renderCount_`, `minFrameMs_`, `maxFrameMs_`, `lastDiagMs_`; Serial output
-- **Added in:** v2.0.3
-
----
-
-### `ClockRenderer::dim` / `scale` / `pulse`
-**Lines:** 1137–1160
-
-Color math utilities:
-- `dim(color, divisor)` — divides each channel by `divisor`.
-- `scale(color, amount)` — multiplies each channel by `amount/255`.
-- `pulse(color, now, periodMs, floor, ceiling)` — triangle-wave modulation between `floor` and `ceiling` intensity.
-
----
-
-### `ClockRenderer::nightActive`
-**Lines:** 721–727
-
-Returns true if current hour is in the night window. Handles wrap-around (e.g., 22:00–07:00). Returns false if start == end (disabled).
-
-- **Reads:** `time.hour`, `settings_.nightStartHour`, `settings_.nightEndHour`
-
----
-
-### `ClockRenderer::centerIdleActive`
-**Lines:** 1162–1164
-
-Returns true when `CENTER_PIXEL_ENABLED` and `statusAnimations` setting is on.
-
----
-
-### `ClockRenderer::renderCenterIdle`
-**Lines:** 1166–1172
-
-Applies a slow 1800 ms period pulse (3→75 brightness range) on the center pixel using the center color setting.
-
-- **WebUI effect:** Enabled by the "Status" checkbox; color from the Center row in the Rings panel.
-
----
-
-### `ClockRenderer::setCenterPixel`
-**Lines:** 1174–1188
-
-Writes to `centerStrip_` when `CENTER_PIXEL_SEPARATE_OUTPUT=1`, otherwise writes to the main `strip_` at `CENTER_PIXEL_INDEX`.
-
-- **Build-env effect:** 8inch env uses inline center pixel at index 1; separate-output path unused in standard builds.
-
----
-
-### `ClockRenderer::setSacrificialPixelDark`
-**Lines:** 1190–1196
-
-Forces pixel `SACRIFICIAL_PIXEL_INDEX` to 0 (black) every frame. Compiled out when `SACRIFICIAL_PIXEL_ENABLED=0`. The sacrificial pixel is a first-in-chain LED used to buffer signal integrity; it must stay dark.
-
-- **Build-env effect:** 8inch env enables `SACRIFICIAL_PIXEL_ENABLED=1` at index 0.
-
----
-
-### `ClockRenderer::setRingPixel`
-**Lines:** 1198–1206
-
-Maps a logical ring index to a physical strip index, applying `outerRingOffset` rotation and clockwise/counter-clockwise direction from `RingConfig`. The rotation math scales `outerRingOffset` (0–59 outer-ring steps) to each ring's pixel count proportionally.
-
-- **Reads:** `settings_.outerRingOffset`, `ring.count`, `ring.offset`, `ring.clockwise`
-- **WebUI effect:** "Ring rotation offset" slider. Applies uniformly to all three rings.
-
----
-
-## Class: `TemperatureInput`
-
-Stub class — `TEMP_SENSOR_ENABLED` is always 0 in current builds. `available()` returns false; `celsius()` returns `NAN`. The WebUI `/temperature` endpoint exists but returns `{"available":false}`.
-
----
-
-## Class: `TimeSync`
-
----
-
-### `TimeSync::begin`
-**Lines:** 1240–1250
-
-Calls `configTzTime()` with `NTP_TIMEZONE_TZ` and three NTP servers. Registers an SNTP notification callback that sets the static `s_sntpPending_` flag (volatile bool, safe on single-core ESP32-C3).
-
-- **Build-env effect:** `NTP_TIMEZONE_TZ="MST7MDT,M3.2.0,M11.1.0"` (Mountain time with US DST rules) is set in `[common]` — identical for both envs. No per-env override exists in `platformio.ini`.
-
----
-
-### `TimeSync::syncNow`
-**Lines:** 1252–1268
-
-Reads system UTC epoch, rejects values before epoch 1700000000 (avoids applying unsynced time). Calls `localtime_r` to convert to local time using the TZ string, then sets `timeModel`. Logs sync result.
-
-- **Reads:** `time(nullptr)` (POSIX system clock)
-- **Writes:** `TimeModel` (via `model_.set()`), `lastSyncMs_`, `synced_`
-
----
-
-### `TimeSync::loop`
-**Lines:** 1270–1280
-
-Consumes `s_sntpPending_` flag and calls `syncNow()` on: SNTP callback, first sync, or 6-hour periodic re-sync. No-op if WiFi is down.
-
-- **Reads:** `s_sntpPending_` (volatile static), `synced_`, `lastSyncMs_`
-- **Writes:** `s_sntpPending_`; delegates to `syncNow()`
-
----
-
-## Class: `WebUi`
-
-Owns `ClockWebServer` on port 80. Manages WiFi connect, mDNS, OTA setup, and all HTTP routes.
-
----
-
-### `WebUi::begin`
-**Lines:** 1378–1436
-
-Full bringup sequence (guarded by `ENABLE_WIFI_UI`):
-1. Sets renderer status to `STATUS_WIFI_CONNECTING`.
-2. Calls `setupWiFi()`; on failure switches to AP mode (`DEVICE_HOSTNAME`, open).
-3. On STA success: re-applies hostname, disables modem sleep (`WiFi.setSleep(false)` — prevents RMT/WS2812B flicker), registers mDNS, attaches WiFi reconnect event for mDNS re-registration, calls `setupOTA()`, calls `timeSync_.begin()`, fires initial NTP sync.
-4. Always calls `setupRoutes()` and `server_.begin()`.
-
-- **Reads:** `DEVICE_HOSTNAME`, `WIFI_CONNECT_TIMEOUT_MS`
-- **Writes:** `enabled_`, `apMode_`, `mdnsEnabled_`
-- **Dependencies:** `setupWiFi`, `setupOTA`, `TimeSync::begin`, `TimeSync::syncNow`
-
----
-
-### `WebUi::loop`
-**Lines:** 1438–1442
-
-Calls `server_.handleClient()` and `ArduinoOTA.handle()`. No-op when `!enabled_`.
-
----
-
-### `WebUi::setupRoutes`
-**Lines:** 1447–1714
-
-Registers all HTTP routes:
-
-| Method | Path | Action |
-|---|---|---|
-| GET | `/` | Serve main HTML page |
-| GET | `/time` | JSON: hour/minute/second/ntpSynced/wifi/ip |
-| GET | `/temperature` | JSON: available/celsius |
-| GET | `/lux` | JSON: available/lux/autoBrightness |
-| GET | `/net` | JSON: hostname/ssid/ip/gateway/subnet/dns/rssi/status |
-| GET | `/settings` | JSON: all ClockSettings fields |
-| POST | `/settings` | Update settings from form params; triggers STATUS_SETTINGS_SAVED |
-| POST | `/set` | Set time directly (h/m/s params) |
-| POST | `/syncBrowser` | Same as `/set` with STATUS_TIME_SYNC for 1500 ms |
-| POST | `/syncNtp` | Force NTP sync immediately |
-| POST | `/addMinute` | Increment time by 1 minute |
-| POST | `/subMinute` | Decrement time by 1 minute |
-| GET | `/update` | Serve firmware update HTML page |
-| POST | `/update` | Receive firmware .bin, flash via `Update` API, restart |
-
-The POST `/update` handler checks free sketch space before beginning; flashes in chunks; triggers OTA status LEDs on success/failure.
-
-- **Dependencies:** All model/settings/renderer methods; `parseColor`, `clampByte`, `clampWord`
-
----
-
-### `WebUi::settingsJson`
-**Lines:** 1716–1754
-
-Serializes all `ClockSettings` fields to a JSON string. Colors are formatted as `#RRGGBB` hex via `colorHex()`.
-
----
-
-### `WebUi::htmlPage`
-**Lines:** 1819–1953
-
-Returns the full single-page app as a string literal. The UI is a two-column dark-themed grid: left column has an SVG clock preview (built in JS), right column has panels for Time, Display, Rings, Auto-Brightness, Time Animations, Focus Reminders, Network, and Admin (firmware update link). All settings round-trip via `/settings` GET+POST. JS re-renders the SVG at 90 ms intervals; time display refreshes at 1 s.
-
----
-
-### `WebUi::parseColor`
-**Lines:** 1785–1796
-
-Parses a `#RRGGBB` hex string into R, G, B bytes. Silently ignores strings with wrong length or invalid hex digits (leaves r/g/b unchanged).
-
----
-
-### `WebUi::clampByte` / `clampWord`
-**Lines:** 1760–1770
-
-Integer clamp helpers that return `uint8_t` / `uint16_t`. Used to sanitize all POST parameters before they reach `ClockSettings`.
-
----
-
-## Class: `FocusReminderScheduler`
-
----
-
-### `FocusReminderScheduler::checkAndFire`
-**Lines:** 1974–2009
-
-Evaluates whether a focus reminder should fire on each `loop()` call. Gate conditions (all must pass):
-1. `focusReminder_enabled` is set.
-2. Current day-of-week bit is set in `focusReminder_daysMask`.
-3. Current hour is within the start/end window (handles midnight-wrap).
-4. `millis() - focusReminder_lastFireMs >= intervalMs`.
-
-On fire: calls `triggerReminderAnimation()`, updates `focusReminder_lastFireMs` in EEPROM via `settings_.update()`, logs to Serial.
-
-- **Reads:** `settings_`, `timeModel`, `time(nullptr)` (via `getDayOfWeek`)
-- **Writes:** `settings_.focusReminder_lastFireMs` (persisted to EEPROM); triggers animation via renderer
-- **WebUI effect:** All fields controlled by the Focus Reminders panel.
-
----
-
-### `FocusReminderScheduler::getDayOfWeek`
-**Lines:** 2012–2017
-
-Returns `tm_wday` (0=Sun … 6=Sat) from POSIX `localtime_r`. **Latent bug:** unlike `TimeSync::syncNow`, this function has no guard for `time(nullptr) < 1700000000`. On a cold boot before NTP syncs, `localtime_r` returns a near-epoch date (Jan 1970) whose `tm_wday` is almost certainly wrong. The interval gate in `checkAndFire` prevents rapid re-fires, but the first reminder after boot can fire on the wrong day if `focusReminder_lastFireMs` is 0 and the day-mask happens to allow the epoch weekday (Thursday = 1970-01-01).
-
----
-
-### `FocusReminderScheduler::triggerReminderAnimation`
-**Lines:** 2019–2030
-
-Maps `focusReminder_animation` (0–5) to the three animation tier methods. Values 0/3 → quarter, 1/4 → half-hour, 2/5 → hour. Cases 3–5 are intentional placeholder slots: the WebUI labels them `"(dup)"` explicitly and the source comment says "Duplicate for safety". They are reserved for distinct v2 animation types that haven't been implemented yet.
-
 ---
-
-## Key Data Structures
-
-### `ClockSettings` (struct, lines 302–357)
-Stored at EEPROM offset 0. 57+ bytes. Magic `0xC1`, version `10`. Adding fields requires bumping `SETTINGS_VERSION` to force a defaults reset on existing devices.
-
-### `RingConfig` (struct, lines 104–108)
-Immutable compile-time descriptors for each LED ring. Three constants: `RING_OUTER_60`, `RING_MIDDLE_24`, `RING_INNER_12`. `offset` is the physical chain index of logical position 0; `clockwise` controls direction; `count` is the ring size.
-
-### `ClockTime` (struct, lines 457–461)
-Plain POD: hour (0–23), minute (0–59), second (0–59). Copied by value across thread boundaries.
-
-### `AnimPhase` / `StatusMode` (enums, lines 543–569)
-`AnimPhase` drives `tickAnimation()`; `StatusMode` drives `renderStatus()`. Both are `uint8_t` for EEPROM/struct packing compatibility.
+*Generated by `tools/gen_symmap.py`*
