@@ -1,5 +1,41 @@
 # ChronoBloom ESP32-C3 — Firmware Review
-Date: 2026-05-04 (updated 2026-05-09)
+Date: 2026-05-04 (updated 2026-05-13)
+
+---
+
+## Session 11 — 2026-05-13 WebUI Crash Fix + Heap Hardening (v2.1.0)
+
+### Issue: 15inch variant crashes on root WebUI page load
+
+**Symptom**: `esp32c3-v3-15inch.local/` triggered a watchdog reset or OOM panic
+immediately on page load. Animations became laggy in the seconds before the crash.
+Power supply ruled out (4.9V, 0.8A measured at device).
+
+**Root cause**: `htmlPage()` returned a ~6KB `String` built from a raw string literal,
+allocated in one shot on the heap. `server_.send()` then blocked the main loop for the
+full TCP write duration. On the 15inch variant (two NeoPixel strips, larger pixel buffer,
+less heap headroom) this double-allocation caused heap exhaustion. Secondary issue: five
+JSON handlers used repeated `String +` concatenation causing heap fragmentation over long
+uptime.
+
+**Fix (v2.1.0, commit bf06398)**:
+- `htmlPage()` replaced with three `PROGMEM const char[]` chunks (`HTML_P1/P2/P3`)
+  streamed via `setContentLength(CONTENT_LENGTH_UNKNOWN)` + `sendContent_P()`. No heap
+  allocation for the page payload at request time.
+- `/wifi` GET: PROGMEM chunks + two `sendContent()` calls for dynamic SSID/status values.
+  Eliminated `.replace()` call on a heap-allocated String.
+- `/update` GET: two PROGMEM chunks; fully static page.
+- `settingsJson()`: `snprintf` into `char buf[900]` with inline hex color formatting.
+  Zero heap allocs except final `String(buf)` return.
+- `/time`, `/net`, `/diag` JSON handlers: `snprintf` into stack `char buf[]`; payload
+  passed directly to `server_.send()` with no intermediate `String` object.
+
+**Confirmed result (2026-05-13, user-measured)**:
+```json
+{"firmware_version":10,"boot_reason":"software","free_heap":236056}
+```
+236KB free heap on 15inch variant after OTA flash. `boot_reason: software` = expected
+post-OTA reboot. Root page loads without crash, animations uninterrupted.
 
 ---
 
@@ -380,7 +416,7 @@ If this fails, all tasks below are premature.
 
 #### Task 1: `/diag` Endpoint
 **Priority**: High -- blocks all wall-mount verification workflows
-**Status**: Not implemented
+**Status**: Done (Session 3, 2026-05-13, v2.0.6)
 
 Add a `/diag` HTTP GET endpoint returning JSON with:
 - `uptime` (seconds since boot)
@@ -401,14 +437,14 @@ OTA verification workflow once implemented:
 
 #### Task 2: WiFi Auto-Reconnect Explicit Guard
 **Priority**: High -- OTA fails silently if WiFi drops
-**Status**: Unknown -- verify in main.cpp
+**Status**: Done (Session 2, 2026-05-11, v2.0.5) — `WiFi.setAutoReconnect(true)` confirmed present in `setupWiFi()`
 
 Confirm `WiFi.setAutoReconnect(true)` is explicitly called in `setupWiFi()`. Do not
 rely on SDK defaults. If absent, add it.
 
 #### Task 3: OTA Error Handler
 **Priority**: High
-**Status**: Unknown -- verify in main.cpp
+**Status**: Done (Session 2, 2026-05-11, v2.0.5) — `ArduinoOTA.onError()` handler confirmed present, calls `ESP.restart()`
 
 Confirm `ArduinoOTA.onError()` handler exists and calls `ESP.restart()`. If a transfer
 stalls mid-flash (network drop, power fluctuation), the device must reboot to last good

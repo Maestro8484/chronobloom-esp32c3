@@ -4,6 +4,29 @@
 
 ---
 
+## WebUI / HTTP Issues
+
+### 15inch variant reboots when loading the root page
+
+**Symptoms**:
+- Animations become laggy immediately before crash
+- Device reboots with `boot_reason: watchdog` or `boot_reason: panic` in `/diag`
+- 8inch variant is unaffected
+
+**Root cause**: `htmlPage()` allocated a ~6KB `String` on the heap at request time.
+On the 15inch variant (two NeoPixel strips, larger pixel buffer), heap headroom was too
+tight to absorb the double-allocation during `server_.send()`.
+
+**Fix**: Resolved in v2.1.0. All large HTML responses now use PROGMEM chunks streamed
+via `sendContent_P()`. JSON handlers use `snprintf` into stack buffers. No heap
+allocation occurs at page-load time. Confirmed free heap after fix: **236KB**.
+
+**If still crashing after flashing v2.1.0**: Check `/diag` for `free_heap`. If below
+~80KB, another allocation source is the culprit — check for long-running String builds
+elsewhere in the loop.
+
+---
+
 ## WiFi Connection Problems
 
 ### Clock won't connect to WiFi
