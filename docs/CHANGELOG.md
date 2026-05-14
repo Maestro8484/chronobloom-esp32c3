@@ -2,6 +2,21 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.1.0] - 2026-05-13
+
+### Fixed
+- **WebUI crash on 15inch variant** — `htmlPage()` (~6KB String on heap) replaced with three `PROGMEM const char[]` chunks streamed via `server_.setContentLength(CONTENT_LENGTH_UNKNOWN)` + `sendContent_P()`. No heap allocation for the page payload.
+- **`/wifi` GET handler** — large inline HTML with `.replace()` converted to PROGMEM chunks + two small `sendContent()` calls for dynamic SSID/status values.
+- **`/update` GET handler** — large inline HTML converted to two PROGMEM chunks.
+- **`settingsJson()`** — ~30 `String +` concatenations (repeated heap reallocs) replaced with `snprintf` into `char buf[900]` + inline color hex formatting. Zero heap allocs except final `String(buf)` return.
+- **`/time`, `/net`, `/diag` JSON handlers** — `String +` concatenation chains replaced with `snprintf` into stack `char buf[]` (128/256 bytes). Payload passed directly to `server_.send()` with no heap `String` object.
+
+### Files changed
+- `src/main.cpp` — `WebUi::setupRoutes()`, `WebUi::settingsJson()`, `WebUi::htmlPage()`
+- `docs/symmap.json`, `docs/FUNCTION_INVENTORY.md` — regenerated
+
+---
+
 ## [2.0.9] - 2026-05-13
 
 ### Added

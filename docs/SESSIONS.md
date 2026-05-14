@@ -20,10 +20,20 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 8 | Docs close | Update maturation checklist to completed | Done (2026-05-13) |
 | 9 | WiFi web UI | /wifi page, Preferences creds tier, reconnect poll | Done (2026-05-13, v2.0.9) |
 | 10 | Docs audit fix | Fix 5 stale documentation entries from maturation audit | Done (2026-05-13) |
+| 11 | WebUI crash fix + heap hardening | PROGMEM chunked HTML, snprintf JSON — eliminate 15inch OOM crash | Done (2026-05-13, v2.1.0) |
 
 ---
 
 ## Completed Sessions
+
+### Session 11 — WebUI Crash Fix + Heap Hardening (Done 2026-05-13, v2.1.0)
+- Root cause: `htmlPage()` allocated ~6KB String on heap; on 15inch (larger pixel buffer) this triggered OOM/watchdog reset when root page loaded.
+- Fix 1: `htmlPage()` replaced with three `PROGMEM const char[]` chunks (`HTML_P1/P2/P3`) streamed via `setContentLength(CONTENT_LENGTH_UNKNOWN)` + `sendContent_P()`. Route handler returns immediately after flush.
+- Fix 2: `/wifi` GET — PROGMEM chunks + two small `sendContent()` calls for dynamic SSID/status injection. Eliminated `.replace()` on heap String.
+- Fix 3: `/update` GET — two PROGMEM chunks; fully static page.
+- Fix 4: `settingsJson()` — snprintf into `char buf[900]` with inline hex color formatting. Zero heap allocs except final `String(buf)`.
+- Fix 5: `/time`, `/net`, `/diag` JSON handlers — snprintf into stack `char buf[]`; payload passed directly to `server_.send()`.
+- Build result: RAM 11.1% (36KB/320KB), Flash 55.4%. Clean compile, zero warnings.
 
 ### Session 10 — Docs Audit Fix (Done 2026-05-13)
 - CHANGELOG [2.0.8]: corrected false entry claiming RING_PIXEL_OFFSET changed 1→2; offset confirmed 1 (offset 0 blocked by compile-time guard when SACRIFICIAL_PIXEL_ENABLED=1)

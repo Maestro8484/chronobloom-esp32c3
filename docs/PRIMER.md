@@ -1,21 +1,15 @@
 TASK: [paste here]
-FUNCTIONS/HARDWARE FOCUS: [paste here]
 
----
+ChronoBloom ESP32-C3 LED clock project. Claude Code on SuperMaster Desktop.
+Single firmware file: src/main.cpp. Two variants: 8inch, 15inch.
 
-Project: ChronoBloom ESP32-C3
 Repo: C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3
-Variants: esp32c3_v3_8inch | esp32c3_v3_15inch (8inch is current default env)
-Firmware: src/main.cpp (single file, ~2200 lines)
+Local repo is source of truth. GitHub is secondary mirror.
 
-Rules: read WORKFLOW.md before any implementation work.
-Role: Chat = planning only. Claude Code = all implementation.
-Source of truth: local repo supersedes GitHub and all prior chat context.
+Read CLAUDE.md first. It contains session rules and workflow constraints.
 
-Build:       pio run -e esp32c3_v3_8inch
-USB flash:   pio run -e esp32c3_v3_8inch -t upload          (esptool/COM6 default)
-Web UI OTA:  http://esp32c3-v3-8inch.local/update           (upload firmware.bin in browser — no cable needed)
-
-Filesystem MCP: full read/write access to repo path is pre-authorized for all sessions. No per-operation confirmation required for files under C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3\.
+Build: pio run -e esp32c3_v3_8inch
+Flash: pio run -e esp32c3_v3_8inch -t upload
+OTA:   pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
 
 Read minimum files the task requires. State what you read and why.

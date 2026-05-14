@@ -1,7 +1,7 @@
 {
   "generated_by": "tools/gen_symmap.py",
   "source_file": "src/main.cpp",
-  "source_sha256": "69f8f905cd52134534fd4856533f6ab0df04262d97db30b396dbae25a2133575",
+  "source_sha256": "3531faf9823f61b7a2b4d8299476ef62c56f95be77a4f7d072fa51e283689bcd",
   "functions": [
     {
       "name": "configureWiFiHostname",
@@ -381,117 +381,117 @@
     {
       "name": "WebUi::setupRoutes",
       "start_line": 1540,
-      "end_line": 1917
+      "end_line": 2662
     },
     {
       "name": "WebUi::settingsJson",
-      "start_line": 1919,
-      "end_line": 1957
+      "start_line": 2088,
+      "end_line": 2134
     },
     {
       "name": "WebUi::boolJson",
-      "start_line": 1959,
-      "end_line": 1961
+      "start_line": 2136,
+      "end_line": 2138
     },
     {
       "name": "WebUi::clampByte",
-      "start_line": 1963,
-      "end_line": 1967
+      "start_line": 2140,
+      "end_line": 2144
     },
     {
       "name": "WebUi::clampWord",
-      "start_line": 1969,
-      "end_line": 1973
+      "start_line": 2146,
+      "end_line": 2150
     },
     {
       "name": "WebUi::colorHex",
-      "start_line": 1975,
-      "end_line": 1979
+      "start_line": 2152,
+      "end_line": 2156
     },
     {
       "name": "WebUi::hexNibble",
-      "start_line": 1981,
-      "end_line": 1986
+      "start_line": 2158,
+      "end_line": 2163
     },
     {
       "name": "WebUi::parseColor",
-      "start_line": 1988,
-      "end_line": 1999
+      "start_line": 2165,
+      "end_line": 2176
     },
     {
       "name": "WebUi::wifiStatusText",
-      "start_line": 2001,
-      "end_line": 2020
+      "start_line": 2178,
+      "end_line": 2197
     },
     {
       "name": "WebUi::htmlPage",
-      "start_line": 2022,
-      "end_line": 2157
+      "start_line": 2199,
+      "end_line": 2199
     },
     {
       "name": "FocusReminderScheduler::FocusReminderScheduler",
-      "start_line": 2174,
-      "end_line": 2175
+      "start_line": 2216,
+      "end_line": 2217
     },
     {
       "name": "FocusReminderScheduler::checkAndFire",
-      "start_line": 2177,
-      "end_line": 2212
+      "start_line": 2219,
+      "end_line": 2254
     },
     {
       "name": "FocusReminderScheduler::getDayOfWeek",
-      "start_line": 2215,
-      "end_line": 2220
+      "start_line": 2257,
+      "end_line": 2262
     },
     {
       "name": "FocusReminderScheduler::triggerReminderAnimation",
-      "start_line": 2222,
-      "end_line": 2233
+      "start_line": 2264,
+      "end_line": 2275
     },
     {
       "name": "ButtonInput::begin",
-      "start_line": 2244,
-      "end_line": 2247
+      "start_line": 2286,
+      "end_line": 2289
     },
     {
       "name": "ButtonInput::poll",
-      "start_line": 2249,
-      "end_line": 2302
+      "start_line": 2291,
+      "end_line": 2344
     },
     {
       "name": "ButtonInput::consumeUp",
-      "start_line": 2306,
-      "end_line": 2311
+      "start_line": 2348,
+      "end_line": 2353
     },
     {
       "name": "ButtonInput::consumeDown",
-      "start_line": 2312,
-      "end_line": 2317
+      "start_line": 2354,
+      "end_line": 2359
     },
     {
       "name": "ButtonInput::consumeUpPress",
-      "start_line": 2320,
-      "end_line": 2320
+      "start_line": 2362,
+      "end_line": 2362
     },
     {
       "name": "ButtonInput::consumeDownPress",
-      "start_line": 2321,
-      "end_line": 2321
+      "start_line": 2363,
+      "end_line": 2363
     },
     {
-      "name": "logRuntimeStatus",
-      "start_line": 2371,
-      "end_line": 2411
-    },
-    {
-      "name": "setup",
+      "name": "WebUi::logRuntimeStatus",
       "start_line": 2413,
-      "end_line": 2551
+      "end_line": 2453
     },
     {
-      "name": "loop",
-      "start_line": 2553,
-      "end_line": 2619
+      "name": "WebUi::setup",
+      "start_line": 2455,
+      "end_line": 2593
+    },
+    {
+      "name": "WebUi::loop",
+      "start_line": 2595,
+      "end_line": 2661
     }
   ]
 }

@@ -1539,18 +1539,164 @@ class WebUi {
  private:
   void setupRoutes() {
     server_.on("/", HTTP_GET, [&]() {
-      server_.send(200, "text/html", htmlPage());
+      static const char HTML_P1[] PROGMEM =
+        "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\n"
+        "<title>ESP32 Ring Clock</title>\n"
+        "<style>\n"
+        ":root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}\n"
+        "*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}\n"
+        "main{display:grid;grid-template-columns:minmax(280px,430px) minmax(310px,1fr);gap:18px;max-width:1120px;margin:0 auto;padding:18px}\n"
+        ".stage,.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008}\n"
+        ".stage{position:sticky;top:14px;align-self:start;padding:16px}.clock-wrap{display:grid;place-items:center;min-height:380px}\n"
+        "h1{font-size:18px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0 0 12px}#now{font-size:42px;font-weight:750;letter-spacing:0;margin:8px 0 2px}.state{color:var(--muted);font-size:13px;line-height:1.4;min-height:20px}\n"
+        ".grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{padding:14px;margin-bottom:12px}.panel h2{font-size:15px;margin:0 0 12px;color:#dbe7f7}\n"
+        "label{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}input,select,button{font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px;min-height:38px}\n"
+        "input[type=number]{width:82px}input[type=color]{width:58px;padding:3px}.row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ringrow{display:grid;grid-template-columns:82px 66px 1fr 54px;gap:8px;align-items:center;margin:8px 0}.ringrow span{color:#dbe7f7}\n"
+        "button{cursor:pointer;background:#203146;border-color:#42546d}button.primary{background:#145875;border-color:#2d9ccb;color:white}.toggle{display:flex;gap:8px;flex-wrap:wrap}.toggle label{display:flex;gap:6px;align-items:center;margin:0;color:#dce6f5;background:#0c1017;border:1px solid #303846;border-radius:6px;padding:8px}\n"
+        "svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:fill .18s,opacity .18s,filter .18s}.on{opacity:1;filter:drop-shadow(0 0 5px currentColor)}.ghost{opacity:.4}.marker{opacity:.5}.center{filter:drop-shadow(0 0 12px currentColor)}\n"
+        "@media(max-width:820px){main{grid-template-columns:1fr}.stage{position:static}.grid{grid-template-columns:1fr}.clock-wrap{min-height:300px}}\n"
+        "</style></head>\n";
+      static const char HTML_P2[] PROGMEM =
+        "<body><main>\n"
+        "<section class='stage'>\n"
+        "<h1>ESP32 Ring Clock</h1><p class='sub'>Outer 60 LEDs are the clock face, minute hand, and second hand; middle/inner rings show hours.</p>\n"
+        "<div class='clock-wrap'><svg id='clockSvg' viewBox='0 0 420 420' role='img' aria-label='NeoPixel clock preview'></svg></div>\n"
+        "<div id='now'>--:--:--</div><div id='state' class='state'>Connecting...</div>\n"
+        "</section>\n"
+        "<section>\n"
+        "<div class='grid'>\n"
+        "<div class='panel'><h2>Time</h2>\n"
+        "<form onsubmit='setTime();return false;' class='row'>\n"
+        "<div><label>Hour</label><input id='h' type='number' min='0' max='23' placeholder='HH'></div>\n"
+        "<div><label>Minute</label><input id='m' type='number' min='0' max='59' placeholder='MM'></div>\n"
+        "<div><label>Second</label><input id='s' type='number' min='0' max='59' placeholder='SS'></div>\n"
+        "<button class='primary' type='submit'>Set</button></form>\n"
+        "<div class='row'><button onclick='post(\"/addMinute\")'>+1 min</button><button onclick='post(\"/subMinute\")'>-1 min</button><button onclick='syncBrowser()'>Browser sync</button><button onclick='post(\"/syncNtp\")'>NTP sync</button></div>\n"
+        "</div>\n"
+        "<div class='panel'><h2>Display</h2>\n"
+        "<div class='row'><div><label>Day</label><input id='dayBrightness' type='number' min='0' max='255'></div><div><label>Night</label><input id='nightBrightness' type='number' min='0' max='255'></div><div><label>Night start</label><input id='nightStartHour' type='number' min='0' max='23'></div><div><label>Night end</label><input id='nightEndHour' type='number' min='0' max='23'></div></div>\n"
+        "<label>Preview effect</label><select id='previewMode'><option value='live'>Live clock</option><option value='trail'>All-ring trails</option><option value='spark'>Hourly sparkle</option></select>\n"
+        "</div></div>\n"
+        "<div class='panel'><h2>Rings</h2>\n"
+        "<div class='ringrow'><span>Outer marks</span><input id='outerMarkerColor' type='color'><input id='outerMarkerLevel' type='range' min='0' max='255'><output id='outerMarkerLevelOut'></output></div>\n"
+        "<div class='ringrow'><span>Outer fill</span><input id='outerFillerColor' type='color'><input id='outerFillerLevel' type='range' min='0' max='255'><output id='outerFillerLevelOut'></output></div>\n"
+        "<div class='ringrow'><span>Outer sec</span><input id='secondsColor' type='color'><input id='secondsLevel' type='range' min='0' max='255'><output id='secondsLevelOut'></output></div>\n"
+        "<div class='ringrow'><span>Outer min</span><input id='minutesColor' type='color'><input id='minutesLevel' type='range' min='0' max='255'><output id='minutesLevelOut'></output></div>\n"
+        "<div class='ringrow'><span>Hour rings</span><input id='hoursColor' type='color'><input id='hoursLevel' type='range' min='0' max='255'><output id='hoursLevelOut'></output></div>\n"
+        "<div class='ringrow'><span>Center</span><input id='centerColor' type='color'><input id='centerLevel' type='range' min='0' max='255'><output id='centerLevelOut'></output></div>\n"
+        "<div class='row'><div><label>Theme</label><select id='colorTheme'><option value='0'>Classic</option><option value='1'>Aqua</option><option value='2'>Magenta</option></select></div></div>\n"
+        "<div class='toggle'><label><input id='secondTrail' type='checkbox'>Second trail</label><label><input id='progressSeconds' type='checkbox'>Progress ring</label><label><input id='hourlyChime' type='checkbox'>Hourly chime</label><label><input id='statusAnimations' type='checkbox'>Status</label></div>\n"
+        "<div class='row'><div><label>Ring rotation offset (0-59 LEDs)</label><input id='outerRingOffset' type='number' min='0' max='59' style='width:70px'></div></div>\n"
+        "<div class='row'><button class='primary' onclick='saveSettings()'>Save display</button></div>\n"
+        "</div>\n"
+        "<div class='panel'><h2>Auto-Brightness</h2>\n"
+        "<select id='autoBrightnessMode'>\n"
+        "  <option value='0'>Manual</option>\n"
+        "  <option value='1'>Auto (light sensor)</option>\n"
+        "  <option value='2'>Scheduled (day/night)</option>\n"
+        "</select>\n"
+        "<div id='autoPanel' style='display:none'>\n"
+        "  <label>Current light: <span id='luxValue'>--</span> lux</label>\n"
+        "  <div class='row'>\n"
+        "    <div><label>Min bright</label><input id='minAutoBrightness' type='number' min='5' max='255'></div>\n"
+        "    <div><label>Max bright</label><input id='maxAutoBrightness' type='number' min='5' max='255'></div>\n"
+        "  </div>\n"
+        "</div>\n"
+        "<div class='row'><button class='primary' onclick='saveSettings()'>Save auto-brightness</button></div>\n"
+        "</div>\n"
+        "<div class='panel'><h2>Time Animations</h2>\n"
+        "<label><input id='intervalAnimationsEnabled' type='checkbox'> Enable interval animations</label>\n"
+        "<div class='row'>\n"
+        "  <div><label>Quarter (:15/:30/:45)</label><select id='quarterAnimation'>\n"
+        "    <option value='0'>Off</option>\n"
+        "    <option value='1'>Sparkle burst</option>\n"
+        "    <option value='2'>Quarter pulse</option>\n"
+        "    <option value='3'>Ring shimmer</option>\n"
+        "  </select></div>\n"
+        "  <div><label>Half-hour (:30)</label><select id='halfHourAnimation'>\n"
+        "    <option value='0'>Off</option>\n"
+        "    <option value='1'>Rainbow sweep</option>\n"
+        "    <option value='2'>Dual flash</option>\n"
+        "    <option value='3'>Tidal pulse</option>\n"
+        "  </select></div>\n"
+        "</div>\n"
+        "<label>Top of hour (:00)</label><select id='hourAnimation'>\n"
+        "  <option value='0'>Off</option>\n"
+        "  <option value='1'>Current chime</option>\n"
+        "  <option value='2'>Firework burst</option>\n"
+        "  <option value='3'>Zenith cascade</option>\n"
+        "  <option value='4'>Rainbow spiral</option>\n"
+        "  <option value='5'>Breathing mandala</option>\n"
+        "</select>\n"
+        "<div class='row'><button class='primary' onclick='saveSettings()'>Save animations</button></div>\n"
+        "</div>\n"
+        "<div class='panel'><h2>Focus Reminders (ADHD)</h2>\n"
+        "<p class='sub' style='font-size:12px;color:#92a0b5'>Visual nudge system for hyperfocus interruption. Fires animations at set intervals on selected days/times.</p>\n"
+        "<div class='toggle'><label><input id='focusReminder_enabled' type='checkbox'> Enable focus reminders</label></div>\n"
+        "<div class='row'>\n"
+        "  <div><label>Start hour</label><input id='focusReminder_startHour' type='number' min='0' max='23' placeholder='HH'></div>\n"
+        "  <div><label>End hour</label><input id='focusReminder_endHour' type='number' min='0' max='23' placeholder='HH'></div>\n"
+        "  <div><label>Interval (min)</label><input id='focusReminder_intervalMinutes' type='number' min='1' max='1440' placeholder='60'></div>\n"
+        "</div>\n"
+        "<label>Days of week</label>\n"
+        "<div class='toggle' id='daysToggle' style='display:flex;gap:4px;flex-wrap:wrap'></div>\n"
+        "<div><label>Animation</label><select id='focusReminder_animation'>\n"
+        "  <option value='0'>Quarter pulse</option>\n"
+        "  <option value='1'>Half-hour sweep</option>\n"
+        "  <option value='2'>Hour chime</option>\n"
+        "  <option value='3'>Quarter pulse (dup)</option>\n"
+        "  <option value='4'>Half-hour sweep (dup)</option>\n"
+        "  <option value='5'>Hour chime (dup)</option>\n"
+        "</select></div>\n"
+        "<div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>\n"
+        "</div>\n"
+        "<div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>\n"
+        "<div class='panel'><h2>&#9881; Admin</h2><div class='row'>"
+        "<a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a>"
+        "<a href='/wifi' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>WiFi Settings</a>"
+        "</div></div>\n"
+        "</section></main>\n";
+      static const char HTML_P3[] PROGMEM =
+        "<script>\n"
+        "const counts={outer:60,middle:24,inner:12}, radii={outer:182,middle:134,inner:88};\n"
+        "const leds={outer:[],middle:[],inner:[]}; let settings={}, current={hour:12,minute:0,second:0}, netTimer=0;\n"
+        "function qs(id){return document.getElementById(id)} function pad(n){return String(n).padStart(2,'0')}\n"
+        "function makeClock(){const svg=qs('clockSvg'); for(const ring of ['outer','middle','inner']){for(let i=0;i<counts[ring];i++){const a=(i/counts[ring])*Math.PI*2-Math.PI/2,x=210+Math.cos(a)*radii[ring],y=210+Math.sin(a)*radii[ring],c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',ring==='outer'?4.4:ring==='middle'?5.8:7.2);c.classList.add('led');svg.appendChild(c);leds[ring].push(c)}} const center=document.createElementNS('http://www.w3.org/2000/svg','circle');center.id='centerLed';center.setAttribute('cx',210);center.setAttribute('cy',210);center.setAttribute('r',17);center.classList.add('led','center');svg.appendChild(center)}\n"
+        "function setLed(el,color,level,cls='on'){el.style.color=color;el.setAttribute('fill',color);el.style.opacity=Math.max(.04,level/255);el.className.baseVal='led '+cls}\n"
+        "function clearRing(r){for(const el of leds[r]){el.setAttribute('fill','#243044');el.style.opacity=.22;el.className.baseVal='led'}}\n"
+        "function level(id){return Number(qs(id+'Level')?.value||180)} function color(id){return qs(id+'Color')?.value||'#ffffff'}\n"
+        "function draw(){clearRing('middle');clearRing('inner');for(let i=0;i<60;i++){const mark=i%5===0;setLed(leds.outer[i],mark?color('outerMarker'):color('outerFiller'),mark?level('outerMarker'):level('outerFiller'),mark?'marker':'ghost')}let s=current.second,m=current.minute,h=current.hour%12,hoff=current.minute>=30?1:0,h24=(h*2+hoff)%24;const mode=qs('previewMode')?.value||'live',tick=Math.floor(Date.now()/90);if(settings.progressSeconds){for(let i=0;i<=s;i++)setLed(leds.outer[i],color('seconds'),38,'ghost')}if(settings.secondTrail||mode==='trail'){for(let i=1;i<7;i++)setLed(leds.outer[(s+60-i)%60],color('seconds'),Math.max(20,level('seconds')-(i*32)),'ghost')}if(mode==='trail'){for(let i=1;i<5;i++){setLed(leds.outer[(m+60-i)%60],color('minutes'),Math.max(25,level('minutes')-(i*42)),'ghost');setLed(leds.middle[(h24+24-i)%24],color('hours'),Math.max(25,level('hours')-(i*42)),'ghost');setLed(leds.inner[(h+12-i)%12],color('hours'),Math.max(25,level('hours')-(i*52)),'ghost')}}if(mode==='spark'){for(let i=0;i<10;i++){setLed(leds.outer[(tick+i*6)%60],i%2?color('hours'):color('minutes'),90+(i*10),'ghost')}}for(let i=0;i<24;i++)setLed(leds.middle[i],color('hours'),22,'marker');for(let i=0;i<12;i++)setLed(leds.inner[i],color('center'),24,'marker');setLed(leds.outer[s],color('seconds'),level('seconds'));setLed(leds.outer[m],color('minutes'),level('minutes'));setLed(leds.middle[h24],color('hours'),level('hours'));setLed(leds.inner[h],color('hours'),level('hours'));setLed(leds.inner[(h+hoff)%12],color('hours'),level('hours'));const pulse=45+Math.floor((Math.sin(Date.now()/450)+1)*85);setLed(qs('centerLed'),color('center'),Math.min(level('center'),pulse),'on')}\n"
+        "async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;qs('now').textContent=`${pad(t.hour)}:${pad(t.minute)}:${pad(t.second)}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}\n"
+        "async function loadNet(){const r=await fetch('/net');const n=await r.json();qs('net').textContent=`${n.hostname} | ${n.ssid} | IP ${n.ip} | GW ${n.gateway} | RSSI ${n.rssi} dBm`}\n"
+        "async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('outerRingOffset').value=settings.outerRingOffset||0;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}\n"
+        "async function refreshLux(){const r=await fetch('/lux');const data=await r.json();if(data.available){qs('luxValue').textContent=data.lux.toFixed(1)}}\n"
+        "function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()}}\n"
+        "async function post(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});await refresh()}\n"
+        "function setTime(){post('/set',`hour=${h.value}&minute=${m.value}&second=${s.value}`)}\n"
+        "function syncBrowser(){const d=new Date();post('/syncBrowser',`hour=${d.getHours()}&minute=${d.getMinutes()}&second=${d.getSeconds()}`)}\n"
+        "function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);p.set('outerRingOffset',qs('outerRingOffset').value);post('/settings',p.toString()).then(loadSettings)}\n"
+        "function saveFocusReminder(){const p=new URLSearchParams();p.set('focusReminder_enabled',qs('focusReminder_enabled').checked?1:0);p.set('focusReminder_startHour',qs('focusReminder_startHour').value);p.set('focusReminder_endHour',qs('focusReminder_endHour').value);p.set('focusReminder_intervalMinutes',qs('focusReminder_intervalMinutes').value);p.set('focusReminder_animation',qs('focusReminder_animation').value);let daysMask=0;for(let i=0;i<7;i++){if(qs('focusReminder_day'+i).checked)daysMask|=(1<<i)}p.set('focusReminder_daysMask',daysMask);post('/settings',p.toString()).then(loadSettings)}\n"
+        "makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);\n"
+        "</script></body></html>";
+      server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
+      server_.send(200, "text/html", "");
+      server_.sendContent_P(HTML_P1);
+      server_.sendContent_P(HTML_P2);
+      server_.sendContent_P(HTML_P3);
+      server_.client().flush();
     });
 
     server_.on("/time", HTTP_GET, [&]() {
       ClockTime t = model_.get();
-      String payload = String("{\"hour\":") + t.hour +
-                       ",\"minute\":" + t.minute +
-                       ",\"second\":" + t.second +
-                       ",\"ntpSynced\":" + boolJson(timeSync_.synced()) +
-                       ",\"wifi\":" + boolJson(WiFi.status() == WL_CONNECTED) +
-                       ",\"ip\":\"" + WiFi.localIP().toString() + "\"}";
-      server_.send(200, "application/json", payload);
+      char buf[128];
+      snprintf(buf, sizeof(buf),
+        "{\"hour\":%u,\"minute\":%u,\"second\":%u"
+        ",\"ntpSynced\":%s,\"wifi\":%s,\"ip\":\"%s\"}",
+        t.hour, t.minute, t.second,
+        timeSync_.synced() ? "true" : "false",
+        (WiFi.status() == WL_CONNECTED) ? "true" : "false",
+        WiFi.localIP().toString().c_str());
+      server_.send(200, "application/json", buf);
     });
 
     server_.on("/temperature", HTTP_GET, [&]() {
@@ -1575,15 +1721,20 @@ class WebUi {
     });
 
     server_.on("/net", HTTP_GET, [&]() {
-      String payload = String("{\"hostname\":\"") + DEVICE_HOSTNAME +
-                       "\",\"ssid\":\"" + WiFi.SSID() +
-                       "\",\"ip\":\"" + WiFi.localIP().toString() +
-                       "\",\"gateway\":\"" + WiFi.gatewayIP().toString() +
-                       "\",\"subnet\":\"" + WiFi.subnetMask().toString() +
-                       "\",\"dns\":\"" + WiFi.dnsIP().toString() +
-                       "\",\"rssi\":" + WiFi.RSSI() +
-                       ",\"status\":" + WiFi.status() + "}";
-      server_.send(200, "application/json", payload);
+      char buf[256];
+      snprintf(buf, sizeof(buf),
+        "{\"hostname\":\"%s\",\"ssid\":\"%s\",\"ip\":\"%s\""
+        ",\"gateway\":\"%s\",\"subnet\":\"%s\",\"dns\":\"%s\""
+        ",\"rssi\":%d,\"status\":%d}",
+        DEVICE_HOSTNAME,
+        WiFi.SSID().c_str(),
+        WiFi.localIP().toString().c_str(),
+        WiFi.gatewayIP().toString().c_str(),
+        WiFi.subnetMask().toString().c_str(),
+        WiFi.dnsIP().toString().c_str(),
+        (int)WiFi.RSSI(),
+        (int)WiFi.status());
+      server_.send(200, "application/json", buf);
     });
 
     server_.on("/diag", HTTP_GET, [&]() {
@@ -1601,19 +1752,20 @@ class WebUi {
         case ESP_RST_DEEPSLEEP:bootReason = "deepsleep"; break;
         default: break;
       }
-      String payload = String("{")
-        + "\"uptime\":"          + uptimeSec
-        + ",\"firmware_version\":" + SETTINGS_VERSION
-        + ",\"boot_reason\":\""  + bootReason + "\""
-        + ",\"free_heap\":"      + ESP.getFreeHeap()
-        + ",\"wifi_ssid\":\""    + WiFi.SSID() + "\""
-        + ",\"wifi_rssi\":"      + WiFi.RSSI()
-        + ",\"wifi_ip\":\""      + WiFi.localIP().toString() + "\""
-        + ",\"ntp_synced\":"     + boolJson(timeSync_.synced())
-        + ",\"ntp_last_delta\":" + timeSync_.lastDeltaSec()
-        + ",\"button_events\":"  + g_buttonEventCount
-        + "}";
-      server_.send(200, "application/json", payload);
+      char buf[256];
+      snprintf(buf, sizeof(buf),
+        "{\"uptime\":%u,\"firmware_version\":%u,\"boot_reason\":\"%s\""
+        ",\"free_heap\":%u,\"wifi_ssid\":\"%s\",\"wifi_rssi\":%d"
+        ",\"wifi_ip\":\"%s\",\"ntp_synced\":%s,\"ntp_last_delta\":%d"
+        ",\"button_events\":%u}",
+        (unsigned)uptimeSec, (unsigned)SETTINGS_VERSION, bootReason,
+        (unsigned)ESP.getFreeHeap(),
+        WiFi.SSID().c_str(), (int)WiFi.RSSI(),
+        WiFi.localIP().toString().c_str(),
+        timeSync_.synced() ? "true" : "false",
+        (int)timeSync_.lastDeltaSec(),
+        (unsigned)g_buttonEventCount);
+      server_.send(200, "application/json", buf);
     });
 
     server_.on("/settings", HTTP_GET, [&]() {
@@ -1708,53 +1860,66 @@ class WebUi {
       wprefs.begin("wifi", true);
       String savedSsid = wprefs.getString("ssid", "");
       wprefs.end();
-      String dispSsid = savedSsid.length() > 0 ? savedSsid : String("(none saved)");
-      String wifiSt = String(wifiStatusText(WiFi.status()));
-      if (WiFi.status() == WL_CONNECTED) wifiSt += " (" + WiFi.SSID() + ")";
-      String html = R"HTML(<!doctype html><html><head>
-<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>WiFi Settings</title>
-<style>
-:root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}
-main{max-width:480px;margin:40px auto;padding:20px}
-.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;padding:24px;box-shadow:0 18px 45px #0008}
-h1{font-size:18px;margin:0 0 16px}
-.info{background:#0c1017;border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:20px;font-size:13px;color:var(--muted);line-height:1.8}
-label{display:block;color:var(--muted);font-size:12px;margin:12px 0 4px}
-input{width:100%;font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px 10px;min-height:38px}
-.row{display:flex;gap:10px;margin-top:20px}
-button{font:inherit;border-radius:6px;cursor:pointer;padding:10px 20px;min-height:40px;border:1px solid #42546d;background:#203146;color:var(--text)}
-button.primary{background:#145875;border-color:#2d9ccb;color:white}
-#status{margin-top:14px;min-height:18px;font-size:13px;color:var(--accent)}
-a{color:var(--accent);text-decoration:none;font-size:13px}a:hover{text-decoration:underline}
-</style></head><body><main>
-<div class='panel'>
-<h1>&#128246; WiFi Settings</h1>
-<div class='info'><strong>Saved SSID:</strong> PLACEHOLDER_SSID<br><strong>Status:</strong> PLACEHOLDER_STATUS</div>
-<form onsubmit='save();return false;'>
-<label>SSID</label><input id='ssid' type='text' maxlength='32' placeholder='Network name' required>
-<label>Password</label><input id='pass' type='password' maxlength='64' placeholder='Leave blank for open network'>
-<div class='row'><button type='submit' class='primary'>Save &amp; Connect</button><button type='button' onclick='history.back()'>Cancel</button></div>
-</form>
-<div id='status'></div>
-<p style='margin-top:20px'><a href='/'>&#8592; Back to clock</a></p>
-</div></main>
-<script>
-async function save(){
-  const ssid=document.getElementById('ssid').value.trim();
-  const pass=document.getElementById('pass').value;
-  if(!ssid){alert('SSID required');return}
-  document.getElementById('status').textContent='Saving...';
-  try{
-    const r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass)});
-    document.getElementById('status').textContent=await r.text();
-  }catch(e){document.getElementById('status').textContent='Saved. Device reconnecting — you may need to rejoin the network.';}
-}
-</script></body></html>)HTML";
-      html.replace("PLACEHOLDER_SSID", dispSsid);
-      html.replace("PLACEHOLDER_STATUS", wifiSt);
-      server_.send(200, "text/html", html);
+      const char *dispSsid = savedSsid.length() > 0 ? savedSsid.c_str() : "(none saved)";
+      char wifiSt[64];
+      snprintf(wifiSt, sizeof(wifiSt), "%s", wifiStatusText(WiFi.status()));
+      if (WiFi.status() == WL_CONNECTED) {
+        snprintf(wifiSt, sizeof(wifiSt), "%s (%s)", wifiStatusText(WiFi.status()), WiFi.SSID().c_str());
+      }
+      static const char WIFI_P1[] PROGMEM =
+        "<!doctype html><html><head>\n"
+        "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\n"
+        "<title>WiFi Settings</title>\n"
+        "<style>\n"
+        ":root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}\n"
+        "*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}\n"
+        "main{max-width:480px;margin:40px auto;padding:20px}\n"
+        ".panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;padding:24px;box-shadow:0 18px 45px #0008}\n"
+        "h1{font-size:18px;margin:0 0 16px}\n"
+        ".info{background:#0c1017;border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:20px;font-size:13px;color:var(--muted);line-height:1.8}\n"
+        "label{display:block;color:var(--muted);font-size:12px;margin:12px 0 4px}\n"
+        "input{width:100%;font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px 10px;min-height:38px}\n"
+        ".row{display:flex;gap:10px;margin-top:20px}\n"
+        "button{font:inherit;border-radius:6px;cursor:pointer;padding:10px 20px;min-height:40px;border:1px solid #42546d;background:#203146;color:var(--text)}\n"
+        "button.primary{background:#145875;border-color:#2d9ccb;color:white}\n"
+        "#status{margin-top:14px;min-height:18px;font-size:13px;color:var(--accent)}\n"
+        "a{color:var(--accent);text-decoration:none;font-size:13px}a:hover{text-decoration:underline}\n"
+        "</style></head><body><main>\n"
+        "<div class='panel'>\n"
+        "<h1>&#128246; WiFi Settings</h1>\n"
+        "<div class='info'><strong>Saved SSID:</strong> ";
+      static const char WIFI_MID[] PROGMEM =
+        "<br><strong>Status:</strong> ";
+      static const char WIFI_P2[] PROGMEM =
+        "</div>\n"
+        "<form onsubmit='save();return false;'>\n"
+        "<label>SSID</label><input id='ssid' type='text' maxlength='32' placeholder='Network name' required>\n"
+        "<label>Password</label><input id='pass' type='password' maxlength='64' placeholder='Leave blank for open network'>\n"
+        "<div class='row'><button type='submit' class='primary'>Save &amp; Connect</button><button type='button' onclick='history.back()'>Cancel</button></div>\n"
+        "</form>\n"
+        "<div id='status'></div>\n"
+        "<p style='margin-top:20px'><a href='/'>&#8592; Back to clock</a></p>\n"
+        "</div></main>\n"
+        "<script>\n"
+        "async function save(){\n"
+        "  const ssid=document.getElementById('ssid').value.trim();\n"
+        "  const pass=document.getElementById('pass').value;\n"
+        "  if(!ssid){alert('SSID required');return}\n"
+        "  document.getElementById('status').textContent='Saving...';\n"
+        "  try{\n"
+        "    const r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass)});\n"
+        "    document.getElementById('status').textContent=await r.text();\n"
+        "  }catch(e){document.getElementById('status').textContent='Saved. Device reconnecting \xe2\x80\x94 you may need to rejoin the network.';}\n"
+        "}\n"
+        "</script></body></html>";
+      server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
+      server_.send(200, "text/html", "");
+      server_.sendContent_P(WIFI_P1);
+      server_.sendContent(dispSsid);
+      server_.sendContent_P(WIFI_MID);
+      server_.sendContent(wifiSt);
+      server_.sendContent_P(WIFI_P2);
+      server_.client().flush();
     });
 
     // ===== WiFi Save Handler (POST /wifi) =====
@@ -1781,90 +1946,94 @@ async function save(){
 
     // ===== Firmware Update Web Page (GET /update) =====
     server_.on("/update", HTTP_GET, [&]() {
-      String html = R"HTML(
-<!doctype html><html><head>
-<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>Firmware Update - ESP32 Ring Clock</title>
-<style>
-:root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}
-main{max-width:600px;margin:40px auto;padding:20px}
-.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008;padding:24px;margin-bottom:16px}
-h1{margin:0 0 8px;font-size:24px}p{color:var(--muted);margin:0 0 16px}
-input[type=file]{display:block;margin:16px 0;padding:8px;background:#0c1017;border:1px solid #374253;border-radius:6px;color:var(--text)}
-button{background:#145875;border:1px solid #2d9ccb;color:white;padding:12px 24px;border-radius:6px;font-size:16px;cursor:pointer;margin:8px 8px 8px 0}
-button:hover{background:#1a6a8f}button.danger{background:#8b2e2e;border-color:#c04040}
-.progress{width:100%;height:24px;background:#0c1017;border:1px solid #374253;border-radius:4px;overflow:hidden;margin:16px 0}
-.progress-bar{height:100%;background:#6bd7ff;width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;font-size:12px;color:#090b10}
-.status{margin:16px 0;padding:12px;border-radius:6px;display:none}
-.status.success{background:#0a3a2a;border:1px solid #10a060;color:#90ff90}
-.status.error{background:#3a0a0a;border:1px solid #a01010;color:#ff9090}
-.status.info{background:#0a1a3a;border:1px solid #1060a0;color:#90d0ff}
-#updateForm{margin:16px 0}
-.info-box{background:#0c1017;border-left:3px solid #6bd7ff;padding:12px;margin:16px 0;border-radius:4px}
-a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
-</style></head>
-<body><main>
-<div class='panel'>
-<h1>&#128295; Firmware Update</h1>
-<p>Upload a new .bin firmware file to update the clock.</p>
-<div class='info-box'>
-<strong>Current Firmware:</strong> Latest<br>
-<strong>Flash Size:</strong> ~700 KB<br>
-<strong>Device:</strong> XIAO ESP32-C3
-</div>
-<div id='updateForm'>
-<input type='file' id='binFile' accept='.bin' required>
-<button onclick='uploadFirmware()'>Upload & Update</button>
-<button onclick='history.back()'>Cancel</button>
-</div>
-<div class='progress' id='progress' style='display:none'>
-<div class='progress-bar' id='progressBar'>0%</div>
-</div>
-<div class='status' id='status'></div>
-</main>
-<script>
-function uploadFirmware(){
-  const file=document.getElementById('binFile').files[0];
-  if(!file){alert('Please select a .bin file');return}
-  if(!file.name.endsWith('.bin')){alert('File must be .bin format');return}
-  if(file.size>800000){alert('File too large (max ~700KB)');return}
-  const xhr=new XMLHttpRequest();
-  xhr.upload.onprogress=(e)=>{
-    if(e.lengthComputable){
-      const pct=Math.round(e.loaded/e.total*100);
-      document.getElementById('progressBar').style.width=pct+'%';
-      document.getElementById('progressBar').textContent=pct+'%';
-    }
-  };
-  xhr.onload=()=>{
-    const msg=document.getElementById('status');
-    if(xhr.status===200){
-      msg.innerHTML='&#10003; Upload successful! Device will reboot with new firmware...';
-      msg.className='status success';
-      document.getElementById('updateForm').style.display='none';
-      setTimeout(()=>{window.location.href='/'},5000);
-    }else{
-      msg.innerHTML='&#10007; Update failed: '+xhr.responseText;
-      msg.className='status error';
-    }
-    msg.style.display='block';
-  };
-  xhr.onerror=()=>{
-    const msg=document.getElementById('status');
-    msg.innerHTML='&#10007; Upload error (connection lost?)';
-    msg.className='status error';
-    msg.style.display='block';
-  };
-  document.getElementById('progress').style.display='block';
-  const fd=new FormData();
-  fd.append('firmware',file,file.name);
-  xhr.open('POST','/update');
-  xhr.send(fd);
-}
-</script></body></html>
-      )HTML";
-      server_.send(200, "text/html", html);
+      static const char UPDATE_P1[] PROGMEM =
+        "<!doctype html><html><head>\n"
+        "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\n"
+        "<title>Firmware Update - ESP32 Ring Clock</title>\n"
+        "<style>\n"
+        ":root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}\n"
+        "*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}\n"
+        "main{max-width:600px;margin:40px auto;padding:20px}\n"
+        ".panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008;padding:24px;margin-bottom:16px}\n"
+        "h1{margin:0 0 8px;font-size:24px}p{color:var(--muted);margin:0 0 16px}\n"
+        "input[type=file]{display:block;margin:16px 0;padding:8px;background:#0c1017;border:1px solid #374253;border-radius:6px;color:var(--text)}\n"
+        "button{background:#145875;border:1px solid #2d9ccb;color:white;padding:12px 24px;border-radius:6px;font-size:16px;cursor:pointer;margin:8px 8px 8px 0}\n"
+        "button:hover{background:#1a6a8f}button.danger{background:#8b2e2e;border-color:#c04040}\n"
+        ".progress{width:100%;height:24px;background:#0c1017;border:1px solid #374253;border-radius:4px;overflow:hidden;margin:16px 0}\n"
+        ".progress-bar{height:100%;background:#6bd7ff;width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;font-size:12px;color:#090b10}\n"
+        ".status{margin:16px 0;padding:12px;border-radius:6px;display:none}\n"
+        ".status.success{background:#0a3a2a;border:1px solid #10a060;color:#90ff90}\n"
+        ".status.error{background:#3a0a0a;border:1px solid #a01010;color:#ff9090}\n"
+        ".status.info{background:#0a1a3a;border:1px solid #1060a0;color:#90d0ff}\n"
+        "#updateForm{margin:16px 0}\n"
+        ".info-box{background:#0c1017;border-left:3px solid #6bd7ff;padding:12px;margin:16px 0;border-radius:4px}\n"
+        "a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}\n"
+        "</style></head>\n"
+        "<body><main>\n"
+        "<div class='panel'>\n"
+        "<h1>&#128295; Firmware Update</h1>\n"
+        "<p>Upload a new .bin firmware file to update the clock.</p>\n"
+        "<div class='info-box'>\n"
+        "<strong>Current Firmware:</strong> Latest<br>\n"
+        "<strong>Flash Size:</strong> ~700 KB<br>\n"
+        "<strong>Device:</strong> XIAO ESP32-C3\n"
+        "</div>\n"
+        "<div id='updateForm'>\n"
+        "<input type='file' id='binFile' accept='.bin' required>\n"
+        "<button onclick='uploadFirmware()'>Upload &amp; Update</button>\n"
+        "<button onclick='history.back()'>Cancel</button>\n"
+        "</div>\n"
+        "<div class='progress' id='progress' style='display:none'>\n"
+        "<div class='progress-bar' id='progressBar'>0%</div>\n"
+        "</div>\n"
+        "<div class='status' id='status'></div>\n"
+        "</main>\n";
+      static const char UPDATE_P2[] PROGMEM =
+        "<script>\n"
+        "function uploadFirmware(){\n"
+        "  const file=document.getElementById('binFile').files[0];\n"
+        "  if(!file){alert('Please select a .bin file');return}\n"
+        "  if(!file.name.endsWith('.bin')){alert('File must be .bin format');return}\n"
+        "  if(file.size>800000){alert('File too large (max ~700KB)');return}\n"
+        "  const xhr=new XMLHttpRequest();\n"
+        "  xhr.upload.onprogress=(e)=>{\n"
+        "    if(e.lengthComputable){\n"
+        "      const pct=Math.round(e.loaded/e.total*100);\n"
+        "      document.getElementById('progressBar').style.width=pct+'%';\n"
+        "      document.getElementById('progressBar').textContent=pct+'%';\n"
+        "    }\n"
+        "  };\n"
+        "  xhr.onload=()=>{\n"
+        "    const msg=document.getElementById('status');\n"
+        "    if(xhr.status===200){\n"
+        "      msg.innerHTML='&#10003; Upload successful! Device will reboot with new firmware...';\n"
+        "      msg.className='status success';\n"
+        "      document.getElementById('updateForm').style.display='none';\n"
+        "      setTimeout(()=>{window.location.href='/'},5000);\n"
+        "    }else{\n"
+        "      msg.innerHTML='&#10007; Update failed: '+xhr.responseText;\n"
+        "      msg.className='status error';\n"
+        "    }\n"
+        "    msg.style.display='block';\n"
+        "  };\n"
+        "  xhr.onerror=()=>{\n"
+        "    const msg=document.getElementById('status');\n"
+        "    msg.innerHTML='&#10007; Upload error (connection lost?)';\n"
+        "    msg.className='status error';\n"
+        "    msg.style.display='block';\n"
+        "  };\n"
+        "  document.getElementById('progress').style.display='block';\n"
+        "  const fd=new FormData();\n"
+        "  fd.append('firmware',file,file.name);\n"
+        "  xhr.open('POST','/update');\n"
+        "  xhr.send(fd);\n"
+        "}\n"
+        "</script></body></html>";
+      server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
+      server_.send(200, "text/html", "");
+      server_.sendContent_P(UPDATE_P1);
+      server_.sendContent_P(UPDATE_P2);
+      server_.client().flush();
     });
 
     // ===== Firmware Upload Handler (POST /update) =====
@@ -1918,42 +2087,50 @@ function uploadFirmware(){
 
   String settingsJson() {
     const ClockSettings &s = settings_.get();
-    return String("{\"dayBrightness\":") + s.dayBrightness +
-           ",\"nightBrightness\":" + s.nightBrightness +
-           ",\"nightStartHour\":" + s.nightStartHour +
-           ",\"nightEndHour\":" + s.nightEndHour +
-           ",\"colorTheme\":" + s.colorTheme +
-           ",\"secondTrail\":" + s.secondTrail +
-           ",\"progressSeconds\":" + s.progressSeconds +
-           ",\"hourlyChime\":" + s.hourlyChime +
-           ",\"statusAnimations\":" + s.statusAnimations +
-           ",\"outerMarkerColor\":\"" + colorHex(s.outerMarkerRed, s.outerMarkerGreen, s.outerMarkerBlue) +
-           "\",\"outerMarkerLevel\":" + s.outerMarkerLevel +
-           ",\"outerFillerColor\":\"" + colorHex(s.outerFillerRed, s.outerFillerGreen, s.outerFillerBlue) +
-           "\",\"outerFillerLevel\":" + s.outerFillerLevel +
-           ",\"secondsColor\":\"" + colorHex(s.secondsRed, s.secondsGreen, s.secondsBlue) +
-           "\",\"secondsLevel\":" + s.secondsLevel +
-           ",\"minutesColor\":\"" + colorHex(s.minutesRed, s.minutesGreen, s.minutesBlue) +
-           "\",\"minutesLevel\":" + s.minutesLevel +
-           ",\"hoursColor\":\"" + colorHex(s.hoursRed, s.hoursGreen, s.hoursBlue) +
-           "\",\"hoursLevel\":" + s.hoursLevel +
-           ",\"centerColor\":\"" + colorHex(s.centerRed, s.centerGreen, s.centerBlue) +
-           "\",\"centerLevel\":" + s.centerLevel +
-           ",\"autoBrightnessMode\":" + s.autoBrightnessMode +
-           ",\"minAutoBrightness\":" + s.minAutoBrightness +
-           ",\"maxAutoBrightness\":" + s.maxAutoBrightness +
-           ",\"quarterAnimation\":" + s.quarterAnimation +
-           ",\"halfHourAnimation\":" + s.halfHourAnimation +
-           ",\"hourAnimation\":" + s.hourAnimation +
-           ",\"intervalAnimationsEnabled\":" + s.intervalAnimationsEnabled +
-           ",\"focusReminder_enabled\":" + s.focusReminder_enabled +
-           ",\"focusReminder_startHour\":" + s.focusReminder_startHour +
-           ",\"focusReminder_endHour\":" + s.focusReminder_endHour +
-           ",\"focusReminder_intervalMinutes\":" + s.focusReminder_intervalMinutes +
-           ",\"focusReminder_daysMask\":" + s.focusReminder_daysMask +
-           ",\"focusReminder_animation\":" + s.focusReminder_animation +
-           ",\"focusReminder_durationSeconds\":" + s.focusReminder_durationSeconds +
-           ",\"outerRingOffset\":" + s.outerRingOffset + "}";
+    char oc[8], fc[8], sc[8], mc[8], hc[8], cc[8];
+    snprintf(oc, sizeof(oc), "#%02X%02X%02X", s.outerMarkerRed, s.outerMarkerGreen, s.outerMarkerBlue);
+    snprintf(fc, sizeof(fc), "#%02X%02X%02X", s.outerFillerRed, s.outerFillerGreen, s.outerFillerBlue);
+    snprintf(sc, sizeof(sc), "#%02X%02X%02X", s.secondsRed, s.secondsGreen, s.secondsBlue);
+    snprintf(mc, sizeof(mc), "#%02X%02X%02X", s.minutesRed, s.minutesGreen, s.minutesBlue);
+    snprintf(hc, sizeof(hc), "#%02X%02X%02X", s.hoursRed, s.hoursGreen, s.hoursBlue);
+    snprintf(cc, sizeof(cc), "#%02X%02X%02X", s.centerRed, s.centerGreen, s.centerBlue);
+    char buf[900];
+    snprintf(buf, sizeof(buf),
+      "{\"dayBrightness\":%u,\"nightBrightness\":%u"
+      ",\"nightStartHour\":%u,\"nightEndHour\":%u"
+      ",\"colorTheme\":%u,\"secondTrail\":%u,\"progressSeconds\":%u"
+      ",\"hourlyChime\":%u,\"statusAnimations\":%u"
+      ",\"outerMarkerColor\":\"%s\",\"outerMarkerLevel\":%u"
+      ",\"outerFillerColor\":\"%s\",\"outerFillerLevel\":%u"
+      ",\"secondsColor\":\"%s\",\"secondsLevel\":%u"
+      ",\"minutesColor\":\"%s\",\"minutesLevel\":%u"
+      ",\"hoursColor\":\"%s\",\"hoursLevel\":%u"
+      ",\"centerColor\":\"%s\",\"centerLevel\":%u"
+      ",\"autoBrightnessMode\":%u,\"minAutoBrightness\":%u,\"maxAutoBrightness\":%u"
+      ",\"quarterAnimation\":%u,\"halfHourAnimation\":%u,\"hourAnimation\":%u"
+      ",\"intervalAnimationsEnabled\":%u"
+      ",\"focusReminder_enabled\":%u,\"focusReminder_startHour\":%u"
+      ",\"focusReminder_endHour\":%u,\"focusReminder_intervalMinutes\":%u"
+      ",\"focusReminder_daysMask\":%u,\"focusReminder_animation\":%u"
+      ",\"focusReminder_durationSeconds\":%u,\"outerRingOffset\":%u}",
+      s.dayBrightness, s.nightBrightness,
+      s.nightStartHour, s.nightEndHour,
+      s.colorTheme, s.secondTrail, s.progressSeconds,
+      s.hourlyChime, s.statusAnimations,
+      oc, s.outerMarkerLevel,
+      fc, s.outerFillerLevel,
+      sc, s.secondsLevel,
+      mc, s.minutesLevel,
+      hc, s.hoursLevel,
+      cc, s.centerLevel,
+      s.autoBrightnessMode, s.minAutoBrightness, s.maxAutoBrightness,
+      s.quarterAnimation, s.halfHourAnimation, s.hourAnimation,
+      s.intervalAnimationsEnabled,
+      s.focusReminder_enabled, s.focusReminder_startHour,
+      s.focusReminder_endHour, s.focusReminder_intervalMinutes,
+      s.focusReminder_daysMask, s.focusReminder_animation,
+      s.focusReminder_durationSeconds, s.outerRingOffset);
+    return String(buf);
   }
 
   static String boolJson(bool value) {
@@ -2019,142 +2196,7 @@ function uploadFirmware(){
     }
   }
 
-  String htmlPage() {
-    return R"HTML(
-<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>
-<title>ESP32 Ring Clock</title>
-<style>
-:root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}
-main{display:grid;grid-template-columns:minmax(280px,430px) minmax(310px,1fr);gap:18px;max-width:1120px;margin:0 auto;padding:18px}
-.stage,.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008}
-.stage{position:sticky;top:14px;align-self:start;padding:16px}.clock-wrap{display:grid;place-items:center;min-height:380px}
-h1{font-size:18px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0 0 12px}#now{font-size:42px;font-weight:750;letter-spacing:0;margin:8px 0 2px}.state{color:var(--muted);font-size:13px;line-height:1.4;min-height:20px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{padding:14px;margin-bottom:12px}.panel h2{font-size:15px;margin:0 0 12px;color:#dbe7f7}
-label{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}input,select,button{font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px;min-height:38px}
-input[type=number]{width:82px}input[type=color]{width:58px;padding:3px}.row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ringrow{display:grid;grid-template-columns:82px 66px 1fr 54px;gap:8px;align-items:center;margin:8px 0}.ringrow span{color:#dbe7f7}
-button{cursor:pointer;background:#203146;border-color:#42546d}button.primary{background:#145875;border-color:#2d9ccb;color:white}.toggle{display:flex;gap:8px;flex-wrap:wrap}.toggle label{display:flex;gap:6px;align-items:center;margin:0;color:#dce6f5;background:#0c1017;border:1px solid #303846;border-radius:6px;padding:8px}
-svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:fill .18s,opacity .18s,filter .18s}.on{opacity:1;filter:drop-shadow(0 0 5px currentColor)}.ghost{opacity:.4}.marker{opacity:.5}.center{filter:drop-shadow(0 0 12px currentColor)}
-@media(max-width:820px){main{grid-template-columns:1fr}.stage{position:static}.grid{grid-template-columns:1fr}.clock-wrap{min-height:300px}}
-</style></head>
-<body><main>
-<section class='stage'>
-<h1>ESP32 Ring Clock</h1><p class='sub'>Outer 60 LEDs are the clock face, minute hand, and second hand; middle/inner rings show hours.</p>
-<div class='clock-wrap'><svg id='clockSvg' viewBox='0 0 420 420' role='img' aria-label='NeoPixel clock preview'></svg></div>
-<div id='now'>--:--:--</div><div id='state' class='state'>Connecting...</div>
-</section>
-<section>
-<div class='grid'>
-<div class='panel'><h2>Time</h2>
-<form onsubmit='setTime();return false;' class='row'>
-<div><label>Hour</label><input id='h' type='number' min='0' max='23' placeholder='HH'></div>
-<div><label>Minute</label><input id='m' type='number' min='0' max='59' placeholder='MM'></div>
-<div><label>Second</label><input id='s' type='number' min='0' max='59' placeholder='SS'></div>
-<button class='primary' type='submit'>Set</button></form>
-<div class='row'><button onclick='post("/addMinute")'>+1 min</button><button onclick='post("/subMinute")'>-1 min</button><button onclick='syncBrowser()'>Browser sync</button><button onclick='post("/syncNtp")'>NTP sync</button></div>
-</div>
-<div class='panel'><h2>Display</h2>
-<div class='row'><div><label>Day</label><input id='dayBrightness' type='number' min='0' max='255'></div><div><label>Night</label><input id='nightBrightness' type='number' min='0' max='255'></div><div><label>Night start</label><input id='nightStartHour' type='number' min='0' max='23'></div><div><label>Night end</label><input id='nightEndHour' type='number' min='0' max='23'></div></div>
-<label>Preview effect</label><select id='previewMode'><option value='live'>Live clock</option><option value='trail'>All-ring trails</option><option value='spark'>Hourly sparkle</option></select>
-</div></div>
-<div class='panel'><h2>Rings</h2>
-<div class='ringrow'><span>Outer marks</span><input id='outerMarkerColor' type='color'><input id='outerMarkerLevel' type='range' min='0' max='255'><output id='outerMarkerLevelOut'></output></div>
-<div class='ringrow'><span>Outer fill</span><input id='outerFillerColor' type='color'><input id='outerFillerLevel' type='range' min='0' max='255'><output id='outerFillerLevelOut'></output></div>
-<div class='ringrow'><span>Outer sec</span><input id='secondsColor' type='color'><input id='secondsLevel' type='range' min='0' max='255'><output id='secondsLevelOut'></output></div>
-<div class='ringrow'><span>Outer min</span><input id='minutesColor' type='color'><input id='minutesLevel' type='range' min='0' max='255'><output id='minutesLevelOut'></output></div>
-<div class='ringrow'><span>Hour rings</span><input id='hoursColor' type='color'><input id='hoursLevel' type='range' min='0' max='255'><output id='hoursLevelOut'></output></div>
-<div class='ringrow'><span>Center</span><input id='centerColor' type='color'><input id='centerLevel' type='range' min='0' max='255'><output id='centerLevelOut'></output></div>
-<div class='row'><div><label>Theme</label><select id='colorTheme'><option value='0'>Classic</option><option value='1'>Aqua</option><option value='2'>Magenta</option></select></div></div>
-<div class='toggle'><label><input id='secondTrail' type='checkbox'>Second trail</label><label><input id='progressSeconds' type='checkbox'>Progress ring</label><label><input id='hourlyChime' type='checkbox'>Hourly chime</label><label><input id='statusAnimations' type='checkbox'>Status</label></div>
-<div class='row'><div><label>Ring rotation offset (0-59 LEDs)</label><input id='outerRingOffset' type='number' min='0' max='59' style='width:70px'></div></div>
-<div class='row'><button class='primary' onclick='saveSettings()'>Save display</button></div>
-</div>
-<div class='panel'><h2>Auto-Brightness</h2>
-<select id='autoBrightnessMode'>
-  <option value='0'>Manual</option>
-  <option value='1'>Auto (light sensor)</option>
-  <option value='2'>Scheduled (day/night)</option>
-</select>
-<div id='autoPanel' style='display:none'>
-  <label>Current light: <span id='luxValue'>--</span> lux</label>
-  <div class='row'>
-    <div><label>Min bright</label><input id='minAutoBrightness' type='number' min='5' max='255'></div>
-    <div><label>Max bright</label><input id='maxAutoBrightness' type='number' min='5' max='255'></div>
-  </div>
-</div>
-<div class='row'><button class='primary' onclick='saveSettings()'>Save auto-brightness</button></div>
-</div>
-<div class='panel'><h2>Time Animations</h2>
-<label><input id='intervalAnimationsEnabled' type='checkbox'> Enable interval animations</label>
-<div class='row'>
-  <div><label>Quarter (:15/:30/:45)</label><select id='quarterAnimation'>
-    <option value='0'>Off</option>
-    <option value='1'>Sparkle burst</option>
-    <option value='2'>Quarter pulse</option>
-    <option value='3'>Ring shimmer</option>
-  </select></div>
-  <div><label>Half-hour (:30)</label><select id='halfHourAnimation'>
-    <option value='0'>Off</option>
-    <option value='1'>Rainbow sweep</option>
-    <option value='2'>Dual flash</option>
-    <option value='3'>Tidal pulse</option>
-  </select></div>
-</div>
-<label>Top of hour (:00)</label><select id='hourAnimation'>
-  <option value='0'>Off</option>
-  <option value='1'>Current chime</option>
-  <option value='2'>Firework burst</option>
-  <option value='3'>Zenith cascade</option>
-  <option value='4'>Rainbow spiral</option>
-  <option value='5'>Breathing mandala</option>
-</select>
-<div class='row'><button class='primary' onclick='saveSettings()'>Save animations</button></div>
-</div>
-<div class='panel'><h2>Focus Reminders (ADHD)</h2>
-<p class='sub' style='font-size:12px;color:#92a0b5'>Visual nudge system for hyperfocus interruption. Fires animations at set intervals on selected days/times.</p>
-<div class='toggle'><label><input id='focusReminder_enabled' type='checkbox'> Enable focus reminders</label></div>
-<div class='row'>
-  <div><label>Start hour</label><input id='focusReminder_startHour' type='number' min='0' max='23' placeholder='HH'></div>
-  <div><label>End hour</label><input id='focusReminder_endHour' type='number' min='0' max='23' placeholder='HH'></div>
-  <div><label>Interval (min)</label><input id='focusReminder_intervalMinutes' type='number' min='1' max='1440' placeholder='60'></div>
-</div>
-<label>Days of week</label>
-<div class='toggle' id='daysToggle' style='display:flex;gap:4px;flex-wrap:wrap'></div>
-<div><label>Animation</label><select id='focusReminder_animation'>
-  <option value='0'>Quarter pulse</option>
-  <option value='1'>Half-hour sweep</option>
-  <option value='2'>Hour chime</option>
-  <option value='3'>Quarter pulse (dup)</option>
-  <option value='4'>Half-hour sweep (dup)</option>
-  <option value='5'>Hour chime (dup)</option>
-</select></div>
-<div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>
-</div>
-<div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>
-<div class='panel'><h2>&#9881; Admin</h2><div class='row'><a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a><a href='/wifi' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>WiFi Settings</a></div></div>
-</section></main>
-<script>
-const counts={outer:60,middle:24,inner:12}, radii={outer:182,middle:134,inner:88};
-const leds={outer:[],middle:[],inner:[]}; let settings={}, current={hour:12,minute:0,second:0}, netTimer=0;
-function qs(id){return document.getElementById(id)} function pad(n){return String(n).padStart(2,'0')}
-function makeClock(){const svg=qs('clockSvg'); for(const ring of ['outer','middle','inner']){for(let i=0;i<counts[ring];i++){const a=(i/counts[ring])*Math.PI*2-Math.PI/2,x=210+Math.cos(a)*radii[ring],y=210+Math.sin(a)*radii[ring],c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',ring==='outer'?4.4:ring==='middle'?5.8:7.2);c.classList.add('led');svg.appendChild(c);leds[ring].push(c)}} const center=document.createElementNS('http://www.w3.org/2000/svg','circle');center.id='centerLed';center.setAttribute('cx',210);center.setAttribute('cy',210);center.setAttribute('r',17);center.classList.add('led','center');svg.appendChild(center)}
-function setLed(el,color,level,cls='on'){el.style.color=color;el.setAttribute('fill',color);el.style.opacity=Math.max(.04,level/255);el.className.baseVal='led '+cls}
-function clearRing(r){for(const el of leds[r]){el.setAttribute('fill','#243044');el.style.opacity=.22;el.className.baseVal='led'}}
-function level(id){return Number(qs(id+'Level')?.value||180)} function color(id){return qs(id+'Color')?.value||'#ffffff'}
-function draw(){clearRing('middle');clearRing('inner');for(let i=0;i<60;i++){const mark=i%5===0;setLed(leds.outer[i],mark?color('outerMarker'):color('outerFiller'),mark?level('outerMarker'):level('outerFiller'),mark?'marker':'ghost')}let s=current.second,m=current.minute,h=current.hour%12,hoff=current.minute>=30?1:0,h24=(h*2+hoff)%24;const mode=qs('previewMode')?.value||'live',tick=Math.floor(Date.now()/90);if(settings.progressSeconds){for(let i=0;i<=s;i++)setLed(leds.outer[i],color('seconds'),38,'ghost')}if(settings.secondTrail||mode==='trail'){for(let i=1;i<7;i++)setLed(leds.outer[(s+60-i)%60],color('seconds'),Math.max(20,level('seconds')-(i*32)),'ghost')}if(mode==='trail'){for(let i=1;i<5;i++){setLed(leds.outer[(m+60-i)%60],color('minutes'),Math.max(25,level('minutes')-(i*42)),'ghost');setLed(leds.middle[(h24+24-i)%24],color('hours'),Math.max(25,level('hours')-(i*42)),'ghost');setLed(leds.inner[(h+12-i)%12],color('hours'),Math.max(25,level('hours')-(i*52)),'ghost')}}if(mode==='spark'){for(let i=0;i<10;i++){setLed(leds.outer[(tick+i*6)%60],i%2?color('hours'):color('minutes'),90+(i*10),'ghost')}}for(let i=0;i<24;i++)setLed(leds.middle[i],color('hours'),22,'marker');for(let i=0;i<12;i++)setLed(leds.inner[i],color('center'),24,'marker');setLed(leds.outer[s],color('seconds'),level('seconds'));setLed(leds.outer[m],color('minutes'),level('minutes'));setLed(leds.middle[h24],color('hours'),level('hours'));setLed(leds.inner[h],color('hours'),level('hours'));setLed(leds.inner[(h+hoff)%12],color('hours'),level('hours'));const pulse=45+Math.floor((Math.sin(Date.now()/450)+1)*85);setLed(qs('centerLed'),color('center'),Math.min(level('center'),pulse),'on')}
-async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;qs('now').textContent=`${pad(t.hour)}:${pad(t.minute)}:${pad(t.second)}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}
-async function loadNet(){const r=await fetch('/net');const n=await r.json();qs('net').textContent=`${n.hostname} | ${n.ssid} | IP ${n.ip} | GW ${n.gateway} | RSSI ${n.rssi} dBm`}
-async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('outerRingOffset').value=settings.outerRingOffset||0;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}
-async function refreshLux(){const r=await fetch('/lux');const data=await r.json();if(data.available){qs('luxValue').textContent=data.lux.toFixed(1)}}
-function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()}}
-async function post(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});await refresh()}
-function setTime(){post('/set',`hour=${h.value}&minute=${m.value}&second=${s.value}`)}
-function syncBrowser(){const d=new Date();post('/syncBrowser',`hour=${d.getHours()}&minute=${d.getMinutes()}&second=${d.getSeconds()}`)}
-function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);p.set('outerRingOffset',qs('outerRingOffset').value);post('/settings',p.toString()).then(loadSettings)}
-function saveFocusReminder(){const p=new URLSearchParams();p.set('focusReminder_enabled',qs('focusReminder_enabled').checked?1:0);p.set('focusReminder_startHour',qs('focusReminder_startHour').value);p.set('focusReminder_endHour',qs('focusReminder_endHour').value);p.set('focusReminder_intervalMinutes',qs('focusReminder_intervalMinutes').value);p.set('focusReminder_animation',qs('focusReminder_animation').value);let daysMask=0;for(let i=0;i<7;i++){if(qs('focusReminder_day'+i).checked)daysMask|=(1<<i)}p.set('focusReminder_daysMask',daysMask);post('/settings',p.toString()).then(loadSettings)}
-makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);
-</script></body></html>)HTML";
-  }
+  String htmlPage() { return ""; }
 
   TimeModel &model_;
   SettingsStore &settings_;
