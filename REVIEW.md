@@ -1,5 +1,24 @@
 # ChronoBloom ESP32-C3 — Firmware Review
-Date: 2026-05-04 (updated 2026-05-13)
+Date: 2026-05-04 (updated 2026-05-15)
+
+---
+
+## Session 12 — 2026-05-15 Animation Expansion (v2.1.0)
+
+Added 17 new animations, a palette system, and animation style controls.
+
+**New ClockSettings fields** (SETTINGS_VERSION 10→11):
+- `animationPalette` (0-7), `animationSpeed` (1-5), `animationBrightness` (50-255), `trailLength` (2-12), `reminderPalette` (0-3)
+
+**New helpers** in `ClockRenderer`: `paletteColor()` (palette-mapped color), `scaledElapsed()` (speed-scaled timing).
+
+**New AnimPhase values**: ANIM_Q4-Q6 (quarter), ANIM_H4-H7 (half), ANIM_HR6-HR10 (hour), ANIM_REM1-REM6 (reminder — warm palette, distinct from time animations).
+
+**New endpoint**: `POST /previewAnimation?type=quarter|halfhour|hour|reminder&mode=N` — fires animation directly without touching settings.
+
+**Web UI**: Preview button on every animation selector + style preview type picker; Animation Style panel (palette, speed, brightness, trail); 12-hour AM/PM time display.
+
+**Build result**: RAM 11.1%, Flash 56.3%. Zero errors both envs. symmap: 102 functions.
 
 ---
 

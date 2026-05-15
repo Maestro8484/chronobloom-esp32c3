@@ -246,6 +246,31 @@ fetch('/syncBrowser', {
 
 ---
 
+### `POST /previewAnimation`
+**Description**: Fire an animation immediately for preview — does not modify saved settings
+
+**Parameters** (application/x-www-form-urlencoded):
+- `type` (string, required): `quarter` | `halfhour` | `hour` | `reminder`
+- `mode` (int, required): animation index within the type
+  - `quarter`: 1-6
+  - `halfhour`: 1-7
+  - `hour`: 1-10
+  - `reminder`: 0-11
+
+**Example**:
+```
+POST /previewAnimation
+Content-Type: application/x-www-form-urlencoded
+
+type=hour&mode=6
+```
+
+**Response**: `200 OK "ok"` | `400 Bad Request "<error>"`
+
+**Side effects**: Triggers the specified animation on the LED rings immediately. No settings are written.
+
+---
+
 ### `POST /settings`
 **Description**: Update display settings
 
@@ -286,10 +311,17 @@ fetch('/syncBrowser', {
 - `maxAutoBrightness` (int, 5-255)
 
 **Time-Interval Animations**:
-- `quarterAnimation` (int, 0-3: 0=off, 1=sparkle, 2=pulse, 3=shimmer)
-- `halfHourAnimation` (int, 0-3: 0=off, 1=sweep, 2=flash, 3=tidal)
-- `hourAnimation` (int, 0-5: 0=off, 1=chime, 2=firework, 3=cascade, 4=spiral, 5=mandala)
+- `quarterAnimation` (int, 0-6: 0=off, 1=sparkle, 2=pulse, 3=shimmer, 4=laser ping, 5=DNA twist, 6=tick spark)
+- `halfHourAnimation` (int, 0-7: 0=off, 1=sweep, 2=flash, 3=tidal, 4=comet, 5=explosion, 6=knight rider, 7=strobe)
+- `hourAnimation` (int, 0-10: 0=off, 1-5=original, 6=supernova, 7=matrix, 8=galaxy, 9=wipe, 10=thunder)
 - `intervalAnimationsEnabled` (int, 0-1: 0=off, 1=on)
+
+**Animation Style** (added v11):
+- `animationPalette` (int, 0-7: 0=Rainbow, 1=Fire, 2=Ocean, 3=Forest, 4=Candy, 5=Neon, 6=Monochrome, 7=Clock)
+- `animationSpeed` (int, 1-5: 1=slow, 3=normal, 5=fast)
+- `animationBrightness` (int, 50-255)
+- `trailLength` (int, 2-12)
+- `reminderPalette` (int, 0-3: 0=Amber, 1=Red, 2=Magenta, 3=Cyan-warm)
 
 **Example**:
 ```

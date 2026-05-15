@@ -21,10 +21,27 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 9 | WiFi web UI | /wifi page, Preferences creds tier, reconnect poll | Done (2026-05-13, v2.0.9) |
 | 10 | Docs audit fix | Fix 5 stale documentation entries from maturation audit | Done (2026-05-13) |
 | 11 | WebUI crash fix + heap hardening | PROGMEM chunked HTML, snprintf JSON — eliminate 15inch OOM crash | Done (2026-05-13, v2.1.0) |
+| 12 | Animation expansion | 17 new animations, 8-palette system, speed/brightness/trail controls, preview buttons, 12h UI | Done (2026-05-15, v2.1.0) |
 
 ---
 
 ## Completed Sessions
+
+### Session 12 — Animation Expansion (Done 2026-05-15, v2.1.0)
+- Added `animationPalette` (8 palettes), `animationSpeed` (1-5), `animationBrightness` (50-255), `trailLength` (2-12), `reminderPalette` (4 warm palettes) to `ClockSettings`
+- SETTINGS_VERSION bumped 10→11; all clocks reset defaults on first boot
+- New `paletteColor(position, useReminderPalette)` and `scaledElapsed(elapsed)` helpers in `ClockRenderer`
+- 3 new quarter animations: ANIM_Q4 (laser ping), ANIM_Q5 (DNA twist), ANIM_Q6 (tick spark)
+- 4 new half-hour animations: ANIM_H4 (comet chase), ANIM_H5 (color explosion), ANIM_H6 (Knight Rider), ANIM_H7 (strobe party)
+- 5 new hour animations: ANIM_HR6 (supernova), ANIM_HR7 (matrix rain), ANIM_HR8 (galaxy spin), ANIM_HR9 (color wipe), ANIM_HR10 (thunderstorm)
+- 6 dedicated reminder animations: ANIM_REM1-REM6 (amber pulse, attention ring, heartbeat, sunrise wake, campfire flicker, neon sign)
+- `triggerReminderDirectAnimation()` + `triggerAnimDirect()` added to `ClockRenderer`
+- `FocusReminderScheduler::triggerReminderAnimation()` simplified to single-line delegate
+- `/previewAnimation` POST endpoint fires any animation by type/mode without settings mutation
+- Web UI: preview buttons on all animation selectors; Animation Style panel; 12-hour AM/PM display
+- `FIRMWARE_VERSION` define added to `platformio.ini`; `/diag` gains `fw` field
+- symmap regenerated: 102 functions (was 93)
+- Build: both envs clean, RAM 11.1%, Flash 56.3%
 
 ### Session 11 — WebUI Crash Fix + Heap Hardening (Done 2026-05-13, v2.1.0)
 - Root cause: `htmlPage()` allocated ~6KB String on heap; on 15inch (larger pixel buffer) this triggered OOM/watchdog reset when root page loaded.

@@ -23,9 +23,12 @@
 - ✅ **Status animations** — WiFi connect, button press, NTP sync, settings save
 - ✅ **Center idle breathing** — Slow pulse when no status active
 - ✅ **Time-interval animations** — Escalating intensity at :15/:30/:00
-  - Quarter-hour (2-3 sec): Sparkle burst, quarter pulse, ring shimmer
-  - Half-hour (4-6 sec): Rainbow sweep, dual flash, tidal pulse
-  - Top of hour (8-12 sec): Firework burst, zenith cascade, rainbow spiral, breathing mandala
+  - Quarter-hour (2-3 sec): Sparkle burst, quarter pulse, ring shimmer, laser ping, DNA twist, tick spark
+  - Half-hour (4-6 sec): Rainbow sweep, dual flash, tidal pulse, comet chase, color explosion, Knight Rider, strobe party
+  - Top of hour (8-12 sec): Firework burst, zenith cascade, rainbow spiral, breathing mandala, supernova, matrix rain, galaxy spin, color wipe, thunderstorm
+- ✅ **Animation palette system** — 8 color palettes (Rainbow, Fire, Ocean, Forest, Candy, Neon, Monochrome, Clock) applied to all new animations
+- ✅ **Animation style controls** — Speed (1-5), peak brightness (50-255), trail length (2-12 LEDs)
+- ✅ **Reminder palette** — 4 warm/urgent palettes (Amber, Red, Magenta, Cyan-warm) exclusive to focus reminder animations
 
 ### Smart Features
 - ✅ **NTP time sync** — Network Time Protocol with timezone/DST support (Mountain time default)
@@ -52,17 +55,21 @@
 ### Focus Reminders
 - ✅ **Focus Reminders (ADHD support)** — Visual nudge animations at configurable intervals to interrupt hyperfocus
   - Single configurable rule: interval (1-1440 min), active hours window, days-of-week bitmask
-  - Reuses existing animation system (Quarter Pulse, Half-Hour Sweep, Hour Chime)
+  - Modes 0-5: delegate to existing time-interval animations
+  - Modes 6-11: dedicated reminder animations (Amber pulse, Attention ring, Heartbeat, Sunrise wake, Campfire flicker, Neon sign)
+  - All reminder animations use warm/urgent reminder palette
   - Enable/disable toggle
   - Configurable per-day schedule (Sun-Sat)
-  - Persistent storage via EEPROM (16 bytes in v8 struct)
+  - Persistent storage via EEPROM (v8 struct)
   - Web UI panel: "Focus Reminders (ADHD)"
 
 ### Web UI Features
 - ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement (WebUI); physical buttons re-added v2.0.6 (GPIO5=UP, GPIO9=DOWN)
 - ✅ **Display settings** — Day/night brightness, schedule hours
 - ✅ **Ring controls** — 6 separate RGB + brightness: outer marker, outer fill, seconds, minutes, hours, center
-- ✅ **Animation controls** — Second trail, progress ring, hourly chime, status animations, interval animations
+- ✅ **Animation controls** — Second trail, progress ring, hourly chime, status animations, interval animations, palette/speed/brightness/trail controls
+- ✅ **Animation preview** — Preview button on every animation selector; Animation Style panel with live preview by type
+- ✅ **12-hour AM/PM display** — Clock header shows 12h format with AM/PM
 - ✅ **Live sensor data** — Current lux reading updates every 2 seconds
 - ✅ **Auto-brightness controls** — Mode selection, min/max limits
 - ✅ **Network info** — IP address, WiFi SSID, signal strength, NTP sync status
@@ -75,7 +82,7 @@
 - [ ] **Sunrise/sunset detection** — VEML7700 detects daylight transitions, triggers warm fade animations
 - [ ] **Holiday auto-animations** — Date-triggered effects (Christmas, Halloween, New Year, Easter, user birthday)
 - [ ] **Multiple Focus Reminder rules** — 3-5 concurrent reminder rules (v2.1 roadmap)
-- [ ] **Focus Reminder: test-now button** — Manual trigger from Web UI for validation
+- [ ] **Multiple Focus Reminder rules** — 3-5 concurrent reminder rules
 
 ### Medium Priority
 - [ ] **Theme presets** — Save/load entire color schemes to EEPROM slots (named presets)
@@ -185,18 +192,18 @@ The clock's purpose is **elegant analog timekeeping through light and color**. T
 
 ---
 
-## Settings Structure (EEPROM v10)
+## Settings Structure (EEPROM v11)
 
 ### Stored Configuration
 **Total size**: 256 bytes  
 **Magic byte**: 0xC1  
-**Version**: 10
+**Version**: 11
 
 **Fields**:
 ```cpp
 struct ClockSettings {
   uint8_t magic;                    // 0xC1 (validation)
-  uint8_t version;                  // 10 (current)
+  uint8_t version;                  // 11 (current)
   
   // Brightness
   uint8_t dayBrightness;            // 0-255
@@ -225,9 +232,9 @@ struct ClockSettings {
   uint8_t maxAutoBrightness;        // 5-255
   
   // Time-interval animations
-  uint8_t quarterAnimation;         // 0=off, 1=sparkle, 2=pulse, 3=shimmer
-  uint8_t halfHourAnimation;        // 0=off, 1=sweep, 2=flash, 3=tidal
-  uint8_t hourAnimation;            // 0=off, 1=chime, 2=firework, 3=cascade, 4=spiral, 5=mandala
+  uint8_t quarterAnimation;         // 0=off, 1-3=original, 4=laser ping, 5=DNA twist, 6=tick spark
+  uint8_t halfHourAnimation;        // 0=off, 1-3=original, 4=comet, 5=explosion, 6=KnightRider, 7=strobe
+  uint8_t hourAnimation;            // 0=off, 1-5=original, 6=supernova, 7=matrix, 8=galaxy, 9=wipe, 10=thunder
   uint8_t intervalAnimationsEnabled; // 0=off, 1=on
 
   // Focus Reminders (added v8)
@@ -236,12 +243,19 @@ struct ClockSettings {
   uint8_t focusReminder_endHour;             // 0-23 (active window end)
   uint16_t focusReminder_intervalMinutes;    // 1-1440 (minutes between nudges)
   uint8_t focusReminder_daysMask;            // bitmask Sun(bit0)…Sat(bit6)
-  uint8_t focusReminder_animation;           // 0-5 (reuses animation enum)
+  uint8_t focusReminder_animation;           // 0-5=delegate to time anims; 6-11=dedicated reminder anims
   uint8_t focusReminder_durationSeconds;     // 1-60 (animation duration, added v9)
   uint32_t focusReminder_lastFireMs;         // millis() timestamp of last fire
 
   // Ring rotation (added v10)
   uint8_t outerRingOffset;          // 0-59: clockwise LED rotation applied to all rings at render time
+
+  // Animation customization (added v11)
+  uint8_t animationPalette;         // 0=Rainbow,1=Fire,2=Ocean,3=Forest,4=Candy,5=Neon,6=Mono,7=Clock
+  uint8_t animationSpeed;           // 1-5 (1=slow, 3=normal, 5=fast)
+  uint8_t animationBrightness;      // 50-255 peak brightness during animations
+  uint8_t trailLength;              // 2-12 LEDs (chase/sweep trail length)
+  uint8_t reminderPalette;          // 0=Amber,1=Red,2=Magenta,3=Cyan-warm
 };
 ```
 
@@ -252,6 +266,7 @@ struct ClockSettings {
 - **v8**: Added Focus Reminders scheduler (May 2026); v7 settings auto-reset to v8 defaults on first boot
 - **v9**: Added `focusReminder_durationSeconds` (animation duration 1-60s; repurposed from reserved block)
 - **v10**: Added `outerRingOffset` (software ring rotation 0-59 LEDs; web UI "Ring rotation offset" control)
+- **v11**: Added `animationPalette`, `animationSpeed`, `animationBrightness`, `trailLength`, `reminderPalette` (animation customization system)
 
 ### Bumping Settings Version
 When adding/removing/reordering fields:

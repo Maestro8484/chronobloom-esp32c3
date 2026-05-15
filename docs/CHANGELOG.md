@@ -2,6 +2,31 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.1.0] — 2026-05-15
+
+### Added
+- Animation palette system: 8 color palettes (Rainbow, Fire, Ocean, Forest, Candy, Neon, Monochrome, Clock)
+- Reminder palette system: 4 warm palettes (Amber, Red, Magenta, Cyan-warm) for focus reminder animations
+- Animation speed control: 5-step scale (Dreamy slow → Hyperactive)
+- Animation peak brightness control: 50-255 range, independent of clock brightness
+- Trail length control: 2-12 LEDs for chase/sweep animations
+- 3 new quarter-hour animations: Laser ping, DNA twist, Tick spark
+- 4 new half-hour animations: Comet chase, Color explosion, Knight Rider, Strobe party
+- 5 new hour animations: Supernova, Matrix rain, Galaxy spin, Color wipe, Thunderstorm
+- 6 dedicated focus reminder animations: Amber pulse, Attention ring, Heartbeat, Sunrise wake, Campfire flicker, Neon sign
+- Web UI: Preview button for each animation selector
+- Web UI: Animation Style panel (palette, speed, brightness, trail length)
+- Web UI: 12-hour time format with AM/PM in clock display
+- `/previewAnimation` POST endpoint
+- `/diag`: `fw` field showing firmware version string (2.1.0)
+
+### Changed
+- SETTINGS_VERSION bumped 10 → 11 (settings reset to defaults on first boot after update)
+- `focusReminder_animation` modes 0-5 now labeled as animation delegates; modes 6-11 are dedicated reminder animations
+- `triggerReminderAnimation()` routing consolidated into `ClockRenderer::triggerReminderDirectAnimation()`
+
+---
+
 ## [2.1.0] - 2026-05-13
 
 ### Fixed

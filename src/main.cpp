@@ -365,10 +365,16 @@ struct ClockSettings {
   uint8_t focusReminder_durationSeconds; // Duration (1-60) - reserved for v2
   uint32_t focusReminder_lastFireMs;    // Last fire timestamp (millis)
   uint8_t outerRingOffset;              // 0-59: clockwise LED rotation applied to all rings at render time
+  // Animation customization (added v11)
+  uint8_t animationPalette;     // 0=Rainbow,1=Fire,2=Ocean,3=Forest,4=Candy,5=Neon,6=Monochrome,7=Clock
+  uint8_t animationSpeed;       // 1-5 (1=slow/dreamy, 3=normal, 5=fast)
+  uint8_t animationBrightness;  // 50-255 peak brightness during animations
+  uint8_t trailLength;          // 2-12 LEDs (chase/sweep trail length)
+  uint8_t reminderPalette;      // 0=Amber,1=Red,2=Magenta,3=Cyan (reminder animations only)
 };
 
 constexpr uint8_t SETTINGS_MAGIC = 0xC1;
-constexpr uint8_t SETTINGS_VERSION = 10;
+constexpr uint8_t SETTINGS_VERSION = 11;
 constexpr size_t EEPROM_BYTES = 256;
 
 class SettingsStore {
@@ -408,7 +414,8 @@ class SettingsStore {
             1,   10,  255,        // autoBrightness: mode=auto, min=10, max=255
             3,   1,   4,   1,     // animations: shimmer, sweep, spiral, enabled
             0,   8,   22,   60,   0, 0, 60, 60,  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
-            0};  // outerRingOffset: no rotation
+            0,   // outerRingOffset: no rotation
+            0, 3, 200, 4, 0};  // animPalette, animSpeed, animBrightness, trailLength, reminderPalette
   }
 
   static bool valid(const ClockSettings &settings) {
@@ -419,16 +426,21 @@ class SettingsStore {
            settings.progressSeconds <= 1 && settings.hourlyChime <= 1 &&
            settings.statusAnimations <= 1 && settings.autoBrightnessMode <= 2 &&
            settings.minAutoBrightness <= 255 && settings.maxAutoBrightness <= 255 &&
-           settings.quarterAnimation <= 3 && settings.halfHourAnimation <= 3 &&
-           settings.hourAnimation <= 5 && settings.intervalAnimationsEnabled <= 1 &&
+           settings.quarterAnimation <= 6 && settings.halfHourAnimation <= 7 &&
+           settings.hourAnimation <= 10 && settings.intervalAnimationsEnabled <= 1 &&
            settings.focusReminder_enabled <= 1 &&
            settings.focusReminder_startHour < 24 &&
            settings.focusReminder_endHour < 24 &&
            settings.focusReminder_intervalMinutes >= 1 && settings.focusReminder_intervalMinutes <= 1440 &&
            settings.focusReminder_daysMask <= 127 &&
-           settings.focusReminder_animation <= 5 &&
+           settings.focusReminder_animation <= 11 &&
            settings.focusReminder_durationSeconds >= 1 && settings.focusReminder_durationSeconds <= 60 &&
-           settings.outerRingOffset < 60;
+           settings.outerRingOffset < 60 &&
+           settings.animationPalette <= 7 &&
+           settings.animationSpeed >= 1 && settings.animationSpeed <= 5 &&
+           settings.animationBrightness >= 50 && settings.animationBrightness <= 255 &&
+           settings.trailLength >= 2 && settings.trailLength <= 12 &&
+           settings.reminderPalette <= 3;
   }
 
   static ClockSettings sanitize(ClockSettings settings) {
@@ -446,9 +458,9 @@ class SettingsStore {
       settings.minAutoBrightness = 10;
       settings.maxAutoBrightness = 255;
     }
-    if (settings.quarterAnimation > 3) settings.quarterAnimation = 0;
-    if (settings.halfHourAnimation > 3) settings.halfHourAnimation = 0;
-    if (settings.hourAnimation > 5) settings.hourAnimation = 0;
+    if (settings.quarterAnimation > 6) settings.quarterAnimation = 0;
+    if (settings.halfHourAnimation > 7) settings.halfHourAnimation = 0;
+    if (settings.hourAnimation > 10) settings.hourAnimation = 0;
     settings.intervalAnimationsEnabled = settings.intervalAnimationsEnabled ? 1 : 0;
     settings.focusReminder_enabled = settings.focusReminder_enabled ? 1 : 0;
     if (settings.focusReminder_startHour >= 24) settings.focusReminder_startHour = 8;
@@ -456,10 +468,15 @@ class SettingsStore {
     if (settings.focusReminder_intervalMinutes < 1) settings.focusReminder_intervalMinutes = 60;
     if (settings.focusReminder_intervalMinutes > 1440) settings.focusReminder_intervalMinutes = 1440;
     settings.focusReminder_daysMask &= 127;  // Mask to 7 bits (Sun-Sat)
-    if (settings.focusReminder_animation > 5) settings.focusReminder_animation = 0;
+    if (settings.focusReminder_animation > 11) settings.focusReminder_animation = 0;
     if (settings.focusReminder_durationSeconds < 1) settings.focusReminder_durationSeconds = 60;
     if (settings.focusReminder_durationSeconds > 60) settings.focusReminder_durationSeconds = 60;
     if (settings.outerRingOffset >= 60) settings.outerRingOffset = 0;
+    if (settings.animationPalette > 7) settings.animationPalette = 0;
+    if (settings.animationSpeed < 1 || settings.animationSpeed > 5) settings.animationSpeed = 3;
+    if (settings.animationBrightness < 50) settings.animationBrightness = 200;
+    if (settings.trailLength < 2 || settings.trailLength > 12) settings.trailLength = 4;
+    if (settings.reminderPalette > 3) settings.reminderPalette = 0;
     return settings;
   }
 
@@ -569,7 +586,29 @@ enum AnimPhase : uint8_t {
   ANIM_HR2,  // Hour: firework burst
   ANIM_HR3,  // Hour: zenith cascade
   ANIM_HR4,  // Hour: rainbow spiral
-  ANIM_HR5   // Hour: breathing mandala
+  ANIM_HR5,  // Hour: breathing mandala
+  // Quarter additions
+  ANIM_Q4,   // Quarter: laser ping
+  ANIM_Q5,   // Quarter: DNA twist
+  ANIM_Q6,   // Quarter: tick spark
+  // Half-hour additions
+  ANIM_H4,   // Half: comet chase
+  ANIM_H5,   // Half: color explosion
+  ANIM_H6,   // Half: Knight Rider bounce
+  ANIM_H7,   // Half: strobe party
+  // Hour additions
+  ANIM_HR6,  // Hour: supernova
+  ANIM_HR7,  // Hour: matrix rain
+  ANIM_HR8,  // Hour: galaxy spin
+  ANIM_HR9,  // Hour: color wipe
+  ANIM_HR10, // Hour: thunderstorm
+  // Reminder animations
+  ANIM_REM1, // Reminder: amber pulse
+  ANIM_REM2, // Reminder: attention ring
+  ANIM_REM3, // Reminder: heartbeat
+  ANIM_REM4, // Reminder: sunrise wake
+  ANIM_REM5, // Reminder: campfire flicker
+  ANIM_REM6  // Reminder: neon sign
 };
 
 enum StatusMode : uint8_t {
@@ -641,6 +680,31 @@ class ClockRenderer {
     animStartMs_ = now;
     animStep_ = 255;
     animHue_ = 0;
+  }
+
+  void triggerAnimDirect(AnimPhase phase, uint32_t now) {
+    animPhase_   = phase;
+    animStartMs_ = now;
+    animStep_    = 255;
+    animHue_     = 0;
+  }
+
+  void triggerReminderDirectAnimation(uint8_t mode, uint32_t now) {
+    if (mode == 0) { triggerQuarterAnimation(now); return; }
+    if (mode == 1) { triggerHalfHourAnimation(now); return; }
+    if (mode == 2) { triggerHourAnimation(now); return; }
+    if (mode == 3) { triggerQuarterAnimation(now); return; }
+    if (mode == 4) { triggerHalfHourAnimation(now); return; }
+    if (mode == 5) { triggerHourAnimation(now); return; }
+    static const AnimPhase remPhases[] = {
+      ANIM_REM1, ANIM_REM2, ANIM_REM3, ANIM_REM4, ANIM_REM5, ANIM_REM6
+    };
+    const uint8_t idx = mode - 6;
+    if (idx >= 6) return;
+    animPhase_   = remPhases[idx];
+    animStartMs_ = now;
+    animStep_    = 0;
+    animHue_     = 0;
   }
 
   bool animating() const { return animPhase_ != ANIM_IDLE; }
@@ -891,6 +955,75 @@ class ClockRenderer {
     setCenterPixel(pulse(strip_.Color(90, 65, 10), now, 180, 4, 130));
   }
 
+  uint32_t paletteColor(uint8_t position, bool useReminderPalette = false) {
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    const uint8_t pal = useReminderPalette ? s.reminderPalette : s.animationPalette;
+    if (useReminderPalette) {
+      switch (pal) {
+        case 0: {
+          uint8_t g = (uint8_t)((uint16_t)position * br / 510 + br / 4);
+          return strip_.Color(br, g, 0);
+        }
+        case 1:
+          return strip_.Color(br, (uint8_t)(position / 8), 0);
+        case 2:
+          return strip_.Color(br, 0, (uint8_t)((uint16_t)position * br / 510));
+        case 3:
+          return strip_.Color((uint8_t)(position / 4), (uint8_t)(br * 3 / 4), (uint8_t)(br / 2));
+        default:
+          return strip_.Color(br, br / 4, 0);
+      }
+    }
+    switch (pal) {
+      case 0:
+        return strip_.ColorHSV((uint16_t)((uint32_t)position * 65536 / 256), 255, br);
+      case 1: {
+        if (position < 85)  return strip_.Color((uint8_t)((uint32_t)position * 3 * br / 255), 0, 0);
+        if (position < 170) return strip_.Color(br, (uint8_t)((uint32_t)(position - 85) * 3 * br / 510), 0);
+        return strip_.Color(br, (uint8_t)((uint32_t)(position - 170) * 3 * br / 510 + br / 2), 0);
+      }
+      case 2: {
+        if (position < 128) return strip_.Color(0, (uint8_t)((uint16_t)position * br / 128), br);
+        return strip_.Color((uint8_t)((uint16_t)(position - 128) * br / 127),
+                            (uint8_t)(br / 2 + (uint16_t)(position - 128) * br / 254), br);
+      }
+      case 3: {
+        if (position < 128) return strip_.Color(0, (uint8_t)((uint16_t)position * br / 128), 0);
+        return strip_.Color((uint8_t)((uint16_t)(position - 128) * br / 127),
+                            br, (uint8_t)((uint16_t)(position - 128) * br / 127));
+      }
+      case 4: {
+        uint16_t hue = (uint16_t)((uint32_t)position * 43690 / 256) + 54613;
+        return strip_.ColorHSV(hue, 220, br);
+      }
+      case 5: {
+        uint16_t hue = (uint16_t)((uint32_t)position * 32768 / 256) + 43690;
+        return strip_.ColorHSV(hue, 255, br);
+      }
+      case 6: {
+        uint8_t scaled = (uint8_t)((uint16_t)position * br / 255);
+        return ringColor(s.hoursRed, s.hoursGreen, s.hoursBlue, scaled);
+      }
+      case 7: {
+        if (position < 64)  return ringColor(s.outerMarkerRed, s.outerMarkerGreen, s.outerMarkerBlue, br);
+        if (position < 128) return ringColor(s.minutesRed, s.minutesGreen, s.minutesBlue, br);
+        if (position < 192) return ringColor(s.hoursRed, s.hoursGreen, s.hoursBlue, br);
+        return ringColor(s.centerRed, s.centerGreen, s.centerBlue, br);
+      }
+      default:
+        return strip_.ColorHSV((uint16_t)((uint32_t)position * 65536 / 256), 255, br);
+    }
+  }
+
+  uint32_t scaledElapsed(uint32_t elapsed) {
+    const uint8_t spd = settings_.get().animationSpeed;
+    static const uint8_t num[] = {1, 3, 4, 6, 8};
+    static const uint8_t den[] = {2, 4, 4, 4, 4};
+    const uint8_t idx = (spd < 1) ? 0u : (spd > 5) ? 4u : (uint8_t)(spd - 1);
+    return elapsed * num[idx] / den[idx];
+  }
+
   void tickAnimation(uint32_t now) {
     if (animPhase_ == ANIM_IDLE) return;
     uint32_t elapsed = now - animStartMs_;
@@ -1102,6 +1235,436 @@ class ClockRenderer {
         {
           float breathPhase = (float)(elapsed % 1667) * 3.14159f / 1667.0f;
           strip_.setBrightness((uint8_t)(50 + fabsf(sinf(breathPhase)) * 205.0f));
+        }
+        break;
+      }
+
+      // ===== QUARTER ADDITIONS =====
+
+      case ANIM_Q4: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 1400) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        const uint8_t tl = settings_.get().trailLength;
+        uint32_t headColor = paletteColor(0);
+        if (se < 600) {
+          uint8_t pos = (uint8_t)(se * 60 / 600) % 60;
+          setRingPixel(RING_OUTER_60, pos, headColor);
+          for (uint8_t t = 1; t <= tl; t++) {
+            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+            setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
+          }
+        } else if (se < 1000) {
+          uint8_t fadeAmt = (uint8_t)(255u - (se - 600u) * 255u / 400u);
+          for (uint8_t t = 0; t < tl; t++) {
+            uint8_t tp = (uint8_t)((60 - t) % 60);
+            uint8_t trailBr = (uint8_t)((uint32_t)fadeAmt * (tl - t) / tl);
+            setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
+          }
+        }
+        break;
+      }
+
+      case ANIM_Q5: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        const uint8_t tl = settings_.get().trailLength;
+        if (se < 1500) {
+          uint8_t pos  = (uint8_t)(se * 60 / 1500) % 60;
+          uint8_t pos2 = (pos + 30) % 60;
+          uint32_t cA = paletteColor(0);
+          uint32_t cB = paletteColor(128);
+          setRingPixel(RING_OUTER_60, pos, cA);
+          setRingPixel(RING_OUTER_60, pos2, cB);
+          for (uint8_t t = 1; t <= tl; t++) {
+            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+            setRingPixel(RING_OUTER_60, (pos  + 60 - t) % 60, scale(cA, trailBr));
+            setRingPixel(RING_OUTER_60, (pos2 + 60 - t) % 60, scale(cB, trailBr));
+          }
+        }
+        break;
+      }
+
+      case ANIM_Q6: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 800) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          uint8_t step = (uint8_t)(se / 200);
+          if (step < 4) {
+            const uint8_t positions[] = {0, 15, 30, 45};
+            const uint8_t palPos[]    = {0, 85, 170, 255};
+            setRingPixel(RING_OUTER_60, positions[step], paletteColor(palPos[step]));
+          }
+        }
+        break;
+      }
+
+      // ===== HALF-HOUR ADDITIONS =====
+
+      case ANIM_H4: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        const uint8_t tl = settings_.get().trailLength;
+        uint32_t headColor = paletteColor(0);
+        if (se < 3000) {
+          uint8_t pos = (uint8_t)(se * 60 / 1500) % 60;
+          setRingPixel(RING_OUTER_60, pos, headColor);
+          for (uint8_t t = 1; t <= tl; t++) {
+            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+            setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
+          }
+        } else if (se < 3300) {
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+        }
+        break;
+      }
+
+      case ANIM_H5: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 3500) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        if (se < 300) {
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+        } else {
+          uint32_t fp = se - 300;
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
+            uint8_t rate     = (uint8_t)((i * 7 + 13) % 8 + 2);
+            uint32_t ft      = (uint32_t)rate * 300;
+            uint8_t  pct     = (fp < ft) ? (uint8_t)(255u - fp * 255u / ft) : 0u;
+            if (pct > 0)
+              setRingPixel(RING_OUTER_60, i, scale(paletteColor((uint8_t)(i * 4)), pct));
+          }
+        }
+        break;
+      }
+
+      case ANIM_H6: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          const uint8_t tl = settings_.get().trailLength;
+          uint32_t headColor = paletteColor(0);
+          uint32_t passTime = se % 800;
+          uint32_t passNum  = se / 800;
+          uint8_t pos = (passNum % 2 == 0)
+              ? (uint8_t)(passTime * 59 / 800)
+              : (uint8_t)(59 - passTime * 59 / 800);
+          setRingPixel(RING_OUTER_60, pos, headColor);
+          for (uint8_t t = 1; t <= tl; t++) {
+            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+            uint8_t tp = (passNum % 2 == 0)
+                ? (uint8_t)((pos + 60 - t) % 60)
+                : (uint8_t)((pos + t) % 60);
+            setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
+          }
+        }
+        break;
+      }
+
+      case ANIM_H7: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 3000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        if (se < 2000) {
+          uint8_t fi = (uint8_t)((se / 125) % 4);
+          const uint8_t palPos[] = {0, 85, 170, 255};
+          uint32_t c = paletteColor(palPos[fi]);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+        } else {
+          uint8_t fadeAmt = (uint8_t)(255u - (se - 2000u) * 255u / 500u);
+          uint32_t c = scale(paletteColor(0), fadeAmt);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+        }
+        break;
+      }
+
+      // ===== HOUR ADDITIONS =====
+
+      case ANIM_HR6: {
+        if (elapsed >= 8500) { animPhase_ = ANIM_IDLE; return; }
+        const uint8_t br = settings_.get().animationBrightness;
+        if (elapsed < 500) {
+          uint8_t rb = (uint8_t)(elapsed * 255 / 500);
+          uint32_t white = strip_.Color(rb, rb, rb);
+          strip_.setBrightness(br);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, white);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, white);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, white);
+        } else if (elapsed < 6000) {
+          strip_.setBrightness(br);
+          uint16_t hueOff = (uint16_t)((elapsed - 500) * 65536UL / 5500);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+            setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+            setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
+        } else {
+          uint8_t fadeAmt = (elapsed < 8000) ? (uint8_t)(255u - (elapsed - 6000u) * 255u / 2000u) : 0u;
+          strip_.setBrightness(fadeAmt);
+          uint16_t hueOff = (uint16_t)((6000 - 500) * 65536UL / 5500);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+            setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+            setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
+        }
+        break;
+      }
+
+      case ANIM_HR7: {
+        if (elapsed >= 8000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          const uint8_t tl  = settings_.get().trailLength;
+          const uint8_t gbr = settings_.get().animationBrightness;
+          for (uint8_t d = 0; d < 8; d++) {
+            uint32_t period  = (uint32_t)(d * 3 + 5) % 8 * 600 + 1800;
+            uint8_t  offset  = (uint8_t)((d * 7 + 3) % 60);
+            uint8_t  pos     = (uint8_t)((elapsed % period * 60 / period + offset) % 60);
+            setRingPixel(RING_OUTER_60, pos, strip_.Color(0, gbr, 0));
+            for (uint8_t t = 1; t <= tl; t++) {
+              uint8_t trailBr = (uint8_t)((uint32_t)gbr * (tl - t + 1) / (tl + 1));
+              setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, strip_.Color(0, trailBr, 0));
+            }
+          }
+        }
+        break;
+      }
+
+      case ANIM_HR8: {
+        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+        {
+          const uint8_t br = settings_.get().animationBrightness;
+          strip_.setBrightness(elapsed < 9000 ? br : (uint8_t)((10000u - elapsed) * br / 1000u));
+          uint8_t outerOff  = (uint8_t)(elapsed * 256 / 3000);
+          uint8_t middleOff = (uint8_t)(86u - (uint8_t)(elapsed * 256 / 5000));
+          uint8_t innerOff  = (uint8_t)(171u + (uint8_t)(elapsed * 256 / 7000));
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(outerOff + i * 256 / RING_OUTER_60.count)));
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+            setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(middleOff + i * 256 / RING_MIDDLE_24.count)));
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+            setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(innerOff + i * 256 / RING_INNER_12.count)));
+        }
+        break;
+      }
+
+      case ANIM_HR9: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 7000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        if (se < 3000) {
+          uint8_t n = (uint8_t)(se * RING_OUTER_60.count / 3000);
+          for (uint8_t i = 0; i < n; i++)
+            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+        } else if (se < 4500) {
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+          uint8_t n = (uint8_t)((se - 3000) * RING_MIDDLE_24.count / 1500);
+          for (uint8_t i = 0; i < n; i++)
+            setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
+        } else {
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+            setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
+          uint8_t n = (uint8_t)((se - 4500) * RING_INNER_12.count / 1000);
+          if (n > RING_INNER_12.count) n = RING_INNER_12.count;
+          for (uint8_t i = 0; i < n; i++)
+            setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21)));
+        }
+        break;
+      }
+
+      case ANIM_HR10: {
+        if (elapsed >= 10500) { animPhase_ = ANIM_IDLE; return; }
+        {
+          const uint8_t br = settings_.get().animationBrightness;
+          uint32_t baseColor = strip_.Color((uint8_t)(20u * br / 255u), 0, (uint8_t)(60u * br / 255u));
+          float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
+          uint8_t breathBr = (uint8_t)(br * (0.8f + 0.2f * sinf(breathPhase)));
+          strip_.setBrightness(breathBr);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, baseColor);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, baseColor);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, baseColor);
+          const uint16_t strikeTimes[] = {500, 2000, 3500, 5000, 7000};
+          for (uint8_t s = 0; s < 5; s++) {
+            if (elapsed >= strikeTimes[s] && elapsed < strikeTimes[s] + 80u) {
+              uint8_t p1 = (uint8_t)((strikeTimes[s] * 13u + 7u) % 60u);
+              uint8_t p2 = (uint8_t)((strikeTimes[s] * 23u + 31u) % 60u);
+              uint8_t p3 = (uint8_t)((strikeTimes[s] * 37u + 53u) % 60u);
+              setRingPixel(RING_OUTER_60, p1, strip_.Color(255, 255, 255));
+              setRingPixel(RING_OUTER_60, p2, strip_.Color(255, 255, 255));
+              setRingPixel(RING_OUTER_60, p3, strip_.Color(255, 255, 255));
+              setCenterPixel(strip_.Color(255, 255, 255));
+            }
+          }
+        }
+        break;
+      }
+
+      // ===== REMINDER ANIMATIONS =====
+
+      case ANIM_REM1: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          uint32_t c = paletteColor(0, true);
+          const uint16_t starts[] = {0, 350, 700, 1050};
+          for (uint8_t r = 0; r < 4; r++) {
+            if (se < starts[r]) continue;
+            uint32_t rElap = se - starts[r];
+            if (rElap >= 1500) continue;
+            uint32_t cp = rElap % 500;
+            uint8_t pct;
+            if (cp < 200)      pct = (uint8_t)(cp * 255u / 200u);
+            else if (cp < 300) pct = 255;
+            else               pct = (uint8_t)(255u - (cp - 300u) * 255u / 200u);
+            uint32_t rc = scale(c, pct);
+            switch (r) {
+              case 0: for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);  break;
+              case 1: for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc); break;
+              case 2: for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);  break;
+              case 3: setCenterPixel(rc); break;
+            }
+          }
+        }
+        break;
+      }
+
+      case ANIM_REM2: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          const ClockSettings &s2 = settings_.get();
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, ringColor(s2.outerMarkerRed, s2.outerMarkerGreen, s2.outerMarkerBlue, 38));
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+            setRingPixel(RING_MIDDLE_24, i, ringColor(s2.minutesRed, s2.minutesGreen, s2.minutesBlue, 38));
+          uint32_t period = 667;
+          uint8_t pos = (uint8_t)((se % period) * RING_INNER_12.count / period);
+          uint32_t c = paletteColor(0, true);
+          setRingPixel(RING_INNER_12, pos, c);
+          for (uint8_t t = 1; t <= 2; t++) {
+            uint8_t trailBr = (uint8_t)(255u * (2u - t + 1u) / 3u);
+            setRingPixel(RING_INNER_12, (pos + RING_INNER_12.count - t) % RING_INNER_12.count, scale(c, trailBr));
+          }
+        }
+        break;
+      }
+
+      case ANIM_REM3: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          uint32_t c = paletteColor(0, true);
+          uint32_t cp = se % 1160;
+          uint8_t pct;
+          if      (cp < 80)  pct = (uint8_t)(cp * 255u / 80u);
+          else if (cp < 160) pct = 255;
+          else if (cp < 280) pct = (uint8_t)(255u - (cp - 160u) * 255u / 120u);
+          else if (cp < 360) pct = (uint8_t)((cp - 280u) * 255u / 80u);
+          else if (cp < 440) pct = 255;
+          else if (cp < 640) pct = (uint8_t)(255u - (cp - 440u) * 255u / 200u);
+          else               pct = 38;
+          uint32_t rc = scale(c, pct);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);
+          setCenterPixel(rc);
+        }
+        break;
+      }
+
+      case ANIM_REM4: {
+        const uint32_t se = scaledElapsed(elapsed);
+        if (se >= 6000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        if (se < 1000) {
+          uint8_t pct = (uint8_t)(se * 255u / 1000u);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+            setRingPixel(RING_INNER_12, i, scale(strip_.Color(60, 0, 0), pct));
+        } else if (se < 2500) {
+          uint8_t ip = (uint8_t)((se - 1000u) * 32u / 1500u);
+          uint32_t ic = paletteColor(ip, true);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, ic);
+          uint8_t mp = (uint8_t)((se - 1000u) * 128u / 1500u);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+            setRingPixel(RING_MIDDLE_24, i, scale(strip_.Color(60, 0, 0), mp));
+        } else if (se < 4000) {
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, paletteColor(32, true));
+          uint8_t mp = (uint8_t)((se - 2500u) * 32u / 1500u);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, paletteColor(mp, true));
+          uint8_t op = (uint8_t)((se - 2500u) * 128u / 1500u);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+            setRingPixel(RING_OUTER_60, i, scale(strip_.Color(60, 0, 0), op));
+        } else {
+          uint8_t pos = (uint8_t)((se - 4000u) * 128u / 2000u + 64u);
+          uint32_t c = paletteColor(pos, true);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+        }
+        break;
+      }
+
+      case ANIM_REM5: {
+        if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+        animStep_++;
+        {
+          float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
+          uint8_t breathBr = (uint8_t)(settings_.get().animationBrightness * (0.8f + 0.2f * sinf(breathPhase)));
+          strip_.setBrightness(breathBr);
+          uint8_t seed = animStep_;
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
+            uint8_t pn = (uint8_t)((i * 7 + seed * 3) % 160);
+            setRingPixel(RING_OUTER_60, i, paletteColor(pn, true));
+          }
+          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) {
+            uint8_t pn = (uint8_t)((i * 11 + seed * 5) % 160);
+            setRingPixel(RING_MIDDLE_24, i, paletteColor(pn, true));
+          }
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++) {
+            uint8_t pn = (uint8_t)((i * 17 + seed * 7) % 160);
+            setRingPixel(RING_INNER_12, i, paletteColor(pn, true));
+          }
+          if (elapsed % 200 < 50) {
+            uint8_t sp = (uint8_t)((seed * 47 + 13) % 60);
+            setRingPixel(RING_OUTER_60, sp, strip_.Color(255, 220, 100));
+          }
+        }
+        break;
+      }
+
+      case ANIM_REM6: {
+        if (elapsed >= 4000) { animPhase_ = ANIM_IDLE; return; }
+        strip_.setBrightness(settings_.get().animationBrightness);
+        {
+          uint32_t c = paletteColor(0, true);
+          uint32_t dimOuter = scale(c, 30);
+          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) setRingPixel(RING_OUTER_60, i, dimOuter);
+          bool glitch = (elapsed % 700) >= 550 && (elapsed % 700) < 670;
+          if (!glitch) {
+            bool on = (elapsed % 82) < 40;
+            if (on) {
+              for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, c);
+            }
+          }
         }
         break;
       }
@@ -1612,13 +2175,20 @@ class WebUi {
         "    <option value='1'>Sparkle burst</option>\n"
         "    <option value='2'>Quarter pulse</option>\n"
         "    <option value='3'>Ring shimmer</option>\n"
-        "  </select></div>\n"
+        "    <option value='4'>Laser ping</option>\n"
+        "    <option value='5'>DNA twist</option>\n"
+        "    <option value='6'>Tick spark</option>\n"
+        "  </select><button onclick=\"previewAnim('quarter','quarterAnimation')\">&#9654; Preview</button></div>\n"
         "  <div><label>Half-hour (:30)</label><select id='halfHourAnimation'>\n"
         "    <option value='0'>Off</option>\n"
         "    <option value='1'>Rainbow sweep</option>\n"
         "    <option value='2'>Dual flash</option>\n"
         "    <option value='3'>Tidal pulse</option>\n"
-        "  </select></div>\n"
+        "    <option value='4'>Comet chase</option>\n"
+        "    <option value='5'>Color explosion</option>\n"
+        "    <option value='6'>Knight Rider</option>\n"
+        "    <option value='7'>Strobe party</option>\n"
+        "  </select><button onclick=\"previewAnim('halfhour','halfHourAnimation')\">&#9654; Preview</button></div>\n"
         "</div>\n"
         "<label>Top of hour (:00)</label><select id='hourAnimation'>\n"
         "  <option value='0'>Off</option>\n"
@@ -1627,8 +2197,60 @@ class WebUi {
         "  <option value='3'>Zenith cascade</option>\n"
         "  <option value='4'>Rainbow spiral</option>\n"
         "  <option value='5'>Breathing mandala</option>\n"
-        "</select>\n"
+        "  <option value='6'>Supernova</option>\n"
+        "  <option value='7'>Matrix rain</option>\n"
+        "  <option value='8'>Galaxy spin</option>\n"
+        "  <option value='9'>Color wipe</option>\n"
+        "  <option value='10'>Thunderstorm</option>\n"
+        "</select><button onclick=\"previewAnim('hour','hourAnimation')\">&#9654; Preview</button>\n"
         "<div class='row'><button class='primary' onclick='saveSettings()'>Save animations</button></div>\n"
+        "</div>\n"
+        "<div class='panel'><h2>&#127775; Animation Style</h2>\n"
+        "<div class='row'>\n"
+        "  <div><label>Color palette</label><select id='animationPalette'>\n"
+        "    <option value='0'>Rainbow</option>\n"
+        "    <option value='1'>Fire</option>\n"
+        "    <option value='2'>Ocean</option>\n"
+        "    <option value='3'>Forest</option>\n"
+        "    <option value='4'>Candy</option>\n"
+        "    <option value='5'>Neon</option>\n"
+        "    <option value='6'>Monochrome (hour color)</option>\n"
+        "    <option value='7'>Clock colors</option>\n"
+        "  </select></div>\n"
+        "  <div><label>Reminder palette</label><select id='reminderPalette'>\n"
+        "    <option value='0'>Amber (warm)</option>\n"
+        "    <option value='1'>Red (urgent)</option>\n"
+        "    <option value='2'>Magenta (bold)</option>\n"
+        "    <option value='3'>Cyan-warm (unusual)</option>\n"
+        "  </select></div>\n"
+        "</div>\n"
+        "<div class='row'>\n"
+        "  <div><label>Speed</label><select id='animationSpeed'>\n"
+        "    <option value='1'>1 - Dreamy slow</option>\n"
+        "    <option value='2'>2 - Relaxed</option>\n"
+        "    <option value='3'>3 - Normal</option>\n"
+        "    <option value='4'>4 - Energetic</option>\n"
+        "    <option value='5'>5 - Hyperactive</option>\n"
+        "  </select></div>\n"
+        "  <div><label>Peak brightness</label>\n"
+        "    <input id='animationBrightness' type='range' min='50' max='255'>\n"
+        "    <output id='animationBrightnessOut'></output>\n"
+        "  </div>\n"
+        "  <div><label>Trail length</label>\n"
+        "    <input id='trailLength' type='range' min='2' max='12'>\n"
+        "    <output id='trailLengthOut'></output>\n"
+        "  </div>\n"
+        "</div>\n"
+        "<div class='row'>\n"
+        "  <div><label>Preview with</label><select id='stylePreviewType'>\n"
+        "    <option value='quarter'>Quarter animation</option>\n"
+        "    <option value='halfhour'>Half-hour animation</option>\n"
+        "    <option value='hour'>Hour animation</option>\n"
+        "    <option value='reminder'>Reminder animation</option>\n"
+        "  </select></div>\n"
+        "  <button onclick='previewStyleAnim()'>&#9654; Preview style</button>\n"
+        "  <button class='primary' onclick='saveAnimStyle()'>Save style</button>\n"
+        "</div>\n"
         "</div>\n"
         "<div class='panel'><h2>Focus Reminders (ADHD)</h2>\n"
         "<p class='sub' style='font-size:12px;color:#92a0b5'>Visual nudge system for hyperfocus interruption. Fires animations at set intervals on selected days/times.</p>\n"
@@ -1641,13 +2263,19 @@ class WebUi {
         "<label>Days of week</label>\n"
         "<div class='toggle' id='daysToggle' style='display:flex;gap:4px;flex-wrap:wrap'></div>\n"
         "<div><label>Animation</label><select id='focusReminder_animation'>\n"
-        "  <option value='0'>Quarter pulse</option>\n"
-        "  <option value='1'>Half-hour sweep</option>\n"
-        "  <option value='2'>Hour chime</option>\n"
-        "  <option value='3'>Quarter pulse (dup)</option>\n"
-        "  <option value='4'>Half-hour sweep (dup)</option>\n"
-        "  <option value='5'>Hour chime (dup)</option>\n"
-        "</select></div>\n"
+        "  <option value='0'>Use quarter animation</option>\n"
+        "  <option value='1'>Use half-hour animation</option>\n"
+        "  <option value='2'>Use hour animation</option>\n"
+        "  <option value='3'>Use quarter animation (alt)</option>\n"
+        "  <option value='4'>Use half-hour animation (alt)</option>\n"
+        "  <option value='5'>Use hour animation (alt)</option>\n"
+        "  <option value='6'>Amber pulse (warm inward wave)</option>\n"
+        "  <option value='7'>Attention ring (amber radar)</option>\n"
+        "  <option value='8'>Heartbeat (double-beat pulse)</option>\n"
+        "  <option value='9'>Sunrise wake (red to yellow)</option>\n"
+        "  <option value='10'>Campfire flicker (warm sparks)</option>\n"
+        "  <option value='11'>Neon sign (amber buzz)</option>\n"
+        "</select><button onclick=\"previewAnim('reminder','focusReminder_animation')\">&#9654; Preview</button></div>\n"
         "<div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>\n"
         "</div>\n"
         "<div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>\n"
@@ -1666,16 +2294,19 @@ class WebUi {
         "function clearRing(r){for(const el of leds[r]){el.setAttribute('fill','#243044');el.style.opacity=.22;el.className.baseVal='led'}}\n"
         "function level(id){return Number(qs(id+'Level')?.value||180)} function color(id){return qs(id+'Color')?.value||'#ffffff'}\n"
         "function draw(){clearRing('middle');clearRing('inner');for(let i=0;i<60;i++){const mark=i%5===0;setLed(leds.outer[i],mark?color('outerMarker'):color('outerFiller'),mark?level('outerMarker'):level('outerFiller'),mark?'marker':'ghost')}let s=current.second,m=current.minute,h=current.hour%12,hoff=current.minute>=30?1:0,h24=(h*2+hoff)%24;const mode=qs('previewMode')?.value||'live',tick=Math.floor(Date.now()/90);if(settings.progressSeconds){for(let i=0;i<=s;i++)setLed(leds.outer[i],color('seconds'),38,'ghost')}if(settings.secondTrail||mode==='trail'){for(let i=1;i<7;i++)setLed(leds.outer[(s+60-i)%60],color('seconds'),Math.max(20,level('seconds')-(i*32)),'ghost')}if(mode==='trail'){for(let i=1;i<5;i++){setLed(leds.outer[(m+60-i)%60],color('minutes'),Math.max(25,level('minutes')-(i*42)),'ghost');setLed(leds.middle[(h24+24-i)%24],color('hours'),Math.max(25,level('hours')-(i*42)),'ghost');setLed(leds.inner[(h+12-i)%12],color('hours'),Math.max(25,level('hours')-(i*52)),'ghost')}}if(mode==='spark'){for(let i=0;i<10;i++){setLed(leds.outer[(tick+i*6)%60],i%2?color('hours'):color('minutes'),90+(i*10),'ghost')}}for(let i=0;i<24;i++)setLed(leds.middle[i],color('hours'),22,'marker');for(let i=0;i<12;i++)setLed(leds.inner[i],color('center'),24,'marker');setLed(leds.outer[s],color('seconds'),level('seconds'));setLed(leds.outer[m],color('minutes'),level('minutes'));setLed(leds.middle[h24],color('hours'),level('hours'));setLed(leds.inner[h],color('hours'),level('hours'));setLed(leds.inner[(h+hoff)%12],color('hours'),level('hours'));const pulse=45+Math.floor((Math.sin(Date.now()/450)+1)*85);setLed(qs('centerLed'),color('center'),Math.min(level('center'),pulse),'on')}\n"
-        "async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;qs('now').textContent=`${pad(t.hour)}:${pad(t.minute)}:${pad(t.second)}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}\n"
+        "async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;const h12=t.hour%12||12;const ampm=t.hour<12?'AM':'PM';qs('now').textContent=`${pad(h12)}:${pad(t.minute)}:${pad(t.second)} ${ampm}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}\n"
         "async function loadNet(){const r=await fetch('/net');const n=await r.json();qs('net').textContent=`${n.hostname} | ${n.ssid} | IP ${n.ip} | GW ${n.gateway} | RSSI ${n.rssi} dBm`}\n"
-        "async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('outerRingOffset').value=settings.outerRingOffset||0;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}\n"
+        "async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('outerRingOffset').value=settings.outerRingOffset||0;qs('animationPalette').value=settings.animationPalette??0;qs('animationSpeed').value=settings.animationSpeed??3;qs('animationBrightness').value=settings.animationBrightness??200;qs('trailLength').value=settings.trailLength??4;qs('reminderPalette').value=settings.reminderPalette??0;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}\n"
         "async function refreshLux(){const r=await fetch('/lux');const data=await r.json();if(data.available){qs('luxValue').textContent=data.lux.toFixed(1)}}\n"
-        "function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()}}\n"
+        "function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()};for(const k of ['animationBrightness','trailLength']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value};qs(k).oninput=upd;upd()}}\n"
         "async function post(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});await refresh()}\n"
         "function setTime(){post('/set',`hour=${h.value}&minute=${m.value}&second=${s.value}`)}\n"
         "function syncBrowser(){const d=new Date();post('/syncBrowser',`hour=${d.getHours()}&minute=${d.getMinutes()}&second=${d.getSeconds()}`)}\n"
         "function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);p.set('outerRingOffset',qs('outerRingOffset').value);post('/settings',p.toString()).then(loadSettings)}\n"
         "function saveFocusReminder(){const p=new URLSearchParams();p.set('focusReminder_enabled',qs('focusReminder_enabled').checked?1:0);p.set('focusReminder_startHour',qs('focusReminder_startHour').value);p.set('focusReminder_endHour',qs('focusReminder_endHour').value);p.set('focusReminder_intervalMinutes',qs('focusReminder_intervalMinutes').value);p.set('focusReminder_animation',qs('focusReminder_animation').value);let daysMask=0;for(let i=0;i<7;i++){if(qs('focusReminder_day'+i).checked)daysMask|=(1<<i)}p.set('focusReminder_daysMask',daysMask);post('/settings',p.toString()).then(loadSettings)}\n"
+        "function previewAnim(type,modeId){const mode=qs(modeId).value;fetch('/previewAnimation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'type='+type+'&mode='+mode})}\n"
+        "function previewStyleAnim(){const t=qs('stylePreviewType').value;const modeMap={quarter:'quarterAnimation',halfhour:'halfHourAnimation',hour:'hourAnimation',reminder:'focusReminder_animation'};const mode=qs(modeMap[t]).value;fetch('/previewAnimation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'type='+t+'&mode='+mode})}\n"
+        "function saveAnimStyle(){const p=new URLSearchParams();p.set('animationPalette',qs('animationPalette').value);p.set('animationSpeed',qs('animationSpeed').value);p.set('animationBrightness',qs('animationBrightness').value);p.set('trailLength',qs('trailLength').value);p.set('reminderPalette',qs('reminderPalette').value);post('/settings',p.toString()).then(loadSettings)}\n"
         "makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);\n"
         "</script></body></html>";
       server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -1752,13 +2383,13 @@ class WebUi {
         case ESP_RST_DEEPSLEEP:bootReason = "deepsleep"; break;
         default: break;
       }
-      char buf[256];
+      char buf[300];
       snprintf(buf, sizeof(buf),
-        "{\"uptime\":%u,\"firmware_version\":%u,\"boot_reason\":\"%s\""
+        "{\"uptime\":%u,\"firmware_version\":%u,\"fw\":\"%s\",\"boot_reason\":\"%s\""
         ",\"free_heap\":%u,\"wifi_ssid\":\"%s\",\"wifi_rssi\":%d"
         ",\"wifi_ip\":\"%s\",\"ntp_synced\":%s,\"ntp_last_delta\":%d"
         ",\"button_events\":%u}",
-        (unsigned)uptimeSec, (unsigned)SETTINGS_VERSION, bootReason,
+        (unsigned)uptimeSec, (unsigned)SETTINGS_VERSION, FIRMWARE_VERSION, bootReason,
         (unsigned)ESP.getFreeHeap(),
         WiFi.SSID().c_str(), (int)WiFi.RSSI(),
         WiFi.localIP().toString().c_str(),
@@ -1798,9 +2429,9 @@ class WebUi {
       if (server_.hasArg("autoBrightnessMode")) settings.autoBrightnessMode = clampByte(server_.arg("autoBrightnessMode").toInt(), 0, 2);
       if (server_.hasArg("minAutoBrightness")) settings.minAutoBrightness = clampByte(server_.arg("minAutoBrightness").toInt(), 5, 255);
       if (server_.hasArg("maxAutoBrightness")) settings.maxAutoBrightness = clampByte(server_.arg("maxAutoBrightness").toInt(), 5, 255);
-      if (server_.hasArg("quarterAnimation")) settings.quarterAnimation = clampByte(server_.arg("quarterAnimation").toInt(), 0, 3);
-      if (server_.hasArg("halfHourAnimation")) settings.halfHourAnimation = clampByte(server_.arg("halfHourAnimation").toInt(), 0, 3);
-      if (server_.hasArg("hourAnimation")) settings.hourAnimation = clampByte(server_.arg("hourAnimation").toInt(), 0, 5);
+      if (server_.hasArg("quarterAnimation")) settings.quarterAnimation = clampByte(server_.arg("quarterAnimation").toInt(), 0, 6);
+      if (server_.hasArg("halfHourAnimation")) settings.halfHourAnimation = clampByte(server_.arg("halfHourAnimation").toInt(), 0, 7);
+      if (server_.hasArg("hourAnimation")) settings.hourAnimation = clampByte(server_.arg("hourAnimation").toInt(), 0, 10);
       if (server_.hasArg("intervalAnimationsEnabled")) settings.intervalAnimationsEnabled = server_.arg("intervalAnimationsEnabled").toInt() ? 1 : 0;
       if (server_.hasArg("outerRingOffset")) settings.outerRingOffset = clampByte(server_.arg("outerRingOffset").toInt(), 0, 59);
       if (server_.hasArg("focusReminder_enabled")) settings.focusReminder_enabled = server_.arg("focusReminder_enabled").toInt() ? 1 : 0;
@@ -1808,8 +2439,13 @@ class WebUi {
       if (server_.hasArg("focusReminder_endHour")) settings.focusReminder_endHour = clampByte(server_.arg("focusReminder_endHour").toInt(), 0, 23);
       if (server_.hasArg("focusReminder_intervalMinutes")) settings.focusReminder_intervalMinutes = clampWord(server_.arg("focusReminder_intervalMinutes").toInt(), 1, 1440);
       if (server_.hasArg("focusReminder_daysMask")) settings.focusReminder_daysMask = clampByte(server_.arg("focusReminder_daysMask").toInt(), 0, 127);
-      if (server_.hasArg("focusReminder_animation")) settings.focusReminder_animation = clampByte(server_.arg("focusReminder_animation").toInt(), 0, 5);
+      if (server_.hasArg("focusReminder_animation")) settings.focusReminder_animation = clampByte(server_.arg("focusReminder_animation").toInt(), 0, 11);
       if (server_.hasArg("focusReminder_durationSeconds")) settings.focusReminder_durationSeconds = clampByte(server_.arg("focusReminder_durationSeconds").toInt(), 1, 60);
+      if (server_.hasArg("animationPalette"))    settings.animationPalette    = clampByte(server_.arg("animationPalette").toInt(), 0, 7);
+      if (server_.hasArg("animationSpeed"))      settings.animationSpeed      = clampByte(server_.arg("animationSpeed").toInt(), 1, 5);
+      if (server_.hasArg("animationBrightness")) settings.animationBrightness = clampByte(server_.arg("animationBrightness").toInt(), 50, 255);
+      if (server_.hasArg("trailLength"))         settings.trailLength         = clampByte(server_.arg("trailLength").toInt(), 2, 12);
+      if (server_.hasArg("reminderPalette"))     settings.reminderPalette     = clampByte(server_.arg("reminderPalette").toInt(), 0, 3);
       settings_.update(settings);
       renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
       model_.markDirty();
@@ -1851,6 +2487,33 @@ class WebUi {
     server_.on("/subMinute", HTTP_POST, [&]() {
       model_.addMinutes(-1);
       renderer_.setStatus(STATUS_BUTTON, 700);
+      server_.send(200, "text/plain", "ok");
+    });
+
+    server_.on("/previewAnimation", HTTP_POST, [&]() {
+      const String type = server_.arg("type");
+      const int    mode = server_.arg("mode").toInt();
+      const uint32_t now = millis();
+      static const AnimPhase qPhases[]  = {ANIM_Q1,  ANIM_Q2,  ANIM_Q3,  ANIM_Q4,  ANIM_Q5,  ANIM_Q6};
+      static const AnimPhase hhPhases[] = {ANIM_H1,  ANIM_H2,  ANIM_H3,  ANIM_H4,  ANIM_H5,  ANIM_H6,  ANIM_H7};
+      static const AnimPhase hrPhases[] = {ANIM_HR1, ANIM_HR2, ANIM_HR3, ANIM_HR4, ANIM_HR5,
+                                           ANIM_HR6, ANIM_HR7, ANIM_HR8, ANIM_HR9, ANIM_HR10};
+      if (type == "quarter") {
+        if (mode < 1 || mode > 6) { server_.send(400, "text/plain", "mode 1-6"); return; }
+        renderer_.triggerAnimDirect(qPhases[mode - 1], now);
+      } else if (type == "halfhour") {
+        if (mode < 1 || mode > 7) { server_.send(400, "text/plain", "mode 1-7"); return; }
+        renderer_.triggerAnimDirect(hhPhases[mode - 1], now);
+      } else if (type == "hour") {
+        if (mode < 1 || mode > 10) { server_.send(400, "text/plain", "mode 1-10"); return; }
+        renderer_.triggerAnimDirect(hrPhases[mode - 1], now);
+      } else if (type == "reminder") {
+        if (mode < 0 || mode > 11) { server_.send(400, "text/plain", "mode 0-11"); return; }
+        renderer_.triggerReminderDirectAnimation((uint8_t)mode, now);
+      } else {
+        server_.send(400, "text/plain", "type: quarter|halfhour|hour|reminder");
+        return;
+      }
       server_.send(200, "text/plain", "ok");
     });
 
@@ -2094,7 +2757,7 @@ class WebUi {
     snprintf(mc, sizeof(mc), "#%02X%02X%02X", s.minutesRed, s.minutesGreen, s.minutesBlue);
     snprintf(hc, sizeof(hc), "#%02X%02X%02X", s.hoursRed, s.hoursGreen, s.hoursBlue);
     snprintf(cc, sizeof(cc), "#%02X%02X%02X", s.centerRed, s.centerGreen, s.centerBlue);
-    char buf[900];
+    char buf[1100];
     snprintf(buf, sizeof(buf),
       "{\"dayBrightness\":%u,\"nightBrightness\":%u"
       ",\"nightStartHour\":%u,\"nightEndHour\":%u"
@@ -2112,7 +2775,10 @@ class WebUi {
       ",\"focusReminder_enabled\":%u,\"focusReminder_startHour\":%u"
       ",\"focusReminder_endHour\":%u,\"focusReminder_intervalMinutes\":%u"
       ",\"focusReminder_daysMask\":%u,\"focusReminder_animation\":%u"
-      ",\"focusReminder_durationSeconds\":%u,\"outerRingOffset\":%u}",
+      ",\"focusReminder_durationSeconds\":%u,\"outerRingOffset\":%u"
+      ",\"animationPalette\":%u,\"animationSpeed\":%u"
+      ",\"animationBrightness\":%u,\"trailLength\":%u"
+      ",\"reminderPalette\":%u}",
       s.dayBrightness, s.nightBrightness,
       s.nightStartHour, s.nightEndHour,
       s.colorTheme, s.secondTrail, s.progressSeconds,
@@ -2129,7 +2795,10 @@ class WebUi {
       s.focusReminder_enabled, s.focusReminder_startHour,
       s.focusReminder_endHour, s.focusReminder_intervalMinutes,
       s.focusReminder_daysMask, s.focusReminder_animation,
-      s.focusReminder_durationSeconds, s.outerRingOffset);
+      s.focusReminder_durationSeconds, s.outerRingOffset,
+      s.animationPalette, s.animationSpeed,
+      s.animationBrightness, s.trailLength,
+      s.reminderPalette);
     return String(buf);
   }
 
@@ -2262,16 +2931,7 @@ class FocusReminderScheduler {
   }
 
   void triggerReminderAnimation(uint8_t mode, uint32_t now) {
-    // Reuse existing animation triggers from ClockRenderer
-    switch (mode) {
-      case 0: renderer_.triggerQuarterAnimation(now); break;
-      case 1: renderer_.triggerHalfHourAnimation(now); break;
-      case 2: renderer_.triggerHourAnimation(now); break;
-      case 3: renderer_.triggerQuarterAnimation(now); break;  // Duplicate for safety
-      case 4: renderer_.triggerHalfHourAnimation(now); break;
-      case 5: renderer_.triggerHourAnimation(now); break;
-      default: renderer_.triggerQuarterAnimation(now); break;
-    }
+    renderer_.triggerReminderDirectAnimation(mode, now);
   }
 
   TimeModel &model_;

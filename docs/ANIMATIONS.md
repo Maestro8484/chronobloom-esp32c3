@@ -116,6 +116,21 @@ Animations exist to **acknowledge the passage of time** and **provide visual fee
 
 **Visual effect**: Brightness wave cascading inward
 
+### 4. Laser Ping
+**Mode**: `quarterAnimation = 4`
+
+Single bright LED sweeps CW around outer ring in ~600ms with decaying trail. Trail fades on completion. Color: palette position 0. Duration: 1.4s.
+
+### 5. DNA Twist
+**Mode**: `quarterAnimation = 5`
+
+Two LEDs 30 positions apart sweep CW together in opposite palette colors (positions 0 and 128). Each has a trail. Duration: 2s.
+
+### 6. Tick Spark
+**Mode**: `quarterAnimation = 6`
+
+Sequential flashes at clock positions 0, 15, 30, 45 (each 200ms). Colors cycle through palette at positions 0, 85, 170, 255. Duration: 0.8s.
+
 ---
 
 ## Half-Hour Animations (4-6 sec)
@@ -153,6 +168,26 @@ Animations exist to **acknowledge the passage of time** and **provide visual fee
 5. All return to normal brightness together
 
 **Visual effect**: Ocean wave simulation
+
+### 4. Comet Chase
+**Mode**: `halfHourAnimation = 4`
+
+Bright head + decaying trail sweeps CW around outer ring for 2 full laps (~3s). Brief full-ring palette flash at end. Duration: 4s.
+
+### 5. Color Explosion
+**Mode**: `halfHourAnimation = 5`
+
+All 60 outer ring LEDs light simultaneously with per-LED palette colors. Each fades at a pseudo-random speed seeded by position. Duration: 3.5s.
+
+### 6. Knight Rider
+**Mode**: `halfHourAnimation = 6`
+
+Single LED bounces back and forth across outer ring (positions 0-59) with decaying trail. 3 full bounces at ~800ms per pass. Duration: 5s.
+
+### 7. Strobe Party
+**Mode**: `halfHourAnimation = 7`
+
+All rings flash at 8Hz for 2s cycling through 4 palette positions (0, 85, 170, 255). Fades to black over 500ms. Duration: 3s.
 
 ---
 
@@ -226,6 +261,83 @@ Animations exist to **acknowledge the passage of time** and **provide visual fee
 **Visual effect**: Meditative breathing flower
 
 **Duration**: 9-10 seconds
+
+### 6. Supernova
+**Mode**: `hourAnimation = 6`
+
+All rings ramp to white blast (500ms), then split into palette colors per ring. Rainbow rotates outward with per-ring hue offsets (+21845) for 5.5s, then fades to black. Duration: 8.5s.
+
+### 7. Matrix Rain
+**Mode**: `hourAnimation = 7`
+
+8 independent green "drops" move CW on outer ring at different speeds, each with decaying trail. Drops loop continuously for 8s. Duration: 8s.
+
+### 8. Galaxy Spin
+**Mode**: `hourAnimation = 8`
+
+Three rings spin palette colors at different speeds and directions: outer CW/3s, middle CCW/5s, inner CW/7s. Each ring has a +85-unit palette offset. Fades out over last second. Duration: 10s.
+
+### 9. Color Wipe
+**Mode**: `hourAnimation = 9`
+
+Palette gradient sweeps CW ring by ring: outer (3s), then middle (1.5s), then inner (1s). Each LED gets a unique palette position. Duration: 7s. Speed-scaled.
+
+### 10. Thunderstorm
+**Mode**: `hourAnimation = 10`
+
+All rings hold deep blue-purple base color with slow sine-wave breathing. 5 lightning strikes at preset intervals flash 2-4 random outer LEDs + center pixel to white for 80ms. Duration: 10.5s.
+
+---
+
+## Reminder Animations (warm palette)
+
+Triggered by Focus Reminder scheduler when `focusReminder_animation` is 6-11. All use `reminderPalette` (warm/urgent colors). Not triggered by clock time intervals.
+
+### ANIM_REM1 — Amber Pulse
+**Mode**: `focusReminder_animation = 6`
+
+Inward wave: outer, middle, inner, center each pulse (200ms ramp, 100ms hold, 200ms ramp down) with 350ms stagger between rings. 3 pulse cycles per ring. Duration: 4s.
+
+### ANIM_REM2 — Attention Ring
+**Mode**: `focusReminder_animation = 7`
+
+Outer and middle rings dim to 15% face color. Inner ring: single LED sweeps 3 laps (400ms/lap) with 2-LED trail. Duration: 2s.
+
+### ANIM_REM3 — Heartbeat
+**Mode**: `focusReminder_animation = 8`
+
+All rings flash in double-beat pattern (beat1: 80ms up/80ms hold/120ms down; beat2: 80ms/80ms/200ms), then dim glow pause (520ms). 4 cycles. Duration: 5s.
+
+### ANIM_REM4 — Sunrise Wake
+**Mode**: `focusReminder_animation = 9`
+
+Radial reveal: inner ring glows deep red, expands outward ring by ring. Colors transition red → orange → yellow-white over 6 seconds. Duration: 6s.
+
+### ANIM_REM5 — Campfire Flicker
+**Mode**: `focusReminder_animation = 10`
+
+All rings flicker warm amber-orange, each LED slightly different shade. Slow sine-wave brightness breathing (2s period, ±20%). Occasional bright spark on random outer LED. Duration: 5s.
+
+### ANIM_REM6 — Neon Sign
+**Mode**: `focusReminder_animation = 11`
+
+Inner ring pulses at 12Hz (on 40ms / off 42ms). Random glitch: full off for ~120ms every ~700ms. Outer ring holds dim amber at 12%. Duration: 4s.
+
+---
+
+## Animation Style System (v11)
+
+All new animations (ANIM_Q4+) use these shared controls:
+
+| Setting | Field | Range | Effect |
+|---------|-------|-------|--------|
+| Color palette | `animationPalette` | 0-7 | Maps to Rainbow/Fire/Ocean/Forest/Candy/Neon/Monochrome/Clock |
+| Reminder palette | `reminderPalette` | 0-3 | Amber/Red/Magenta/Cyan-warm (reminder anims only) |
+| Speed | `animationSpeed` | 1-5 | 0.5× / 0.75× / 1× / 1.5× / 2× time multiplier |
+| Peak brightness | `animationBrightness` | 50-255 | Max LED brightness during animation |
+| Trail length | `trailLength` | 2-12 | LEDs in chase/sweep trail |
+
+The `paletteColor(position, useReminderPalette)` helper maps 0-255 → palette color at `animationBrightness`. The `scaledElapsed(elapsed)` helper applies speed scaling to timing.
 
 ---
 
