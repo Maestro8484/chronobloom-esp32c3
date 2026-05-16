@@ -10,15 +10,16 @@
 
 ### Variants
 **8" Clock (esp32c3_v3_8inch)**:
-- Total: 97 LEDs on single strip
-- Center pixel at index 96
-- No sacrificial pixel — physical index 0 is the first ring LED (12 o'clock, outer ring)
-- Ring offset: 0
+- Total: 98 LEDs on single strip (97 active + 1 sacrificial)
+- Sacrificial pixel: physical index 0 (always dark — level-shifts 3.3V ESP32 data to 5V WS2812B logic)
+- Ring pixel offset: 1 (logical ring LED 0 maps to physical index 1)
+- Center pixel: physical index 97 (last in chain)
+- Data line: GPIO10 → 300Ω resistor → DIN of physical LED 0 (sacrificial)
 
 **15" Clock (esp32c3_v3_15inch)**:
-- Main strip: 96 LEDs (rings only)
-- Separate center strip: 1 LED on GPIO20
-- No sacrificial pixel — physical index 0 is the first ring LED
+- Main strip: 96 LEDs (rings only, physical indexes 0–95)
+- Separate center strip: 1 LED on GPIO20 (CENTER_PIXEL_SEPARATE_OUTPUT=1)
+- No sacrificial pixel — physical index 0 is the first ring LED (12 o'clock, outer ring)
 - Ring offset: 0
 
 ---
@@ -32,12 +33,19 @@
 | D7     | GPIO20 | Center pixel (DIN)        | 15" variant only               |
 
 ### User Input
-| Pin    | GPIO   | Function     | Notes                  |
-|--------|--------|--------------|------------------------|
-| D1     | GPIO3  | (unused) formerly Button UP   | JTAG TCK -- removed v2.0.4, do not use for ISR inputs |
-| D2     | GPIO4  | (unused) formerly Button DOWN | JTAG TDI -- removed v2.0.4, do not use for ISR inputs |
+| Pin    | GPIO   | Function     | Notes                                                |
+|--------|--------|--------------|------------------------------------------------------|
+| D3     | GPIO5  | Button UP    | INPUT_PULLUP, polled (no ISR), 50ms debounce         |
+| D9     | GPIO9  | Button DOWN  | INPUT_PULLUP, polled (no ISR), 50ms debounce; also XIAO BOOT pin — do not hold at power-on reset |
+| (n/c)  | GPIO3  | Unused       | JTAG TCK — do NOT use for ISR inputs                 |
+| (n/c)  | GPIO4  | Unused       | JTAG TDI — do NOT use for ISR inputs                 |
 
-⚠️ **GPIO3/GPIO4 removed from use (v2.0.4)**: These are JTAG TCK/TDI pins. Physical buttons on these pins caused spurious ISR fires when USB data was connected, producing unintended minute-hand jumps. Buttons removed. If reintroducing physical input, use GPIO6, GPIO7, GPIO8, or GPIO9 with polled reads (not ISRs). See REVIEW.md Section 1 for the polling implementation template.
+> **Button hold-to-repeat** (v2.0.7): Short press ±1 min. Hold >500ms: repeat ±1 min every 150ms.
+> Hold >2s: repeat ±60 min per fire. Release stops immediately.
+>
+> **Factory reset** (v2.0.8): Hold UP (GPIO5) at power-on → red LEDs appear →
+> add DOWN (GPIO9) and hold both 3s → white flash → reboot into WiFi portal.
+> GPIO9 must NOT be held at the power-on instant (enters download mode).
 
 ### I2C Bus (Sensors)
 | Pin    | GPIO   | Function  | Wire Color | Connected Devices   |
@@ -129,7 +137,7 @@ VEML7700 SCL → GPIO7 (yellow wire)
 ### LED Power Consumption
 - **Per LED**: ~60mA at full white (all channels 100%)
 - **Typical usage**: ~20mA per LED (colored, not full brightness)
-- **Total worst-case** (97 LEDs): 5.8A @ 5V (rare, only during full-white test)
+- **Total worst-case** (98 LEDs, 8" variant): 5.9A @ 5V (rare, only during full-white test)
 - **Typical operation**: 1.5-2A @ 5V (clock display mode)
 
 ### Recommended Power Supply
@@ -171,21 +179,25 @@ VEML7700 SCL → GPIO7 (yellow wire)
 
 ### Ring Config (main.cpp)
 ```cpp
-// RING_PIXEL_OFFSET = 0 (no sacrificial pixel)
-constexpr RingConfig RING_OUTER_60  = {60, RING_PIXEL_OFFSET, true};      // indexes 0-59
-constexpr RingConfig RING_MIDDLE_24 = {24, RING_PIXEL_OFFSET + 60, true}; // indexes 60-83
-constexpr RingConfig RING_INNER_12  = {12, RING_PIXEL_OFFSET + 84, true}; // indexes 84-95
+// 8inch: RING_PIXEL_OFFSET = 1 (sacrificial pixel at physical 0)
+// 15inch: RING_PIXEL_OFFSET = 0 (no sacrificial pixel)
+constexpr RingConfig RING_OUTER_60  = {60, RING_PIXEL_OFFSET,      true};  // 60 LEDs
+constexpr RingConfig RING_MIDDLE_24 = {24, RING_PIXEL_OFFSET + 60, true};  // 24 LEDs
+constexpr RingConfig RING_INNER_12  = {12, RING_PIXEL_OFFSET + 84, true};  // 12 LEDs
 ```
 
-### LED Indexing
-- **Physical strip index 0**: Outer ring LED 0 (12 o'clock position)
-- **Physical strip indexes 0-59**: Outer ring (seconds/minutes)
-- **Physical strip indexes 60-83**: Middle ring (hours)
-- **Physical strip indexes 84-95**: Inner ring (hours)
-- **Physical strip index 96**: Center pixel (8" variant)
-- **Separate strip index 0**: Center pixel (15" variant on GPIO20)
+### LED Indexing (8" variant)
+- **Physical strip index 0**: Sacrificial WS2812B (always dark, level-shifts signal)
+- **Physical strip indexes 1–60**: Outer ring (seconds/minutes), logical 0–59
+- **Physical strip indexes 61–84**: Middle ring (hours), logical 0–23
+- **Physical strip indexes 85–96**: Inner ring (hours), logical 0–11
+- **Physical strip index 97**: Center pixel
 
-> Sacrificial pixel removed in firmware v2.0.2. If upgrading from an older build, rewire GPIO10 data line directly to DIN of physical LED index 0 (first ring LED).
+### LED Indexing (15" variant)
+- **Physical strip indexes 0–59**: Outer ring, logical 0–59
+- **Physical strip indexes 60–83**: Middle ring, logical 0–23
+- **Physical strip indexes 84–95**: Inner ring, logical 0–11
+- **Separate strip index 0**: Center pixel (GPIO20)
 
 ---
 

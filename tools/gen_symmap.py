@@ -15,7 +15,11 @@ SYMMAP_OUT = REPO_ROOT / "docs" / "symmap.json"
 INVENTORY_OUT = REPO_ROOT / "docs" / "FUNCTION_INVENTORY.md"
 
 # Recognise "class Foo {" or "struct Foo {" lines (class definition starts)
-CLASS_OPEN_RE = re.compile(r'^(?:class|struct)\s+(\w+)\s*(?::\s*.+?)?\{?\s*(?://.*)?$')
+CLASS_OPEN_RE = re.compile(
+    r'^(?:class|struct)\s+(\w+)'
+    r'(?:\s*:\s*(?:public|protected|private)\s+[\w:]+(?:\s*,\s*(?:public|protected|private)\s+[\w:]+)*)?'
+    r'\s*\{?\s*(?://.*)?$'
+)
 
 # Recognise a function/method definition line.
 # Return type may be: void, bool, int, uint8_t/16/32, float, double, String,
@@ -81,16 +85,72 @@ def extract_functions(src_path: Path):
     class_stack = []   # list of (class_name, open_depth)
     brace_depth = 0
     functions = []
+    skip_lines = set()  # Lines whose braces should not be counted (inside SKIP_BODY_FUNCTIONS)
 
     # Set of known class names (populated as we see 'class Foo {')
     known_classes = set()
 
-    # Pre-pass: collect class names
+    # Functions whose body parsing should be skipped (too large, confuse brace counter)
+    SKIP_BODY_FUNCTIONS = {'setupRoutes'}
+
+    # Pre-pass: collect class names and find skip ranges for SKIP_BODY_FUNCTIONS
     for line in clean_lines:
         s = line.strip()
         m = CLASS_OPEN_RE.match(s)
         if m:
             known_classes.add(m.group(1))
+
+    # Pre-pass 2: find SKIP_BODY_FUNCTIONS and mark their line ranges
+    brace_depth_tmp = 0
+    class_stack_tmp = []
+    for i, line in enumerate(clean_lines):
+        stripped = line.strip()
+
+        # Track class openings for pre-pass
+        class_match = CLASS_OPEN_RE.match(stripped)
+        if class_match:
+            opens = stripped.count('{')
+            closes = stripped.count('}')
+            if opens > closes:
+                class_stack_tmp.append((class_match.group(1), brace_depth_tmp + opens - closes))
+
+        raw = stripped.split('//')[0]
+        brace_depth_tmp += raw.count('{') - raw.count('}')
+
+        while class_stack_tmp and brace_depth_tmp < class_stack_tmp[-1][1]:
+            class_stack_tmp.pop()
+
+        # Check if this is a SKIP_BODY_FUNCTIONS function
+        if FUNC_DEF_RE.match(stripped) or CTOR_RE.match(stripped):
+            m = FUNC_DEF_RE.match(stripped)
+            if m:
+                fn_name = m.group(1)
+            else:
+                cm = CTOR_RE.match(stripped)
+                if cm:
+                    fn_name = cm.group(2)
+                else:
+                    fn_name = None
+
+            if fn_name in SKIP_BODY_FUNCTIONS:
+                # Find opening brace
+                brace_start_idx = i
+                for j in range(i, min(i + 5, len(clean_lines))):
+                    if '{' in clean_lines[j]:
+                        brace_start_idx = j
+                        break
+
+                # Find closing brace
+                opening_indent = len(clean_lines[brace_start_idx]) - len(clean_lines[brace_start_idx].lstrip())
+                for j in range(brace_start_idx + 1, len(clean_lines)):
+                    cline = clean_lines[j]
+                    if cline.strip() == '}' or cline.strip().startswith('}'):
+                        cline_indent = len(cline) - len(cline.lstrip())
+                        if cline_indent <= opening_indent:
+                            # Mark all lines from brace_start_idx+1 to j (exclusive of closing line) as skip
+                            for k in range(brace_start_idx + 1, j):
+                                skip_lines.add(k)
+                            break
 
     for i, line in enumerate(clean_lines):
         lineno = i + 1
@@ -107,13 +167,20 @@ def extract_functions(src_path: Path):
                 class_stack.append((class_name, brace_depth + opens - closes))
             # If no brace yet, we'll catch it next iteration
 
-        # Update brace depth
-        raw = stripped.split('//')[0]
-        brace_depth += raw.count('{') - raw.count('}')
+        # Update brace depth (skip lines inside SKIP_BODY_FUNCTIONS)
+        if i not in skip_lines:
+            raw = stripped.split('//')[0]
+            brace_depth += raw.count('{') - raw.count('}')
 
         # Pop class stack when we exit a class scope
         while class_stack and brace_depth < class_stack[-1][1]:
             class_stack.pop()
+
+        # Hard reset: if brace depth returns to 0, no class scope can be active.
+        # Guards against brace-counter drift from large function bodies with
+        # embedded HTML/JS content that isn't fully stripped.
+        if brace_depth == 0 and class_stack:
+            class_stack.clear()
 
         # Skip preprocessor, comments, blank lines
         if not stripped or stripped.startswith('#') or stripped.startswith('//') \
@@ -176,7 +243,21 @@ def extract_functions(src_path: Path):
         if not has_brace:
             continue
 
-        end_line = find_closing_brace(clean_lines, brace_start_idx)
+        # For functions that confuse the brace counter (e.g., setupRoutes with embedded JS),
+        # use a simple heuristic: scan forward for a closing brace at indentation level 2 (class member)
+        if fn_name in SKIP_BODY_FUNCTIONS:
+            end_line = len(lines)  # Default to EOF
+            # Scan for a line with closing brace at shallow indentation
+            opening_indent = len(clean_lines[brace_start_idx]) - len(clean_lines[brace_start_idx].lstrip())
+            for j in range(brace_start_idx + 1, len(clean_lines)):
+                line = clean_lines[j]
+                if line.strip() == '}' or line.strip().startswith('}'):
+                    line_indent = len(line) - len(line.lstrip())
+                    if line_indent <= opening_indent:
+                        end_line = j + 1  # 1-based
+                        break
+        else:
+            end_line = find_closing_brace(clean_lines, brace_start_idx)
 
         # Qualify with class name if we're inside a class
         current_class = class_stack[-1][0] if class_stack else None

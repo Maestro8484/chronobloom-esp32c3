@@ -176,3 +176,10 @@ Clean working tree + commit appears in log = session closed.
 4. If `symmap.json` line ranges are stale (SHA256 mismatch), do a targeted `Grep` instead of a full read
 
 Never open `src/main.cpp` without a specific line target.
+
+**Required after any session that modifies `src/main.cpp`**:
+```powershell
+python tools/gen_symmap.py
+```
+Commit `docs/symmap.json` and `docs/FUNCTION_INVENTORY.md` together with firmware changes.
+Stale symmap = wrong line numbers in all future targeted reads = silent wrong-code edits.
