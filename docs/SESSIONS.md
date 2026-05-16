@@ -23,10 +23,49 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 11 | WebUI crash fix + heap hardening | PROGMEM chunked HTML, snprintf JSON — eliminate 15inch OOM crash | Done (2026-05-13, v2.1.0) |
 | 12 | Animation expansion | 17 new animations, 8-palette system, speed/brightness/trail controls, preview buttons, 12h UI | Done (2026-05-15, v2.1.0) |
 | 13 | Publishing prep | LICENSE/NOTICE files, docs/publish/PUBLISH.md, docs/publish/DEMO_MODE.md spec | Done (2026-05-16) |
+| 14 | Demo Mode firmware | DemoMode class, LuxSensor override, /demo endpoints, WebUI controls | Done (2026-05-16, v2.2.0) |
+| 15 | Symmap regeneration | Fix gen_symmap.py parser bugs, regenerate inventory, update HARDWARE.md | Done (2026-05-16) |
 
 ---
 
 ## Completed Sessions
+
+### Session 14 — Demo Mode Firmware (Done 2026-05-16, v2.2.0)
+- DemoMode class implemented: array-driven step table with millis() timing, non-blocking
+- LuxSensor extended: `setLuxOverride(float)` / `clearLuxOverride()` methods to bypass hardware reads
+- 6-step demo sequence (~93s total): idle clock → chimes → palette cycling → focus reminder → brightness ramp → end card
+- Step struct: `{ uint32_t duration_ms, const char* subtitle }`
+- Web endpoints added:
+  - `POST /demo/start` — start demo playback
+  - `POST /demo/stop` — stop demo, clear status
+  - `GET /demo/status` — JSON with `{ active, step, subtitle, elapsed_ms, step_duration_ms }`
+  - `GET /demo/overlay` — Full-screen 1920x1080 OBS-ready HTML overlay with fade transitions
+- Web UI controls: Start/Stop buttons, live status display (Step N/6, subtitle, progress %), demoStatus div
+- JavaScript: `startDemo()`, `stopDemo()`, `updateDemoStatus()` with 500ms polling
+- Buttons ignored during demo; web endpoints continue normal operation
+- No EEPROM changes, no SETTINGS_VERSION bump, no build flag changes
+- Build result: Both envs clean, RAM 11.1%, Flash 56.8%
+
+### Session 15 — Symmap Regeneration + HARDWARE.md Update (Done 2026-05-16)
+- **gen_symmap.py parser fixes**:
+  - Improved CLASS_OPEN_RE regex to handle base class inheritance (e.g., `class Foo : public Bar, public Baz`)
+  - Added hard-reset guard: clear class_stack when brace_depth returns to 0 (prevents misattribution after large function bodies)
+  - Added SKIP_BODY_FUNCTIONS to skip braces inside setupRoutes (~1220 lines with embedded HTML/JS, +3 unclosed braces)
+  - Pre-pass 2: marks lines inside SKIP_BODY_FUNCTIONS as skip_lines; main loop doesn't count their braces
+- **Regenerated symmap.json and FUNCTION_INVENTORY.md**:
+  - 110 functions found (was 102 with bugs)
+  - All class methods now correctly qualified: `TimeSync::loop`, `DemoMode::loop`, `WebUi::loop` (appears once, not twice)
+  - Global functions correctly unqualified: `setup`, `loop`, `logRuntimeStatus`, `setupDemoModeRoutes`
+  - DemoMode::* methods all present (was missing entirely before)
+- **HARDWARE.md updated for 8" variant**:
+  - Corrected LED count: 98 LEDs (97 active + 1 sacrificial)
+  - Sacrificial pixel at physical index 0 (level-shifts 3.3V to 5V)
+  - Ring offset = 1 (logical LED 0 → physical index 1)
+  - Center pixel at physical index 97 (last in chain)
+  - Button pins: GPIO5 (UP), GPIO9 (DOWN) with polled, non-ISR implementation
+  - Added factory reset sequence and hold-to-repeat notes
+- **WORKFLOW.md updated**: Added gen_symmap reminder to "Token Reduction" section
+- No firmware changes. Docs-only session. All files verified before commit.
 
 ### Session 13 — Publishing Prep (Done 2026-05-16)
 - LICENSE (Apache 2.0) and LICENSE-HARDWARE (CC BY 4.0) created in repo root
