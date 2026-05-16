@@ -256,13 +256,16 @@ class LuxSensor {
     return (uint8_t)cachedBrightness_;
   }
 
+  void setLuxOverride(float lux) { luxOverrideActive_ = true; luxOverrideValue_ = lux; }
+  void clearLuxOverride()        { luxOverrideActive_ = false; }
+
   uint8_t autoBrightnessCached(uint32_t nowMs) {
 #if LUX_SENSOR_ENABLED
     if (!available_) return 128;
 
     // Refresh the lux-derived target every 500ms
     if (nowMs - lastBrightnessMs_ >= 500) {
-      float lx = lux();
+      float lx = luxOverrideActive_ ? luxOverrideValue_ : lux();
       if (lx >= 0.0f) {
         float normalized = log10(max(0.1f, lx) + 1.0f) / log10(10001.0f);
         cachedBrightness_ = constrain(normalized * 240.0f + 15.0f, 15.0f, 255.0f);
@@ -307,6 +310,8 @@ class LuxSensor {
   float rampedBrightness_ = 128.0f;  // actual output (smoothed toward target)
   uint32_t lastBrightnessMs_ = 0;
   uint32_t lastRampMs_ = 0;
+  bool luxOverrideActive_ = false;
+  float luxOverrideValue_ = 0.0f;
 };
 
 // ===================== Persistent settings =====================
@@ -2005,6 +2010,146 @@ void setupOTA() {
 // Incremented by ButtonInput on each consume. Readable from WebUi /diag handler.
 static uint32_t g_buttonEventCount = 0;
 
+// ===================== Demo Mode =====================
+class DemoMode {
+ public:
+  struct Step {
+    uint32_t duration_ms;
+    const char *subtitle;
+  };
+
+  explicit DemoMode(ClockRenderer &renderer, LuxSensor &luxSensor, SettingsStore &settings)
+      : renderer_(renderer), luxSensor_(luxSensor), settings_(settings) {}
+
+  void start() {
+    active_ = true;
+    step_ = 0;
+    stepStartMs_ = millis();
+    subStep_ = 0;
+  }
+
+  void stop() {
+    active_ = false;
+    luxSensor_.clearLuxOverride();
+  }
+
+  void loop(uint32_t now) {
+    if (!active_) return;
+
+    uint32_t elapsed = now - stepStartMs_;
+
+    // Step 0: Idle (12s)
+    if (step_ == 0) {
+      if (elapsed >= 12000) { step_++; stepStartMs_ = now; subStep_ = 0; }
+      return;
+    }
+
+    // Step 1a: Chime animations (10s) - fire quarter/half/hour spaced ~3s apart
+    if (step_ == 1) {
+      if (elapsed >= 10000) { step_++; stepStartMs_ = now; subStep_ = 0; return; }
+      // 3s spacing: fire at 0, 3000, 6000 ms
+      if (elapsed < 3000 && subStep_ == 0) {
+        renderer_.triggerQuarterAnimation(now);
+        subStep_ = 1;
+      } else if (elapsed >= 3000 && elapsed < 6000 && subStep_ == 1) {
+        renderer_.triggerHalfHourAnimation(now);
+        subStep_ = 2;
+      } else if (elapsed >= 6000 && subStep_ == 2) {
+        renderer_.triggerHourAnimation(now);
+        subStep_ = 3;
+      }
+      return;
+    }
+
+    // Step 1b: Palette rotation (8s) - advance palette every 2s, 4 palettes (0,1,2,3)
+    if (step_ == 2) {
+      if (elapsed >= 8000) { step_++; stepStartMs_ = now; subStep_ = 0; return; }
+      uint8_t paletteStep = (elapsed / 2000) % 4;
+      ClockSettings s = settings_.get();
+      if (s.animationPalette != paletteStep) {
+        s.animationPalette = paletteStep;
+        settings_.update(s);
+      }
+      return;
+    }
+
+    // Step 2: Focus reminder (18s) - fire once at step entry
+    if (step_ == 3) {
+      if (elapsed >= 18000) { step_++; stepStartMs_ = now; subStep_ = 0; return; }
+      if (subStep_ == 0) {
+        renderer_.triggerReminderDirectAnimation(2, now);  // mode 2 = hour animation for reminder
+        subStep_ = 1;
+      }
+      return;
+    }
+
+    // Step 3: Auto-brightness (25s) - ramp lux 220->0.3 over 10s, hold 5s, ramp back 0.3->220 over 10s
+    if (step_ == 4) {
+      if (elapsed >= 25000) { step_++; stepStartMs_ = now; subStep_ = 0; luxSensor_.clearLuxOverride(); return; }
+
+      float luxValue = 220.0f;
+      if (elapsed < 10000) {
+        // Ramp down: 220 -> 0.3 over 10s
+        float t = elapsed / 10000.0f;
+        luxValue = 220.0f - (220.0f - 0.3f) * t;
+      } else if (elapsed < 15000) {
+        // Hold at 0.3
+        luxValue = 0.3f;
+      } else {
+        // Ramp back up: 0.3 -> 220 over 10s
+        float t = (elapsed - 15000) / 10000.0f;
+        luxValue = 0.3f + (220.0f - 0.3f) * t;
+      }
+      luxSensor_.setLuxOverride(luxValue);
+      return;
+    }
+
+    // Step 4: End card (20s) - idle, subtitle shown
+    if (step_ == 5) {
+      if (elapsed >= 20000) {
+        active_ = false;
+        luxSensor_.clearLuxOverride();
+      }
+      return;
+    }
+  }
+
+  String statusJson() const {
+    if (!active_) return "{\"active\":false}";
+
+    uint32_t now = millis();
+    uint32_t elapsed = now - stepStartMs_;
+    uint32_t duration = steps[step_].duration_ms;
+
+    String json = "{\"active\":true,\"step\":" + String(step_) +
+                  ",\"subtitle\":\"" + String(steps[step_].subtitle) +
+                  "\",\"elapsed_ms\":" + String(elapsed) +
+                  ",\"step_duration_ms\":" + String(duration) + "}";
+    return json;
+  }
+
+ private:
+  static constexpr Step steps[] = {
+    {12000, "ChronoBloom — ESP32-C3 NeoPixel clock"},
+    {10000, "Chime animations — quarter, half, top-of-hour"},
+    {8000,  "8 color palettes — fully customizable per ring"},
+    {18000, "Focus reminder — ADHD hyperfocus interrupt"},
+    {25000, "Auto-brightness — VEML7700 ambient light sensor"},
+    {20000, "Open source — github / printables / hackaday.io"}
+  };
+
+  bool active_ = false;
+  uint8_t step_ = 0;
+  uint8_t subStep_ = 0;
+  uint32_t stepStartMs_ = 0;
+  ClockRenderer &renderer_;
+  LuxSensor &luxSensor_;
+  SettingsStore &settings_;
+};
+
+// Static array definition for DemoMode::steps
+constexpr DemoMode::Step DemoMode::steps[];
+
 // ===================== Web UI =====================
 class WebUi {
  public:
@@ -2098,6 +2243,8 @@ class WebUi {
 
   bool enabled() const { return enabled_; }
   bool apMode() const { return apMode_; }
+
+  ClockWebServer& getServer() { return server_; }
 
  private:
   void setupRoutes() {
@@ -2746,6 +2893,91 @@ class WebUi {
         Serial.println("[FW] Upload complete, finalizing...");
       }
     });
+
+    server_.on("/demo/overlay", HTTP_GET, [&]() {
+      static const char OVERLAY_HTML[] = R"(
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width,initial-scale=1'>
+  <title>Demo Overlay</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #000;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    #overlay {
+      position: fixed;
+      bottom: 33vh;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      opacity: 0;
+      transition: opacity 300ms ease;
+    }
+    #overlay.active {
+      opacity: 1;
+    }
+    #subtitle {
+      font-size: 48px;
+      color: white;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 20px 40px;
+      border-radius: 50px;
+      display: inline-block;
+      max-width: 80vw;
+      word-wrap: break-word;
+    }
+  </style>
+</head>
+<body>
+  <div id='overlay'>
+    <div id='subtitle'></div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('overlay');
+    const subtitle = document.getElementById('subtitle');
+    let lastSubtitle = '';
+
+    async function updateStatus() {
+      try {
+        const response = await fetch('/demo/status');
+        const data = await response.json();
+
+        if (data.active) {
+          if (data.subtitle !== lastSubtitle) {
+            overlay.classList.remove('active');
+            setTimeout(() => {
+              subtitle.textContent = data.subtitle;
+              overlay.classList.add('active');
+              lastSubtitle = data.subtitle;
+            }, 50);
+          } else if (!overlay.classList.contains('active')) {
+            overlay.classList.add('active');
+          }
+        } else {
+          overlay.classList.remove('active');
+          lastSubtitle = '';
+        }
+      } catch (e) {
+        console.error('Status fetch failed:', e);
+      }
+    }
+
+    updateStatus();
+    setInterval(updateStatus, 500);
+  </script>
+</body>
+</html>
+      )";
+      server_.send(200, "text/html", OVERLAY_HTML);
+    });
   }
 
   String settingsJson() {
@@ -3063,12 +3295,19 @@ LuxSensor luxSensor;
 TimeSync timeSync(timeModel);
 WebUi webUi(timeModel, settingsStore, renderer, timeSync, temperature);
 FocusReminderScheduler reminderScheduler(timeModel, renderer, settingsStore);
+DemoMode demoMode(renderer, luxSensor, settingsStore);
 ButtonInput buttons;
 
 uint32_t lastTickMs = 0;
 uint32_t lastAnimationRenderMs = 0;
 uint32_t lastStatusLogMs = 0;
 static uint8_t lastMinute = 255;
+
+static void setupDemoModeRoutes() {
+  webUi.getServer().on("/demo/start", HTTP_POST, [](){ demoMode.start(); webUi.getServer().send(200, "application/json", "{\"status\":\"started\"}"); });
+  webUi.getServer().on("/demo/stop", HTTP_POST, [](){ demoMode.stop(); webUi.getServer().send(200, "application/json", "{\"status\":\"stopped\"}"); });
+  webUi.getServer().on("/demo/status", HTTP_GET, [](){ webUi.getServer().send(200, "application/json", demoMode.statusJson()); });
+}
 
 static void logRuntimeStatus(uint32_t now) {
   if (now - lastStatusLogMs < 10000) return;
@@ -3235,6 +3474,7 @@ void setup() {
   webUi.setLuxSensor(&luxSensor);
   webUi.begin();
   if (webUi.enabled()) {
+    setupDemoModeRoutes();
     writeStatusLed(true);
     Serial.print("Web UI available at IP: ");
     Serial.println(WiFi.localIP());
@@ -3264,6 +3504,7 @@ void loop() {
 
   timeSync.loop();
   webUi.loop();
+  demoMode.loop(now);
   logRuntimeStatus(now);
 
   // Check and fire focus reminders
