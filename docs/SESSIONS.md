@@ -22,10 +22,18 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 10 | Docs audit fix | Fix 5 stale documentation entries from maturation audit | Done (2026-05-13) |
 | 11 | WebUI crash fix + heap hardening | PROGMEM chunked HTML, snprintf JSON — eliminate 15inch OOM crash | Done (2026-05-13, v2.1.0) |
 | 12 | Animation expansion | 17 new animations, 8-palette system, speed/brightness/trail controls, preview buttons, 12h UI | Done (2026-05-15, v2.1.0) |
+| 13 | Publishing prep | LICENSE/NOTICE files, docs/publish/PUBLISH.md, docs/publish/DEMO_MODE.md spec | Done (2026-05-16) |
 
 ---
 
 ## Completed Sessions
+
+### Session 13 — Publishing Prep (Done 2026-05-16)
+- LICENSE (Apache 2.0) and LICENSE-HARDWARE (CC BY 4.0) created in repo root
+- NOTICE file created with attribution chain (Steve Manley → Mike van der Sluis → Maestro)
+- docs/publish/PUBLISH.md created: platform targets, task tracker, STL notes, 15" experimental declaration
+- docs/publish/DEMO_MODE.md created: full Demo Mode spec — DemoMode class, step table, /demo/status JSON, /demo/overlay HTML overlay, LuxSensor override API, OBS setup, 93s sequence
+- No firmware changes. SETTINGS_VERSION unchanged. Version remains v2.1.0.
 
 ### Session 12 — Animation Expansion (Done 2026-05-15, v2.1.0)
 - Added `animationPalette` (8 palettes), `animationSpeed` (1-5), `animationBrightness` (50-255), `trailLength` (2-12), `reminderPalette` (4 warm palettes) to `ClockSettings`

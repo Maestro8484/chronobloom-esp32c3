@@ -2,6 +2,16 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.1.0] — 2026-05-16 (docs)
+
+### Documentation
+- LICENSE (Apache 2.0) and LICENSE-HARDWARE (CC BY 4.0) added to repo root
+- NOTICE file with attribution chain (Steve Manley → Mike van der Sluis → Maestro)
+- docs/publish/PUBLISH.md: publishing tracker, platform targets, STL notes
+- docs/publish/DEMO_MODE.md: Demo Mode firmware spec — step table, /demo/status, /demo/overlay, LuxSensor override API
+
+---
+
 ## [2.1.0] — 2026-05-15
 
 ### Added
