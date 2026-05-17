@@ -482,6 +482,8 @@ class SettingsStore {
     if (settings.animationBrightness < 50) settings.animationBrightness = 200;
     if (settings.trailLength < 2 || settings.trailLength > 12) settings.trailLength = 4;
     if (settings.reminderPalette > 3) settings.reminderPalette = 0;
+    if (settings.dayBrightness < 5) settings.dayBrightness = 44;
+    if (settings.nightBrightness < 1) settings.nightBrightness = 5;
     return settings;
   }
 
@@ -1779,7 +1781,8 @@ class ClockRenderer {
     if (logicalIndex >= ring.count) return;
     uint8_t rot = settings_.get().outerRingOffset;
     uint8_t rotated = rot
-        ? static_cast<uint8_t>((static_cast<uint32_t>(logicalIndex) + rot * ring.count / 60) % ring.count)
+        ? static_cast<uint8_t>((static_cast<uint32_t>(logicalIndex) +
+                                (static_cast<uint32_t>(rot) * ring.count + 30) / 60) % ring.count)
         : logicalIndex;
     uint8_t physical = ring.clockwise ? rotated : (ring.count - 1 - rotated);
     strip_.setPixelColor(ring.offset + physical, color);
@@ -2121,11 +2124,13 @@ class DemoMode {
     uint32_t elapsed = now - stepStartMs_;
     uint32_t duration = steps[step_].duration_ms;
 
-    String json = "{\"active\":true,\"step\":" + String(step_) +
-                  ",\"subtitle\":\"" + String(steps[step_].subtitle) +
-                  "\",\"elapsed_ms\":" + String(elapsed) +
-                  ",\"step_duration_ms\":" + String(duration) + "}";
-    return json;
+    char buf[256];
+    snprintf(buf, sizeof(buf),
+             "{\"active\":true,\"step\":%u,\"subtitle\":\"%s\","
+             "\"elapsed_ms\":%lu,\"step_duration_ms\":%lu}",
+             (unsigned)step_, steps[step_].subtitle,
+             (unsigned long)elapsed, (unsigned long)duration);
+    return String(buf);
   }
 
  private:
@@ -2430,6 +2435,14 @@ class WebUi {
         "<a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a>"
         "<a href='/wifi' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>WiFi Settings</a>"
         "</div></div>\n"
+        "<div class='panel'><h2>Demo Mode (Video Recording)</h2>\n"
+        "<p class='sub' style='font-size:12px;color:#92a0b5'>Automated 93-second feature showcase. Use /demo/overlay in OBS for live subtitles.</p>\n"
+        "<div class='row'>\n"
+        "  <button class='primary' onclick='startDemo()' id='demoStartBtn'>▶ Start Demo</button>\n"
+        "  <button onclick='stopDemo()' id='demoStopBtn' style='display:none;background:#8b3a3a;border-color:#c75555'>⏹ Stop</button>\n"
+        "</div>\n"
+        "<div id='demoStatus' class='state' style='margin-top:12px;padding:8px;background:#0c1017;border:1px solid #2c3442;border-radius:4px'>Idle</div>\n"
+        "</div>\n"
         "</section></main>\n";
       static const char HTML_P3[] PROGMEM =
         "<script>\n"
@@ -2454,6 +2467,10 @@ class WebUi {
         "function previewAnim(type,modeId){const mode=qs(modeId).value;fetch('/previewAnimation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'type='+type+'&mode='+mode})}\n"
         "function previewStyleAnim(){const t=qs('stylePreviewType').value;const modeMap={quarter:'quarterAnimation',halfhour:'halfHourAnimation',hour:'hourAnimation',reminder:'focusReminder_animation'};const mode=qs(modeMap[t]).value;fetch('/previewAnimation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'type='+t+'&mode='+mode})}\n"
         "function saveAnimStyle(){const p=new URLSearchParams();p.set('animationPalette',qs('animationPalette').value);p.set('animationSpeed',qs('animationSpeed').value);p.set('animationBrightness',qs('animationBrightness').value);p.set('trailLength',qs('trailLength').value);p.set('reminderPalette',qs('reminderPalette').value);post('/settings',p.toString()).then(loadSettings)}\n"
+        "async function startDemo(){await fetch('/demo/start',{method:'POST'});qs('demoStartBtn').style.display='none';qs('demoStopBtn').style.display='inline-block';updateDemoStatus();demoStatusInterval=setInterval(updateDemoStatus,500)}\n"
+        "async function stopDemo(){await fetch('/demo/stop',{method:'POST'});qs('demoStartBtn').style.display='inline-block';qs('demoStopBtn').style.display='none';qs('demoStatus').textContent='Idle';clearInterval(demoStatusInterval)}\n"
+        "async function updateDemoStatus(){try{const r=await fetch('/demo/status');const data=await r.json();if(data.active){const elapsed=data.elapsed_ms,dur=data.step_duration_ms,pct=Math.round(100*elapsed/dur);qs('demoStatus').textContent=`Step ${data.step+1}/6: ${data.subtitle} (${pct}%)`}else{qs('demoStatus').textContent='Idle'}}catch(e){}}\n"
+        "let demoStatusInterval=0;\n"
         "makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);\n"
         "</script></body></html>";
       server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -2517,32 +2534,30 @@ class WebUi {
 
     server_.on("/diag", HTTP_GET, [&]() {
       uint32_t uptimeSec = millis() / 1000;
-      esp_reset_reason_t rr = esp_reset_reason();
-      const char *bootReason = "unknown";
-      switch (rr) {
-        case ESP_RST_POWERON:  bootReason = "power-on";  break;
-        case ESP_RST_SW:       bootReason = "software";  break;
-        case ESP_RST_PANIC:    bootReason = "panic";     break;
-        case ESP_RST_INT_WDT:  bootReason = "int-wdt";  break;
-        case ESP_RST_TASK_WDT: bootReason = "task-wdt"; break;
-        case ESP_RST_WDT:      bootReason = "watchdog";  break;
-        case ESP_RST_BROWNOUT: bootReason = "brownout";  break;
-        case ESP_RST_DEEPSLEEP:bootReason = "deepsleep"; break;
-        default: break;
-      }
-      char buf[300];
+      ClockTime t = model_.get();
+      float lux_val = lux_ ? lux_->lux() : -1.0f;
+      uint8_t br_target = lux_ ? lux_->autoBrightnessTarget() : 0;
+      uint8_t br_ramped = lux_ ? lux_->autoBrightnessCached(millis()) : 0;
+      char buf[1024];
       snprintf(buf, sizeof(buf),
-        "{\"uptime\":%u,\"firmware_version\":%u,\"fw\":\"%s\",\"boot_reason\":\"%s\""
-        ",\"free_heap\":%u,\"wifi_ssid\":\"%s\",\"wifi_rssi\":%d"
-        ",\"wifi_ip\":\"%s\",\"ntp_synced\":%s,\"ntp_last_delta\":%d"
-        ",\"button_events\":%u}",
-        (unsigned)uptimeSec, (unsigned)SETTINGS_VERSION, FIRMWARE_VERSION, bootReason,
-        (unsigned)ESP.getFreeHeap(),
-        WiFi.SSID().c_str(), (int)WiFi.RSSI(),
+        "{\"uptime_sec\":%lu,\"firmware_version\":\"%s\",\"settings_version\":%u"
+        ",\"time\":\"%02u:%02u:%02u\""
+        ",\"ntp_synced\":%s,\"ntp_last_delta_sec\":%d"
+        ",\"wifi_status\":%d,\"wifi_ssid\":\"%s\",\"wifi_rssi\":%d,\"wifi_ip\":\"%s\""
+        ",\"lux\":%.1f,\"brightness_target\":%u,\"brightness_ramped\":%u"
+        ",\"button_event_count\":%lu,\"free_heap\":%lu"
+        ",\"clock_pixel_count\":%u,\"ring_pixel_offset\":%u"
+        ",\"outer_ring_offset\":%u,\"sacrificial_enabled\":%s}",
+        (unsigned long)uptimeSec, FIRMWARE_VERSION, (unsigned)SETTINGS_VERSION,
+        (unsigned)t.hour, (unsigned)t.minute, (unsigned)t.second,
+        timeSync_.synced() ? "true" : "false", (int)timeSync_.lastDeltaSec(),
+        (int)WiFi.status(), WiFi.SSID().c_str(), (int)WiFi.RSSI(),
         WiFi.localIP().toString().c_str(),
-        timeSync_.synced() ? "true" : "false",
-        (int)timeSync_.lastDeltaSec(),
-        (unsigned)g_buttonEventCount);
+        lux_val, (unsigned)br_target, (unsigned)br_ramped,
+        (unsigned long)g_buttonEventCount, (unsigned long)ESP.getFreeHeap(),
+        (unsigned)CLOCK_PIXEL_COUNT, (unsigned)RING_PIXEL_OFFSET,
+        (unsigned)settings_.get().outerRingOffset,
+        SACRIFICIAL_PIXEL_ENABLED ? "true" : "false");
       server_.send(200, "application/json", buf);
     });
 
@@ -3140,15 +3155,13 @@ class FocusReminderScheduler {
 
     // Interval check: enough time since last fire?
     uint32_t intervalMs = static_cast<uint32_t>(s.focusReminder_intervalMinutes) * 60000UL;
-    if (now - s.focusReminder_lastFireMs < intervalMs) return;
+    if (lastFireMs_ != 0 && now - lastFireMs_ < intervalMs) return;
 
     // Fire animation (reuse existing renderer methods)
     triggerReminderAnimation(s.focusReminder_animation, now);
 
-    // Update last fire time in settings
-    ClockSettings updated = s;
-    updated.focusReminder_lastFireMs = now;
-    settings_.update(updated);
+    // Record fire time in RAM only — no EEPROM write needed
+    lastFireMs_ = now;
 
     Serial.printf("[FocusReminder] Fired at %02d:%02d (interval=%d min, dow=%d)\n",
                   t.hour, t.minute, s.focusReminder_intervalMinutes, dow);
@@ -3169,6 +3182,7 @@ class FocusReminderScheduler {
   TimeModel &model_;
   ClockRenderer &renderer_;
   SettingsStore &settings_;
+  uint32_t lastFireMs_ = 0;
 };
 
 class ButtonInput {

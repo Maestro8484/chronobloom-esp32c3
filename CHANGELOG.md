@@ -5,6 +5,26 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.1.1] — 2026-05-16
+
+### Fixed
+- **`setRingPixel` rotation rounding** — middle and inner rings now follow the outer ring proportionally when `outerRingOffset` changes. Previous integer-division math quantized middle ring in steps of 2.5 LEDs and inner ring in steps of 5 LEDs, so most single-step offset changes produced no visible movement on those rings.
+- **Brightness floor in `sanitize()`** — `dayBrightness < 5` now floors to 44, `nightBrightness < 1` floors to 5. Prevents WebUI lockout from accidental zero-brightness input.
+
+### Changed
+- **`FocusReminderScheduler::lastFireMs` moved to RAM** — no longer persisted to EEPROM on every reminder fire. Eliminates ~20k EEPROM writes/year for typical reminder configurations. `focusReminder_lastFireMs` field retained in `ClockSettings` as reserved (no SETTINGS_VERSION bump).
+- **`DemoMode::statusJson` migrated to `snprintf`** — reduces heap fragmentation in the WebUI demo-mode hot path.
+
+### Added
+- **`/diag` endpoint** — JSON diagnostics: uptime, firmware/settings versions, time, NTP sync state, WiFi status/SSID/RSSI/IP, lux, brightness chain (target/ramped), button event counter, free heap, LED pixel config. Replaces and expands the simpler v2.0.6 `/diag`.
+
+### Files changed
+- `platformio.ini` — FIRMWARE_VERSION 2.1.0 → 2.1.1
+- `src/main.cpp` — `setRingPixel`, `SettingsStore::sanitize`, `FocusReminderScheduler::checkAndFire`, `DemoMode::statusJson`, `/diag` handler in `WebUi::setupRoutes`
+- `CHANGELOG.md` — this entry
+
+---
+
 ## [v2.2.0] — 2026-05-16 (in development)
 
 ### Demo Mode
