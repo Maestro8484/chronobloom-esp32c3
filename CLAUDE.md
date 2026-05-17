@@ -44,7 +44,6 @@ Every session must open with a list of files read and the reason each was necess
 Build commands, web UI URLs, project identity, and firmware file structure are in this file — do not read README.md or WORKFLOW.md just to find them.
 
 ### Read when needed
-- **[docs/PRIMER-extended.md](docs/PRIMER-extended.md)** — Full current-state reference: feature list, pin map, all build commands, doc map
 - **[WORKFLOW.md](WORKFLOW.md)** — Chat vs Code roles, source of truth hierarchy (read only when workflow is the topic)
 - **[REVIEW.md](REVIEW.md)** — Technical audit, known issues, debugging notes (read only for specific named issues)
 
