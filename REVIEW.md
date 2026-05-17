@@ -1,5 +1,48 @@
 # ChronoBloom ESP32-C3 — Firmware Review
-Date: 2026-05-04 (updated 2026-05-15)
+Date: 2026-05-04 (updated 2026-05-16)
+
+---
+
+## Session 16 — 2026-05-16 Firmware Fixes (v2.1.1)
+
+Five targeted fixes to existing firmware behavior. No new SETTINGS_VERSION, no struct changes.
+
+**setRingPixel rotation rounding** (`ClockRenderer::setRingPixel`, line ~1783): Previous expression `rot * ring.count / 60` used integer division, rounding always down. Middle ring (24 LEDs) required a change of 2.5 before any visual movement; inner ring (12 LEDs) required 5. Added `+30` bias before the division so it rounds to nearest. Outer ring (count=60) is algebraically unchanged.
+
+**Brightness floor in sanitize()** (`SettingsStore::sanitize`, line ~485): No floor existed on `dayBrightness` or `nightBrightness`. POSTing `dayBrightness=0` with `autoBrightnessMode=0` produced a permanently dark display with no UI recovery path. Added: `dayBrightness < 5 → 44`, `nightBrightness < 1 → 5`.
+
+**FocusReminderScheduler EEPROM writes** (`FocusReminderScheduler::checkAndFire`): Each reminder fire previously wrote `focusReminder_lastFireMs` to EEPROM via `settings_.update()` — a full EEPROM commit. At 15-minute intervals that's ~20k writes/year for no reboot-surviving benefit. Moved to private `lastFireMs_` RAM member. First-boot behavior: fires immediately when conditions are met (correct — user wants the reminder). `focusReminder_lastFireMs` field retained in struct as reserved.
+
+**DemoMode::statusJson snprintf migration** (`DemoMode::statusJson`): Was using Arduino `String` concatenation on every call (polled at 500ms during demo mode). Migrated to `snprintf` into a 256-byte stack buffer. Output byte-identical; heap fragmentation eliminated.
+
+**`/diag` endpoint expanded** (`WebUi::setupRoutes`): Replaced the minimal v2.0.6 handler with a full diagnostic payload. Added: `time` (HH:MM:SS), `settings_version`, `lux`, `brightness_target`, `brightness_ramped`, `clock_pixel_count`, `ring_pixel_offset`, `outer_ring_offset`, `sacrificial_enabled`. Buffer sized 1024 bytes.
+
+**Build result**: Both envs clean. 8": RAM 11.1% (36,384B), Flash 56.8% (744,050B). 15": RAM 11.1% (36,400B), Flash 56.8% (744,168B).
+
+---
+
+## Session 14 — 2026-05-16 Demo Mode Firmware (v2.2.0)
+
+Implemented DemoMode class for automated video recording sequences. Non-blocking state machine that drives through 6 feature demonstrations in ~93 seconds, with LuxSensor override for simulating auto-brightness behavior.
+
+**Key components**:
+- `DemoMode` class: array-driven step table, millis() timing, callback hooks to `ClockRenderer` (animation triggers) and `LuxSensor` (lux override)
+- Step table: 6 entries `{ duration_ms, subtitle }` covering idle → chimes → palettes → reminder → brightness → end
+- `LuxSensor::setLuxOverride(float) / clearLuxOverride()` — switch override on/off without touching EEPROM
+- Web endpoints: `/demo/start` (POST), `/demo/stop` (POST), `/demo/status` (GET JSON), `/demo/overlay` (GET HTML)
+- `/demo/status` JSON: `{ active, step, subtitle, elapsed_ms, step_duration_ms }` polled every 500ms from frontend
+- `/demo/overlay` HTML: Full-screen 1920x1080, centered white text on black pill, 300ms fade-in/out on step transitions, OBS browser source ready
+- Web UI: Start/Stop buttons, status display div with step counter and progress bar
+- Buttons ignored during demo; buttons in middle of demo stop all input but don't abort playback
+- Global instance: `DemoMode demoMode(renderer, luxSensor, settingsStore)` initialized in setup()
+- Integration: `demoMode.loop(now)` called in main `loop()` after `webUi.loop()`
+- Routes registered at runtime via `setupDemoModeRoutes()` to avoid incomplete-type compile errors
+
+**No EEPROM changes**: Settings version unchanged, no new build flags, no persistence impact.
+
+**Build result**: Both envs clean, RAM 11.1% (36,400B on 15inch, 36,384B on 8inch), Flash 56.8% (744,120B on 15inch, 744,000B on 8inch).
+
+**Code organization**: DemoMode class inserted before WebUi class in main.cpp (~line 2014), immediately after g_buttonEventCount global declaration. Placement avoids forward-declaration issues with route lambdas.
 
 ---
 

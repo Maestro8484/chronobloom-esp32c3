@@ -4,6 +4,27 @@
 
 ---
 
+## Brightness Issues
+
+### Display goes completely dark after saving settings
+
+**Symptoms**:
+- All LEDs off after a settings save
+- Web UI still responds but nothing is visible
+- Reloading the page shows brightness value of 0
+
+**Cause**: `dayBrightness=0` (or `nightBrightness=0`) was submitted. In `autoBrightnessMode=0` (manual), `dayBrightness` is passed directly to the LED strip — zero means off. Pre-v2.1.1 firmware had no floor on this field.
+
+**Fix (v2.1.1+)**: `sanitize()` now floors `dayBrightness < 5` to 44 and `nightBrightness < 1` to 5. Upgrade firmware and re-save any settings to recover.
+
+**Recovery on older firmware**: Use `/diag` to confirm the device is alive, then POST a non-zero brightness:
+```
+curl -X POST "http://esp32c3-v3-8inch.local/settings" -d "dayBrightness=150"
+```
+Or hold both buttons on boot for 3 seconds to factory reset EEPROM to defaults.
+
+---
+
 ## WebUI / HTTP Issues
 
 ### 15inch variant reboots when loading the root page
@@ -179,7 +200,7 @@ Should print `1 1` when not pressed, `0 1` or `1 0` when single button pressed.
 1. **Power supply**: Verify 5V present at LED strip VCC/GND
 2. **Data connection**: Check 300Ω resistor inline with GPIO10 → LED DIN
 3. **Strip polarity**: Ensure VCC/GND not swapped (can damage LEDs)
-4. **Index 0**: Physical index 0 is the first active ring LED — no sacrificial pixel in current firmware. If you upgraded from a pre-v2.0.2 build, rewire GPIO10 data line directly to DIN of first ring LED.
+4. **Index 0 (variant-dependent)**: On the **15" variant**, physical index 0 is the first active ring LED (`SACRIFICIAL_PIXEL_ENABLED=0`, `RING_PIXEL_OFFSET=0`). On the **8" variant**, physical index 0 is the sacrificial pixel used for 3.3V→5V level shifting — the first active LED is index 1 (`SACRIFICIAL_PIXEL_ENABLED=1`, `RING_PIXEL_OFFSET=1`). If upgrading the 15" from a pre-v2.0.2 build, rewire GPIO10 data line directly to DIN of first ring LED.
 
 **Serial output check**:
 ```
@@ -474,6 +495,108 @@ void renderMyAnimation(uint32_t now) {
   timeModel.markDirty();  // Force full redraw
 }
 ```
+
+---
+
+## Demo Mode
+
+### Demo Mode won't start
+
+**Symptoms**:
+- Click "Start" button in web UI, nothing happens
+- Status shows "Idle" and doesn't advance
+
+**Checks**:
+1. Verify device is connected and web UI loading normally
+2. Check browser console (F12) for JavaScript errors on `startDemo()` call
+3. Confirm `/demo/start` endpoint is reachable: `curl -X POST http://esp32c3-v3-8inch.local/demo/start`
+4. Check `/demo/status` response (should return `{"active":true,...}` after starting)
+
+**Test response**:
+```
+GET http://esp32c3-v3-8inch.local/demo/status
+```
+Should return JSON with `"active": true` and current `"step"` number.
+
+---
+
+### Demo Mode stops abruptly
+
+**Symptoms**:
+- Demo starts (status updates)
+- Stops mid-sequence
+- Clock returns to normal display
+
+**Checks**:
+1. Verify WiFi still connected (demo stops if OTA or other network event interrupts)
+2. Check serial output for watchdog resets or exceptions
+3. Confirm device free heap > 80KB (large allocations during demo can cause issues)
+4. Verify step duration timings not being overridden by user interaction
+
+**Debug output**:
+```cpp
+// In DemoMode::loop():
+Serial.print("Demo step: ");
+Serial.print(currentStep_);
+Serial.print(" Elapsed: ");
+Serial.println(elapsedMs_);
+```
+
+---
+
+### /demo/overlay not displaying correctly in OBS
+
+**Symptoms**:
+- OBS browser source shows blank or wrong content
+- Text not fading in/out smoothly
+- Subtitles lag behind demo sequence
+
+**Checks**:
+1. Verify OBS browser source URL: `http://esp32c3-v3-8inch.local/demo/overlay`
+2. Confirm OBS browser source dimensions: 1920x1080 (as per spec)
+3. Check OBS browser source cache disabled (may cause stale HTML load)
+4. Verify `/demo/status` polling responding (overlay polls every 500ms)
+5. Confirm browser zoom set to 100% in OBS properties
+
+**Test `/demo/overlay` in browser**:
+- Open directly: `http://esp32c3-v3-8inch.local/demo/overlay`
+- Should display full-screen white text on black pill background
+- Text should fade in/out as demo progresses
+
+---
+
+### Lux override not working during demo
+
+**Symptoms**:
+- Auto-brightness demo step (step 3) runs but brightness doesn't change
+- Lux reading in web UI shows real sensor value, not override
+
+**Cause**: `LuxSensor::setLuxOverride()` called during demo should temporarily bypass hardware read.
+
+**Checks**:
+1. Verify auto-brightness mode enabled in web UI (`autoBrightnessMode = 1`)
+2. Confirm lux limits allow room to change (min/max brightness differ)
+3. Check `/lux` endpoint during demo: should return override value, not hardware value
+
+**Debug output**:
+```cpp
+// In LuxSensor::lux():
+if (luxOverrideActive_) {
+  Serial.print("Override active: ");
+  Serial.println(luxOverrideValue_);
+}
+```
+
+---
+
+### Buttons not responsive during demo
+
+**Expected behavior**: Physical buttons are ignored during demo playback.
+
+**If buttons still control time**:
+1. Verify demo is actually running (`/demo/status` shows `"active": true`)
+2. Check `ButtonInput::poll()` respects demo state — should consume button events without acting on them
+3. Confirm buttons weren't pressed before demo started (state machine may have pending press)
 
 ---
 

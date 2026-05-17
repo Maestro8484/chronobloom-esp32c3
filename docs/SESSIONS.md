@@ -25,10 +25,20 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 13 | Publishing prep | LICENSE/NOTICE files, docs/publish/PUBLISH.md, docs/publish/DEMO_MODE.md spec | Done (2026-05-16) |
 | 14 | Demo Mode firmware | DemoMode class, LuxSensor override, /demo endpoints, WebUI controls | Done (2026-05-16, v2.2.0) |
 | 15 | Symmap regeneration | Fix gen_symmap.py parser bugs, regenerate inventory, update HARDWARE.md | Done (2026-05-16) |
+| 16 | v2.1.1 firmware fixes | Ring rotation rounding, brightness floor, EEPROM wear fix, /diag expansion | Done (2026-05-16) |
 
 ---
 
 ## Completed Sessions
+
+### Session 16 — Firmware Fixes (Done 2026-05-16, v2.1.1)
+- **setRingPixel rounding**: Added `+30` bias to rotation expression; middle/inner rings now track outerRingOffset proportionally instead of quantizing to 2.5/5 LED steps
+- **Brightness floor**: `sanitize()` floors `dayBrightness < 5 → 44`, `nightBrightness < 1 → 5`; prevents zero-brightness UI lockout
+- **FocusReminder EEPROM thrash**: Moved `lastFireMs` to private `uint32_t lastFireMs_ = 0` RAM member; eliminates ~20k EEPROM writes/year at 15-min interval
+- **DemoMode::statusJson**: Migrated from `String` concatenation to `snprintf` into 256-byte stack buffer; output byte-identical
+- **`/diag` expanded**: Replaced minimal v2.0.6 handler; now returns `uptime_sec`, `firmware_version`, `settings_version`, `time`, `ntp_synced`, `ntp_last_delta_sec`, `wifi_status/ssid/rssi/ip`, `lux`, `brightness_target`, `brightness_ramped`, `button_event_count`, `free_heap`, `clock_pixel_count`, `ring_pixel_offset`, `outer_ring_offset`, `sacrificial_enabled`
+- Build: both envs clean. 8": RAM 11.1%, Flash 56.8%. 15": RAM 11.1%, Flash 56.8%
+- Commit: `aac6e1c`
 
 ### Session 14 — Demo Mode Firmware (Done 2026-05-16, v2.2.0)
 - DemoMode class implemented: array-driven step table with millis() timing, non-blocking

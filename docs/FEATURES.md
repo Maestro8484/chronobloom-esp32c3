@@ -60,8 +60,20 @@
   - All reminder animations use warm/urgent reminder palette
   - Enable/disable toggle
   - Configurable per-day schedule (Sun-Sat)
-  - Persistent storage via EEPROM (v8 struct)
+  - Fire timestamp stored in RAM only — not persisted to EEPROM (field `focusReminder_lastFireMs` reserved in struct but unused since v2.1.1)
   - Web UI panel: "Focus Reminders (ADHD)"
+
+### Demo Mode
+- ✅ **Demo Mode (Video Recording)** — Non-blocking state machine for feature sequencing during video recording
+  - 6-step sequence: idle clock (12s), chime animations (10s), palette cycling (8s), focus reminder (18s), auto-brightness ramp (25s), end card (20s)
+  - Total runtime: ~93 seconds
+  - LuxSensor override: simulates room darkening for auto-brightness demo step
+  - Web endpoints: `POST /demo/start`, `POST /demo/stop`, `GET /demo/status`, `GET /demo/overlay`
+  - `/demo/status` returns: active state, current step, subtitle, elapsed time, step duration
+  - `/demo/overlay` HTML: full-screen 1920x1080, OBS-ready browser source with fade transitions
+  - Web UI controls: Start/Stop buttons, live status display (step counter + progress bar)
+  - Buttons ignored during demo; all web endpoints continue normal operation
+  - No settings version change, no EEPROM impact
 
 ### Web UI Features
 - ✅ **Time controls** — Manual set, browser sync, NTP sync, increment/decrement (WebUI); physical buttons re-added v2.0.6 (GPIO5=UP, GPIO9=DOWN)
@@ -73,6 +85,7 @@
 - ✅ **Live sensor data** — Current lux reading updates every 2 seconds
 - ✅ **Auto-brightness controls** — Mode selection, min/max limits
 - ✅ **Network info** — IP address, WiFi SSID, signal strength, NTP sync status
+- ✅ **Demo Mode controls** — Start/Stop buttons, live status display for video recording sequences
 
 ---
 
