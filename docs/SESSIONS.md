@@ -34,10 +34,18 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 22 | Animation brightness + preview fixes | Fix 11 legacy animations ignoring animationBrightness; fix Animation Style preview saving/dispatching | Done (2026-05-17, v2.3.1) |
 | 23 | Preview/palette/speed fix (v2.3.2) | Fix preview not applying unsaved sliders, suppress settings-saved flash, add palette+speed to animH1/animHr4/animQ3 | Done (2026-05-17, v2.3.2) |
 | 24 | animQ3 palette fix + saveAnimStyle silent (v2.3.3) | Replace renderFace() in animQ3 with paletteColor ring fill; suppress STATUS_SETTINGS_SAVED flash from Save Style button | Done (2026-05-17, v2.3.3) |
+| 25 | Browser cache fix (v2.3.4) | Add Cache-Control: no-cache header to / GET — browser was serving stale cached page, making all JS fixes since v2.3.2 invisible | Done (2026-05-17, v2.3.4) |
 
 ---
 
 ## Completed Sessions
+
+### Session 25 — Browser Cache Fix (Done 2026-05-17, v2.3.4)
+- **Root cause — browser caching the HTML page**: The `/` GET handler had no `Cache-Control` header. Browsers (Chrome, Edge, Firefox) cache responses with no cache directives, meaning every firmware OTA flash left the browser serving the old page with old JS. This silently nullified every JS change made in v2.3.1, v2.3.2, and v2.3.3 — the user never ran the new preview/save logic.
+- **Fix** (`src/main.cpp` `WebUi::setupRoutes` line 2307): Added `server_.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate")` before `setContentLength` in the `/` GET handler. The header is sent with every page load; browsers must revalidate from the device on every request.
+- **Important for user**: After flashing v2.3.4, do a **hard refresh** (Ctrl+Shift+R or open in a new Incognito/Private window) to force the browser to discard the old cached page and fetch the new one. Normal refresh may still serve cache until the header takes effect.
+- **Symmap**: No function signatures or line counts changed — no regeneration needed (only a one-line insertion inside an existing lambda, no function boundaries shifted).
+- **Build**: `esp32c3_v3_8inch` SUCCESS, RAM 11.1%, Flash 57.5%.
 
 ### Session 24 — animQ3 Palette Fix + saveAnimStyle Silent (Done 2026-05-17, v2.3.3)
 - **Root cause 1 — `animQ3` called `renderFace()`, bypassing palette entirely** (`src/main.cpp` lines 1120–1133): `renderFace()` draws the clock face using configured CLOCK COLORS (hours, minutes, markers) — `animationPalette` is never consulted. Moving the palette slider had zero visual effect on Q3 (the user's active quarter animation). Fixed: removed `renderFace()` call; replaced with two palette-colored ring fills — outer ring (`RING_OUTER_60`) and middle ring (`RING_MIDDLE_24`) — using `paletteColor()` with per-pixel hue offsets (outer: 0–255, middle: 85–340 wrapped). Bright/dark phase cycle uses `scale(c, 64)` for the dim frame, controlled by `(elapsed % 600) < 400`. `strip_.setBrightness(animationBrightness)` applied at entry. Function grew 8 lines (7 → 14), shifting all subsequent function line numbers.

@@ -122,5 +122,5 @@ These are documented failure modes. Avoid them.
 
 ## Session Numbering Reference
 Check docs/SESSIONS.md status table for the current highest session number before assigning the next one.
-As of 2026-05-17: last documented session is Session 24 (animQ3 palette fix + saveAnimStyle silent, 2026-05-17, v2.3.3).
-Next session to be documented: Session 25.
+As of 2026-05-17: last documented session is Session 25 (browser cache fix, 2026-05-17, v2.3.4).
+Next session to be documented: Session 26.

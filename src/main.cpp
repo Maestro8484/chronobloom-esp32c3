@@ -2305,6 +2305,7 @@ class WebUi {
  private:
   void setupRoutes() {
     server_.on("/", HTTP_GET, [&]() {
+      server_.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
       server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
       server_.send(200, "text/html", "");
       server_.sendContent_P(INDEX_P1);

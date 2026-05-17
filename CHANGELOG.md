@@ -5,6 +5,17 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.4] — 2026-05-17
+
+### Fixed
+- **Browser cache — `Cache-Control` header** (`src/main.cpp`, `WebUi::setupRoutes`): The `/` GET handler had no cache headers; browsers cached the HTML+JS page indefinitely. All JS changes in v2.3.1–v2.3.3 were silently ignored because browsers served the old cached page. Added `server_.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate")` before the chunked send. Browsers must now reload the page from the device on every visit. **After flashing: hard-refresh the browser (Ctrl+Shift+R) or open in private/incognito to immediately discard the cached page.**
+
+### Files changed
+- `src/main.cpp` — `WebUi::setupRoutes` `/` GET handler (line 2308)
+- `platformio.ini` — `FIRMWARE_VERSION` 2.3.3 → 2.3.4
+
+---
+
 ## [v2.3.3] — 2026-05-17
 
 ### Fixed
