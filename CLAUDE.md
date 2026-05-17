@@ -1,72 +1,87 @@
 # Claude Development Instructions
 
-**This file acts as a documentation router. For quick session start, see [docs/PRIMER.md](docs/PRIMER.md).**
+**This file is the session anchor. Read it first, every session, before touching anything else.**
+
+---
+
+## File-Reading Budget Rules
+
+These rules are mandatory. Violating them wastes token budget on large files that are not needed.
+
+### Never read these files unless the task explicitly names them
+- `docs/SESSIONS.md` — session history only; if needed use `tail: 50` to get recent entries
+- `REVIEW.md` — debugging archive; only read when diagnosing a specific named issue
+- `docs/TROUBLESHOOTING.md` — only read when the task is fixing a known symptom
+- `docs/CHANGELOG.md` and root `CHANGELOG.md` — only read when the task involves version history
+- `WORKFLOW.md` — only read on first session or when workflow itself is the topic
+- `README.md` — only read when build commands or hardware specs are the explicit task
+- `docs/ANIMATIONS.md`, `docs/FEATURES.md`, `docs/HISTORY.md`, `docs/API.md` — only when directly relevant to the task
+
+### Targeted reads only for large files
+- `src/main.cpp` (~3100 lines) — NEVER read whole. Look up function in `docs/FUNCTION_INVENTORY.md`, get line range from `docs/symmap.json`, read only those lines with `head`/`tail` or offset+limit.
+- `src/web_html.h` (~36KB) — read directly only when editing HTML/JS/CSS content. Never read to understand firmware logic.
+- `docs/SESSIONS.md` — if needed, use `tail: 50`. Never read whole.
+
+### Minimum read set by task type
+
+| Task type | Read these files — nothing else unless needed |
+|---|---|
+| Firmware change | CLAUDE.md, FUNCTION_INVENTORY.md, symmap.json, targeted main.cpp lines |
+| Docs update (inventory, primer, sessions) | CLAUDE.md + only the specific doc being updated |
+| Web UI HTML/JS change | CLAUDE.md, web_html.h |
+| New EEPROM setting | CLAUDE.md, FUNCTION_INVENTORY.md, symmap.json, targeted main.cpp lines |
+| Debugging specific issue | CLAUDE.md, REVIEW.md (relevant section only), targeted main.cpp lines |
+| Build/flash only | CLAUDE.md — commands are in this file |
+
+### State what you read and why
+Every session must open with a list of files read and the reason each was necessary. If a file is not on that list, it was not read.
 
 ---
 
 ## Documentation Index
 
-### Quick Start
-- **[docs/PRIMER.md](docs/PRIMER.md)** — Quick session primer (read this first, 2-min read time)
+### Always available here (no read needed)
+Build commands, web UI URLs, project identity, and firmware file structure are in this file — do not read README.md or WORKFLOW.md just to find them.
 
-### Reference Documentation
-- **[WORKFLOW.md](WORKFLOW.md)** — Development workflow rules (Claude Chat vs Code, source of truth hierarchy)
-- **[README.md](README.md)** — Build instructions, features, quick start
-- **[REVIEW.md](REVIEW.md)** — Technical audit, known issues, debugging notes
+### Read when needed
+- **[docs/PRIMER-extended.md](docs/PRIMER-extended.md)** — Full current-state reference: feature list, pin map, all build commands, doc map
+- **[WORKFLOW.md](WORKFLOW.md)** — Chat vs Code roles, source of truth hierarchy (read only when workflow is the topic)
+- **[REVIEW.md](REVIEW.md)** — Technical audit, known issues, debugging notes (read only for specific named issues)
 
-### Code Navigation (use these before reading main.cpp)
-- **[docs/FUNCTION_INVENTORY.md](docs/FUNCTION_INVENTORY.md)** — Every function: purpose, line range, state reads/writes, build-env and WebUI effects
-- **[docs/symmap.json](docs/symmap.json)** — Machine-readable symbol map: `{ name, start_line, end_line }` for all 85 functions; SHA256-pinned to source
+### Code navigation — read before touching main.cpp
+- **[docs/FUNCTION_INVENTORY.md](docs/FUNCTION_INVENTORY.md)** — 139 functions: purpose, line range, state reads/writes
+- **[docs/symmap.json](docs/symmap.json)** — Machine-readable `{ name, start_line, end_line }`, SHA256-pinned to source
 
-**Token-reduction rule**: `src/main.cpp` is ~2200 lines (~34k tokens). Never read it whole. Use `FUNCTION_INVENTORY.md` to find the relevant function, get its line range from `symmap.json`, then `Read` with `offset`/`limit` targeting only those lines.
-
-### Detailed Documentation (docs/)
-- **[docs/HARDWARE.md](docs/HARDWARE.md)** — Pin maps, sensors, physical construction, power specs
-- **[docs/FEATURES.md](docs/FEATURES.md)** — Current/planned/rejected features, settings structure
+### Detailed docs — read only when directly relevant
+- **[docs/HARDWARE.md](docs/HARDWARE.md)** — Pin maps, sensors, physical specs
+- **[docs/FEATURES.md](docs/FEATURES.md)** — Current/planned/rejected features, EEPROM schema
 - **[docs/ANIMATIONS.md](docs/ANIMATIONS.md)** — Animation catalog, triggers, implementation guide
-- **[docs/HISTORY.md](docs/HISTORY.md)** — Project lineage (Steve Manley → Mike van der Sluis → Maestro)
-- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Common issues, diagnostic steps, solutions
 - **[docs/API.md](docs/API.md)** — Web endpoints, settings structure, client examples
-
----
-
-## Critical Workflow Rules
-
-1. **Local repo is #1 truth source** — `C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3`
-2. **Read WORKFLOW.md before implementing** — Defines Chat vs Code roles
-3. **Claude Chat** = planning, design, documentation only
-4. **Claude Code** = ALL implementation, file edits, builds, flashing
-5. **Never implement from Chat** when Code is available
-
----
-
-## Session Anchor Phrase
-
-Say **"Iris Clock workflow rules active"** at the start of any session to confirm you've loaded the project context.
+- **[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)** — Common issues, diagnostic steps (read only when fixing a known symptom)
+- **[docs/SESSIONS.md](docs/SESSIONS.md)** — Session history (tail: 50 only; never read whole)
+- **[docs/SESSION_CLOSURE.md](docs/SESSION_CLOSURE.md)** — Mandatory end-of-session checklist
 
 ---
 
 ## Project Identity
 
 **Name**: ChronoBloom ESP32-C3 (formerly neopixelClock-esp32c3-v3 / Iris Clock)
-**Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor  
-**Visual**: Concentric LED rings creating flower-like light bloom pattern  
-**Purpose**: Elegant analog timekeeping through addressable LEDs
+**Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor
+**Firmware**: `src/main.cpp` (~3100 lines) + `src/web_html.h` (~36KB PROGMEM HTML/JS)
+**Visual**: Concentric LED rings, flower-like light bloom pattern
+**Repo**: `C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3`
 
 ---
 
 ## Build Commands
 
 ```powershell
-# Build 8" variant
-pio run -e esp32c3_v3_8inch
-
-# Flash via USB
-pio run -e esp32c3_v3_8inch -t upload
-
-# Serial monitor
-pio device monitor
+pio run -e esp32c3_v3_8inch                                                          # Build
+pio run -e esp32c3_v3_8inch -t upload --upload-protocol esptool --upload-port COM6  # USB flash
+pio device monitor                                                                    # Serial 115200
 ```
+
+OTA preferred post-first-flash: `http://esp32c3-v3-8inch.local/update`
 
 ---
 
@@ -74,8 +89,21 @@ pio device monitor
 
 - 8" variant: `http://esp32c3-v3-8inch.local/`
 - 15" variant: `http://esp32c3-v3-15inch.local/`
-- WiFi: SSID and password set via `platformio.ini` build flags (`WIFI_SSID` / `WIFI_PASSWORD`)
+- WiFi credentials: set via `/wifi` page or `platformio.ini` build flags (`WIFI_SSID` / `WIFI_PASSWORD`)
 
 ---
 
-**For detailed information, see the linked documentation above.**
+## Critical Workflow Rules
+
+1. **Local repo is #1 truth source** — supersedes GitHub and all prior chat context
+2. **File-reading budget rules above are mandatory** — state what you read and why
+3. **Claude Chat** = planning, design, documentation only (unless explicitly requested otherwise)
+4. **Claude Code** = ALL implementation, file edits, builds, flashing
+5. **Never implement from Chat** when Code is available
+6. **Session closure is mandatory** — run `docs/SESSION_CLOSURE.md` checklist before ending any session
+
+---
+
+## Session Anchor Phrase
+
+**"Iris Clock workflow rules active"** — say at start of any new session to confirm context loaded.
