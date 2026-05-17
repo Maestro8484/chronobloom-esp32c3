@@ -2,17 +2,19 @@ TASK: [paste here]
 
 Potentially Involved Functions/Hardware: [paste here]
 
-ChronoBloom ESP32-C3 LED clock project. Claude Desktop GUI (Chat + Code) on SuperMaster Desktop PC, direct local file/repo access via filesystem MCP.
-Two variants: esp32c3_v3_8inch and esp32c3_v3_15inch. esp32c3_v3_8inch is current default env.
+---
+
+Claude Desktop on SuperMaster PC. Direct local disk read/write access to all project files via filesystem MCP — no uploads, no copy-paste, no path translation needed.
 
 Repo: C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3
-Local repo is source of truth — supersedes GitHub and any prior chat context.
+Local repo is source of truth. GitHub is secondary mirror.
 
-Read CLAUDE.md first via filesystem MCP. It is the session anchor — contains workflow rules AND the file-reading budget rules that govern what to read for this session.
-Read minimum files the task requires. State what you read and why.
+Two variants: esp32c3_v3_8inch (default) | esp32c3_v3_15inch
 
-Chat = planning only unless explicitly requested. Claude Code = all implementation.
+FIRST ACTION: Read CLAUDE.md via filesystem MCP. It is the session anchor — contains file-reading budget rules, workflow constraints, build commands, and project identity. Do not read any other file until CLAUDE.md is read.
 
---- SESSION CLOSURE REQUIRED AT END OF EVERY SESSION ---
-Before ending any session, Claude Code MUST execute docs/SESSION_CLOSURE.md protocol.
-Failure to close is a workflow violation. See docs/SESSION_CLOSURE.md for full checklist.
+State every file you read and why before doing any work.
+
+Claude Chat = planning only. Claude Code = all implementation, edits, builds, flashing.
+
+Session closure is mandatory. Run docs/SESSION_CLOSURE.md checklist before ending any session.
