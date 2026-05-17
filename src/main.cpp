@@ -212,6 +212,10 @@ class LuxSensor {
     // 3-state gain machine with hysteresis bands to prevent oscillation.
     // Previous code had no hysteresis: GAIN_1_8 -> GAIN_2 direct jump
     // caused reading to spike -> GAIN_1_8 again -> flicker loop.
+    // Gain thresholds empirically set to avoid oscillation at lux boundaries.
+    // GAIN_2->GAIN_1: >200 lux. GAIN_1->GAIN_2: <50 lux.
+    // GAIN_1->GAIN_1_8: >900 lux. GAIN_1_8->GAIN_1: <300 lux.
+    // Settle lockout: 400ms after any gain change.
     uint8_t g = veml_.getGain();
     bool gainChanged = false;
     if (g == VEML7700_GAIN_2 && reading > 200.0f) {
@@ -268,8 +272,14 @@ class LuxSensor {
     if (nowMs - lastBrightnessMs_ >= 500) {
       float lx = luxOverrideActive_ ? luxOverrideValue_ : lux();
       if (lx >= 0.0f) {
-        float normalized = log10(max(0.1f, lx) + 1.0f) / log10(10001.0f);
-        cachedBrightness_ = constrain(normalized * 240.0f + 15.0f, 15.0f, 255.0f);
+        // Lux ceiling: VEML7700 max useful range ~10000 lux. log10(10001) normalises to [0,1].
+        // Output range: 15 (minimum visible) to 255 (full). 240 = 255 - 15.
+        static constexpr float LUX_CEILING      = 10000.0f;
+        static constexpr float BRIGHTNESS_MIN   = 15.0f;
+        static constexpr float BRIGHTNESS_RANGE = 240.0f; // 255 - 15
+        float normalized = log10(max(0.1f, lx) + 1.0f) / log10(LUX_CEILING + 1.0f);
+        cachedBrightness_ = constrain(normalized * BRIGHTNESS_RANGE + BRIGHTNESS_MIN,
+                                      BRIGHTNESS_MIN, 255.0f);
       }
       lastBrightnessMs_ = nowMs;
     }
@@ -863,6 +873,9 @@ class ClockRenderer {
     }
 
     if (settings.secondTrail) {
+      // Geometric decay: each step ~half the previous (52->26->13->6.5, rounded).
+      // trailLength setting controls how many of these are rendered; values beyond
+      // trailLength are unused. Brightness levels are fixed regardless of trailLength.
       const uint8_t trail[] = {52, 28, 14, 7};
       for (uint8_t i = 0; i < sizeof(trail); ++i) {
         const uint8_t idx = (time.second + RING_OUTER_60.count - i - 1) % RING_OUTER_60.count;
@@ -1769,7 +1782,10 @@ class ClockRenderer {
     const ClockSettings &settings = settings_.get();
     uint32_t color = ringColor(settings.centerRed, settings.centerGreen, settings.centerBlue,
                                settings.centerLevel);
-    setCenterPixel(pulse(color, now, 1800, 3, 75));
+    static constexpr uint16_t CENTER_PULSE_PERIOD_MS = 1800;
+    static constexpr uint8_t  CENTER_PULSE_FLOOR     = 3;
+    static constexpr uint8_t  CENTER_PULSE_CEILING   = 75;
+    setCenterPixel(pulse(color, now, CENTER_PULSE_PERIOD_MS, CENTER_PULSE_FLOOR, CENTER_PULSE_CEILING));
   }
 
   void setCenterPixel(uint32_t color) {
@@ -1799,6 +1815,7 @@ class ClockRenderer {
   void setRingPixel(const RingConfig &ring, uint8_t logicalIndex, uint32_t color) {
     if (logicalIndex >= ring.count) return;
     uint8_t rot = settings_.get().outerRingOffset;
+    // +30 before dividing by 60 rounds to nearest LED rather than truncating.
     uint8_t rotated = rot
         ? static_cast<uint8_t>((static_cast<uint32_t>(logicalIndex) +
                                 (static_cast<uint32_t>(rot) * ring.count + 30) / 60) % ring.count)

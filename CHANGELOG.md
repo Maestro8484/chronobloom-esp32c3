@@ -5,6 +5,28 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.2.3] — 2026-05-17
+
+### Fixed
+- **`web_html.h` `draw()` JS preview ambient mismatch**: middle and inner ring ambient levels were `22` and `24` — corrected to `50`/`50` to match firmware `renderFace()` introduced in v2.2.2.
+
+### Changed (no behavior change)
+- **`autoBrightnessCached()`**: extracted `LUX_CEILING`, `BRIGHTNESS_MIN`, `BRIGHTNESS_RANGE` constants; added explanatory comment block. Formula is identical.
+- **`lux()` gain state machine**: added threshold summary comment (`GAIN_2->GAIN_1: >200`, `GAIN_1->GAIN_2: <50`, `GAIN_1->GAIN_1_8: >900`, `GAIN_1_8->GAIN_1: <300`, settle lockout 400ms).
+- **`renderSeconds()` trail array**: added geometric-decay rationale comment.
+- **`setRingPixel()` rotation formula**: added `+30` rounding-bias comment.
+- **`renderCenterIdle()`**: extracted `CENTER_PULSE_PERIOD_MS`, `CENTER_PULSE_FLOOR`, `CENTER_PULSE_CEILING` constants.
+
+### Files changed
+- `src/web_html.h` — `draw()` ambient setLed levels 22→50, 24→50
+- `src/main.cpp` — `autoBrightnessCached`, `lux`, `renderSeconds`, `setRingPixel`, `renderCenterIdle`
+
+### Notes
+- No EEPROM change. No `SETTINGS_VERSION` bump. No firmware behavior change.
+- Build: 8" env clean. RAM 11.1%, Flash 56.9%.
+
+---
+
 ## [v2.2.2] — 2026-05-17
 
 ### Fixed
