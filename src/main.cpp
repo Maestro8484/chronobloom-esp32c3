@@ -278,6 +278,7 @@ class LuxSensor {
         static constexpr float BRIGHTNESS_MIN   = 15.0f;
         static constexpr float BRIGHTNESS_RANGE = 240.0f; // 255 - 15
         float normalized = log10(max(0.1f, lx) + 1.0f) / log10(LUX_CEILING + 1.0f);
+        normalized = powf(normalized, 1.5f);
         cachedBrightness_ = constrain(normalized * BRIGHTNESS_RANGE + BRIGHTNESS_MIN,
                                       BRIGHTNESS_MIN, 255.0f);
       }
