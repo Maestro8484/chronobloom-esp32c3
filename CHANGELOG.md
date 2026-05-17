@@ -5,6 +5,28 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.2.1] — 2026-05-17
+
+### Fixed
+- **`ClockRenderer::renderFace` ambient scale (lines 840–845)**: middle and inner ring ambient fill was hardcoded at 22/255 (~8.6%) and 24/255 (~9.4%), making those rings appear 6–10× dimmer than the outer ring. Scale factors are now `hoursLevel/6` and `centerLevel/6` respectively — with defaults 255/6≈42 and 180/6=30, lifting ambient fill to ~16% and ~12%. User can tune via existing `hoursLevel`/`centerLevel` sliders.
+
+### Added
+- **`POST /settings/reset` endpoint** (`WebUi::setupRoutes`): resets all settings to firmware defaults, triggers LED confirmation flash. Wraps existing `SettingsStore::resetToDefaults()`.
+- **"Reset all to defaults" button** (`web_html.h`): red-styled button alongside "Save display" in Display panel. Calls `resetToDefaults()` JS with `confirm()` guard; reloads all form fields via `loadSettings()`.
+- **`/diag` response extended** (`WebUi::setupRoutes`): seven new fields — `effective_brightness`, `outer_marker_level`, `outer_filler_level`, `hours_level`, `center_level`, `middle_ambient_scale`, `inner_ambient_scale`. Buffer 1024→1536 bytes.
+
+### Files changed
+- `src/main.cpp` — `renderFace` (lines 840–845), `/diag` handler (~2337), new `/settings/reset` handler (~2430)
+- `src/web_html.h` — `resetToDefaults()` JS function, "Reset all to defaults" button
+- `platformio.ini` — FIRMWARE_VERSION 2.2.0 → 2.2.1
+
+### Notes
+- No EEPROM layout change. No `SETTINGS_VERSION` bump.
+- Build: 8" env clean. RAM 11.1%, Flash 56.9%.
+- Firmware built but not yet flashed (device offline during session).
+
+---
+
 ## [v2.2.0] — 2026-05-16
 
 ### Changed (refactor — no behavior change)

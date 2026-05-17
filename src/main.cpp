@@ -838,9 +838,11 @@ class ClockRenderer {
     const uint32_t outerFiller = ringColor(settings.outerFillerRed, settings.outerFillerGreen,
                                            settings.outerFillerBlue, settings.outerFillerLevel);
     const uint32_t middleAmbient = scale(ringColor(settings.hoursRed, settings.hoursGreen,
-                                                  settings.hoursBlue, 255), 22);
+                                                  settings.hoursBlue, 255),
+                                        max((uint8_t)1, (uint8_t)(settings.hoursLevel / 6)));
     const uint32_t innerAmbient = scale(ringColor(settings.centerRed, settings.centerGreen,
-                                                 settings.centerBlue, 255), 24);
+                                                 settings.centerBlue, 255),
+                                       max((uint8_t)1, (uint8_t)(settings.centerLevel / 6)));
     for (uint8_t i = 0; i < RING_OUTER_60.count; ++i) {
       setRingPixel(RING_OUTER_60, i, (i % 5 == 0) ? outerMarker : outerFiller);
     }
@@ -2338,13 +2340,22 @@ class WebUi {
       float lux_val = lux_ ? lux_->lux() : -1.0f;
       uint8_t br_target = lux_ ? lux_->autoBrightnessTarget() : 0;
       uint8_t br_ramped = lux_ ? lux_->autoBrightnessCached(millis()) : 0;
-      char buf[1024];
+      const ClockSettings &ds = settings_.get();
+      uint8_t br_effective = (ds.autoBrightnessMode == 1 && lux_)
+          ? (uint8_t)constrain((int)br_ramped, ds.minAutoBrightness, ds.maxAutoBrightness)
+          : ds.dayBrightness;
+      uint8_t mid_amb_scale = max((uint8_t)1, (uint8_t)(ds.hoursLevel / 6));
+      uint8_t inn_amb_scale = max((uint8_t)1, (uint8_t)(ds.centerLevel / 6));
+      char buf[1536];
       snprintf(buf, sizeof(buf),
         "{\"uptime_sec\":%lu,\"firmware_version\":\"%s\",\"settings_version\":%u"
         ",\"time\":\"%02u:%02u:%02u\""
         ",\"ntp_synced\":%s,\"ntp_last_delta_sec\":%d"
         ",\"wifi_status\":%d,\"wifi_ssid\":\"%s\",\"wifi_rssi\":%d,\"wifi_ip\":\"%s\""
-        ",\"lux\":%.1f,\"brightness_target\":%u,\"brightness_ramped\":%u"
+        ",\"lux\":%.1f,\"brightness_target\":%u,\"brightness_ramped\":%u,\"effective_brightness\":%u"
+        ",\"outer_marker_level\":%u,\"outer_filler_level\":%u"
+        ",\"hours_level\":%u,\"center_level\":%u"
+        ",\"middle_ambient_scale\":%u,\"inner_ambient_scale\":%u"
         ",\"button_event_count\":%lu,\"free_heap\":%lu"
         ",\"clock_pixel_count\":%u,\"ring_pixel_offset\":%u"
         ",\"outer_ring_offset\":%u,\"sacrificial_enabled\":%s}",
@@ -2353,10 +2364,13 @@ class WebUi {
         timeSync_.synced() ? "true" : "false", (int)timeSync_.lastDeltaSec(),
         (int)WiFi.status(), WiFi.SSID().c_str(), (int)WiFi.RSSI(),
         WiFi.localIP().toString().c_str(),
-        lux_val, (unsigned)br_target, (unsigned)br_ramped,
+        lux_val, (unsigned)br_target, (unsigned)br_ramped, (unsigned)br_effective,
+        (unsigned)ds.outerMarkerLevel, (unsigned)ds.outerFillerLevel,
+        (unsigned)ds.hoursLevel, (unsigned)ds.centerLevel,
+        (unsigned)mid_amb_scale, (unsigned)inn_amb_scale,
         (unsigned long)g_buttonEventCount, (unsigned long)ESP.getFreeHeap(),
         (unsigned)CLOCK_PIXEL_COUNT, (unsigned)RING_PIXEL_OFFSET,
-        (unsigned)settings_.get().outerRingOffset,
+        (unsigned)ds.outerRingOffset,
         SACRIFICIAL_PIXEL_ENABLED ? "true" : "false");
       server_.send(200, "application/json", buf);
     });
@@ -2409,6 +2423,13 @@ class WebUi {
       if (server_.hasArg("trailLength"))         settings.trailLength         = clampByte(server_.arg("trailLength").toInt(), 2, 12);
       if (server_.hasArg("reminderPalette"))     settings.reminderPalette     = clampByte(server_.arg("reminderPalette").toInt(), 0, 3);
       settings_.update(settings);
+      renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
+      model_.markDirty();
+      server_.send(200, "text/plain", "ok");
+    });
+
+    server_.on("/settings/reset", HTTP_POST, [&]() {
+      settings_.resetToDefaults();
       renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
       model_.markDirty();
       server_.send(200, "text/plain", "ok");

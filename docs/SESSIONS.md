@@ -28,10 +28,21 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 16 | v2.1.1 firmware fixes | Ring rotation rounding, brightness floor, EEPROM wear fix, /diag expansion | Done (2026-05-16) |
 | 17 | web_html.h modularization | Extract PROGMEM HTML/JS constants from main.cpp into src/web_html.h; update #include | Done (2026-05-16) |
 | 18 | Docs: session closure system | PRIMER.md refresh, PRIMER-extended.md refresh, SESSION_CLOSURE.md created, SESSIONS.md updated | Done (2026-05-17) |
+| 19 | Ring dimming + reset button | renderFace ambient fix, /diag extension, /settings/reset endpoint, web UI reset button | Done (2026-05-17, v2.2.1) |
 
 ---
 
 ## Completed Sessions
+
+### Session 19 — Ring Dimming Fix + Reset Button (Done 2026-05-17, v2.2.1)
+- **Investigation**: diagnosed outer ring appearing much brighter than middle/inner rings. Root cause confirmed in `renderFace()` lines 840–843: ambient fill hardcoded at 22/255 (~8.6%) for middle ring and 24/255 (~9.4%) for inner ring, vs outer ring at 51–86%. Single `setBrightness()` scalar applies uniformly — no per-ring compensation exists.
+- **Patch B — `renderFace()` ambient scale fix** (`src/main.cpp` lines 840–845): replaced hardcoded `22` and `24` with `max(1, hoursLevel/6)` and `max(1, centerLevel/6)`. With defaults, ambient lifts to ~42 (~16.5%) and ~30 (~11.8%). No new settings — user tunes via existing `hoursLevel`/`centerLevel` sliders.
+- **Patch A — `/diag` extension** (`src/main.cpp` ~2337): added seven new fields (`effective_brightness`, `outer_marker_level`, `outer_filler_level`, `hours_level`, `center_level`, `middle_ambient_scale`, `inner_ambient_scale`). Buffer bumped 1024→1536 bytes. `effectiveBrightness()` is private to `ClockRenderer` so `br_effective` computed inline for mode 1; modes 0/2 fall back to `dayBrightness`.
+- **`POST /settings/reset` endpoint** (`src/main.cpp` ~2430): wraps `SettingsStore::resetToDefaults()`, triggers `STATUS_SETTINGS_SAVED` LED flash, marks time dirty. Inserted between `/settings` POST handler and `/set` handler.
+- **"Reset all to defaults" button** (`src/web_html.h`): red button (`color:#c0392b`) added alongside "Save display" in Display panel. `resetToDefaults()` JS function POSTs to `/settings/reset`, guarded by `confirm()`, reloads UI via `loadSettings()`.
+- **Investigation plan written**: `docs/ring-dimming-patch-plan.md` — full root cause analysis, per-ring brightness comparison table, patch options B1/B2 with rollback steps.
+- **Build**: 8" env clean, RAM 11.1%, Flash 56.9%. Firmware not flashed (device offline during session).
+- **`platformio.ini`**: FIRMWARE_VERSION bumped 2.2.0 → 2.2.1.
 
 ### Session 18 — Docs: Session Closure System (Done 2026-05-17)
 - **Root cause addressed**: Session 17 (web_html.h modularization) was undocumented — no SESSIONS.md entry, no CHANGELOG.md entry, no symmap regen note
