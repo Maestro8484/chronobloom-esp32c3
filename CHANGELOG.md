@@ -5,6 +5,31 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.2] — 2026-05-17
+
+### Fixed
+- **`previewAnim(type, modeId)` JS** (`src/web_html.h`): was synchronous and only POST'd `/previewAnimation` with the mode value — never applied current (unsaved) style slider values. Preview therefore ran with whatever was last saved. Now `async`; silently POSTs all five style fields to `/settings?silent=1` before triggering preview. Affects all four regular Preview buttons (Quarter, Half-hour, Hour, Reminder).
+- **`previewStyleAnim()` JS** (`src/web_html.h`): saved style to `/settings` without `silent=1`, triggering a 1.3 s purple `STATUS_SETTINGS_SAVED` spinner before the preview played. Also previewed hardcoded demo animations instead of the user's actual selected slot. Now saves silently, reads `stylePreviewType` slot selector, looks up the current mode from the matching animation dropdown, and calls `/previewAnimation` with that slot+mode. If mode=0 (Off) returns silently with no flash.
+- **`stylePreviewType` select** (`src/web_html.h`): was 11 hard-coded `type:mode` demo options. Replaced with 4 slot options: "Quarter (current selection)", "Half-hour (current selection)", "Hour (current selection)", "Reminder (current selection)".
+- **`/settings` POST `silent` param** (`src/main.cpp`, `WebUi::setupRoutes`): added `if (!server_.hasArg("silent"))` guard around `renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300)`. Settings still update and mark EEPROM dirty; only the status animation is suppressed.
+- **`animQ3` speed** (`src/main.cpp`): `elapsed = now - animStartMs_` → `scaledElapsed(now - animStartMs_)`. Shimmer flash rate and total duration now track the Animation Speed slider.
+- **`animH1` palette + speed** (`src/main.cpp`): `strip_.ColorHSV(i * 65536UL / count + offset)` on all three rings replaced with `paletteColor((uint8_t)(i * 256 / count + offset))`. `scaledElapsed` applied. Now responds to Palette and Speed sliders.
+- **`animHr4` palette + speed** (`src/main.cpp`): three inner loops using `strip_.ColorHSV(hue)` replaced with `paletteColor((uint8_t)(p * 256 / maxP))`. `scaledElapsed` applied. Removed three unused `uint16_t hue` locals (-8 lines total). Now responds to Palette and Speed sliders.
+
+### Files changed
+- `src/main.cpp` — WebUi::setupRoutes (silent param), animQ3, animH1, animHr4
+- `src/web_html.h` — previewAnim, previewStyleAnim, stylePreviewType select
+- `platformio.ini` — FIRMWARE_VERSION 2.3.1 → 2.3.2
+- `docs/symmap.json` — regenerated (animHr4 -8 lines; animHr5 through loop shifted)
+- `docs/FUNCTION_INVENTORY.md` — regenerated
+
+### Notes
+- EEPROM compatible with v2.3.1 (no struct changes, SETTINGS_VERSION unchanged).
+- Build: 8" env clean. RAM 11.1%, Flash 57.4%.
+- Palette 0 (Rainbow/HSV) on animH1/animHr4 is visually equivalent to pre-patch behavior; all other palettes now apply.
+
+---
+
 ## [v2.3.1] — 2026-05-17
 
 ### Fixed

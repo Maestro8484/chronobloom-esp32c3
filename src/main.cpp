@@ -1118,7 +1118,7 @@ class ClockRenderer {
   }
 
   void animQ3(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
+    uint32_t elapsed = scaledElapsed(now - animStartMs_);
     if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
     const ClockSettings &settings = settings_.get();
     renderFace(settings);
@@ -1126,28 +1126,28 @@ class ClockRenderer {
   }
 
   void animH1(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
+    uint32_t elapsed = scaledElapsed(now - animStartMs_);
     if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
     strip_.setBrightness(settings_.get().animationBrightness);
     if (elapsed < 2000) {
       uint8_t n = (uint8_t)(elapsed * RING_OUTER_60.count / 2000);
       for (uint8_t i = 0; i < n; i++)
-        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_OUTER_60.count)));
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 256 / RING_OUTER_60.count)));
     } else {
       for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_OUTER_60.count)));
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 256 / RING_OUTER_60.count)));
       if (elapsed < 4000) {
         uint8_t nm = (uint8_t)((elapsed - 2000) * RING_MIDDLE_24.count / 2000);
         uint8_t ni = (uint8_t)((elapsed - 2000) * RING_INNER_12.count / 2000);
         for (uint8_t i = 0; i < nm; i++)
-          setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_MIDDLE_24.count + 21845)));
+          setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 256 / RING_MIDDLE_24.count + 85)));
         for (uint8_t i = 0; i < ni; i++)
-          setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_INNER_12.count + 43690)));
+          setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 256 / RING_INNER_12.count + 170)));
       } else {
         for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-          setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_MIDDLE_24.count + 21845)));
+          setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 256 / RING_MIDDLE_24.count + 85)));
         for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-          setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_INNER_12.count + 43690)));
+          setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 256 / RING_INNER_12.count + 170)));
       }
     }
   }
@@ -1253,7 +1253,7 @@ class ClockRenderer {
   }
 
   void animHr4(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
+    uint32_t elapsed = scaledElapsed(now - animStartMs_);
     if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
     strip_.setBrightness(settings_.get().animationBrightness);
     uint8_t outerN, middleN, innerN;
@@ -1267,26 +1267,18 @@ class ClockRenderer {
       outerN = 120; middleN = 48; innerN = 24;
     }
     {
-      uint16_t hue = 0;
-      for (uint8_t p = 0; p < outerN; p++) {
-        setRingPixel(RING_OUTER_60, p % RING_OUTER_60.count, strip_.ColorHSV(hue));
-        hue += 1092;
-      }
+      for (uint8_t p = 0; p < outerN; p++)
+        setRingPixel(RING_OUTER_60, p % RING_OUTER_60.count, paletteColor((uint8_t)(p * 256 / 120)));
     }
     {
-      uint16_t hue = 0;
       for (uint8_t p = 0; p < middleN; p++) {
         uint8_t idx = (uint8_t)((RING_MIDDLE_24.count * 2 - 1 - p) % RING_MIDDLE_24.count);
-        setRingPixel(RING_MIDDLE_24, idx, strip_.ColorHSV(hue));
-        hue += 2730;
+        setRingPixel(RING_MIDDLE_24, idx, paletteColor((uint8_t)(p * 256 / 48)));
       }
     }
     {
-      uint16_t hue = 0;
-      for (uint8_t p = 0; p < innerN; p++) {
-        setRingPixel(RING_INNER_12, p % RING_INNER_12.count, strip_.ColorHSV(hue));
-        hue += 5461;
-      }
+      for (uint8_t p = 0; p < innerN; p++)
+        setRingPixel(RING_INNER_12, p % RING_INNER_12.count, paletteColor((uint8_t)(p * 256 / 24)));
     }
   }
 
@@ -2455,7 +2447,7 @@ class WebUi {
       if (server_.hasArg("reminderPalette"))     settings.reminderPalette     = clampByte(server_.arg("reminderPalette").toInt(), 0, 3);
       if (server_.hasArg("outerRingBrightness")) settings.outerRingBrightness = clampByte(server_.arg("outerRingBrightness").toInt(), 0, 100);
       settings_.update(settings);
-      renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
+      if (!server_.hasArg("silent")) renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
       model_.markDirty();
       server_.send(200, "text/plain", "ok");
     });
