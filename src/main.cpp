@@ -14,6 +14,7 @@
 #include <ArduinoOTA.h>
 #include "esp_task_wdt.h"
 #include <Preferences.h>
+#include "web_html.h"
 #if LUX_SENSOR_ENABLED
 #include <Adafruit_VEML7700.h>
 #endif
@@ -1033,652 +1034,670 @@ class ClockRenderer {
 
   void tickAnimation(uint32_t now) {
     if (animPhase_ == ANIM_IDLE) return;
-    uint32_t elapsed = now - animStartMs_;
-    const ClockSettings &settings = settings_.get();
-
     switch (animPhase_) {
+      case ANIM_Q1:   animQ1(now);   break;
+      case ANIM_Q2:   animQ2(now);   break;
+      case ANIM_Q3:   animQ3(now);   break;
+      case ANIM_H1:   animH1(now);   break;
+      case ANIM_H2:   animH2(now);   break;
+      case ANIM_H3:   animH3(now);   break;
+      case ANIM_HR1:  animHr1(now);  break;
+      case ANIM_HR2:  animHr2(now);  break;
+      case ANIM_HR3:  animHr3(now);  break;
+      case ANIM_HR4:  animHr4(now);  break;
+      case ANIM_HR5:  animHr5(now);  break;
+      case ANIM_Q4:   animQ4(now);   break;
+      case ANIM_Q5:   animQ5(now);   break;
+      case ANIM_Q6:   animQ6(now);   break;
+      case ANIM_H4:   animH4(now);   break;
+      case ANIM_H5:   animH5(now);   break;
+      case ANIM_H6:   animH6(now);   break;
+      case ANIM_H7:   animH7(now);   break;
+      case ANIM_HR6:  animHr6(now);  break;
+      case ANIM_HR7:  animHr7(now);  break;
+      case ANIM_HR8:  animHr8(now);  break;
+      case ANIM_HR9:  animHr9(now);  break;
+      case ANIM_HR10: animHr10(now); break;
+      case ANIM_REM1: animRem1(now); break;
+      case ANIM_REM2: animRem2(now); break;
+      case ANIM_REM3: animRem3(now); break;
+      case ANIM_REM4: animRem4(now); break;
+      case ANIM_REM5: animRem5(now); break;
+      case ANIM_REM6: animRem6(now); break;
+      default: animPhase_ = ANIM_IDLE; break;
+    }
+  }
 
-      case ANIM_Q1: {
-        if (elapsed >= 600) { animPhase_ = ANIM_IDLE; return; }
-        setCenterPixel(strip_.Color(255, 255, 255));
-        for (uint8_t i = 0; i < 60; i += 15)
-          setRingPixel(RING_OUTER_60, i, strip_.Color(255, 255, 255));
-        if (elapsed < 100) {
-          strip_.setBrightness(255);
-        } else if (elapsed < 500) {
-          strip_.setBrightness((uint8_t)(255 - ((elapsed - 100) * 255) / 400));
-        } else {
-          strip_.setBrightness(0);
-        }
-        break;
-      }
+  void animQ1(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 600) { animPhase_ = ANIM_IDLE; return; }
+    setCenterPixel(strip_.Color(255, 255, 255));
+    for (uint8_t i = 0; i < 60; i += 15)
+      setRingPixel(RING_OUTER_60, i, strip_.Color(255, 255, 255));
+    if (elapsed < 100) {
+      strip_.setBrightness(255);
+    } else if (elapsed < 500) {
+      strip_.setBrightness((uint8_t)(255 - ((elapsed - 100) * 255) / 400));
+    } else {
+      strip_.setBrightness(0);
+    }
+  }
 
-      case ANIM_Q2: {
-        if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
-        uint32_t markerColor = ringColor(settings.outerMarkerRed, settings.outerMarkerGreen,
-                                         settings.outerMarkerBlue, 255);
-        bool bright = (elapsed % 1000) < 500;
-        uint32_t c = bright ? markerColor : scale(markerColor, 128);
-        for (uint8_t i = 0; i < 60; i += 5)
-          setRingPixel(RING_OUTER_60, i, c);
-        break;
-      }
+  void animQ2(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &settings = settings_.get();
+    uint32_t markerColor = ringColor(settings.outerMarkerRed, settings.outerMarkerGreen,
+                                     settings.outerMarkerBlue, 255);
+    bool bright = (elapsed % 1000) < 500;
+    uint32_t c = bright ? markerColor : scale(markerColor, 128);
+    for (uint8_t i = 0; i < 60; i += 5)
+      setRingPixel(RING_OUTER_60, i, c);
+  }
 
-      case ANIM_Q3: {
-        if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
-        renderFace(settings);
-        strip_.setBrightness((elapsed % 600) < 400 ? 255 : settings.dayBrightness);
-        break;
-      }
+  void animQ3(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &settings = settings_.get();
+    renderFace(settings);
+    strip_.setBrightness((elapsed % 600) < 400 ? 255 : settings.dayBrightness);
+  }
 
-      case ANIM_H1: {
-        if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-        if (elapsed < 2000) {
-          uint8_t n = (uint8_t)(elapsed * RING_OUTER_60.count / 2000);
-          for (uint8_t i = 0; i < n; i++)
-            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_OUTER_60.count)));
-        } else {
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_OUTER_60.count)));
-          if (elapsed < 4000) {
-            uint8_t nm = (uint8_t)((elapsed - 2000) * RING_MIDDLE_24.count / 2000);
-            uint8_t ni = (uint8_t)((elapsed - 2000) * RING_INNER_12.count / 2000);
-            for (uint8_t i = 0; i < nm; i++)
-              setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_MIDDLE_24.count + 21845)));
-            for (uint8_t i = 0; i < ni; i++)
-              setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_INNER_12.count + 43690)));
-          } else {
-            for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-              setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_MIDDLE_24.count + 21845)));
-            for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-              setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_INNER_12.count + 43690)));
-          }
-        }
-        break;
-      }
-
-      case ANIM_H2: {
-        if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-        uint8_t flash = (uint8_t)(elapsed / 600);
-        if (flash < 3) {
-          bool swapped = (elapsed % 600) >= 300;
-          for (uint8_t i = 0; i < 30; i++) {
-            setRingPixel(RING_OUTER_60, i,      swapped ? strip_.Color(0, 255, 255) : strip_.Color(255, 0, 0));
-            setRingPixel(RING_OUTER_60, i + 30, swapped ? strip_.Color(255, 0, 0)   : strip_.Color(0, 255, 255));
-          }
-        }
-        break;
-      }
-
-      case ANIM_H3: {
-        if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-        uint8_t wave = (uint8_t)(elapsed / 1300);
-        if (wave < 3) {
-          uint32_t phase = elapsed % 1300;
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-            uint8_t brightness = 64 + (uint8_t)((sinf((i + wave * 10) * 0.1f) + 1.0f) * 96.0f);
-            setRingPixel(RING_OUTER_60, i, strip_.Color(0, brightness, brightness));
-          }
-          strip_.setBrightness(phase < 500 ? 64 : settings.dayBrightness);
-        }
-        break;
-      }
-
-      case ANIM_HR1: {
-        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-        renderHourlyChime(now);
-        break;
-      }
-
-      case ANIM_HR2: {
-        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-        uint8_t newStep;
-        if      (elapsed < 500)  newStep = 0;
-        else if (elapsed < 600)  newStep = 1;
-        else if (elapsed < 1000) newStep = 2;
-        else if (elapsed < 1400) newStep = 3;
-        else if (elapsed < 1800) newStep = 4;
-        else                     newStep = 5;
-        if (newStep != animStep_) animStep_ = newStep;
-
-        if (animStep_ >= 1) setCenterPixel(strip_.Color(255, 255, 255));
-        if (animStep_ >= 2) {
-          randomSeed(0xABCD + 2 * 137);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-            setRingPixel(RING_INNER_12, i, strip_.ColorHSV(random(65536)));
-        }
-        if (animStep_ >= 3) {
-          randomSeed(0xABCD + 3 * 137);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV(random(65536)));
-        }
-        if (animStep_ >= 4) {
-          randomSeed(0xABCD + 4 * 137);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV(random(65536)));
-        }
-        if (animStep_ >= 5) {
-          uint8_t sparkStep = (uint8_t)((elapsed - 1800) / 150);
-          randomSeed(0x1234 + sparkStep * 31);
-          if (random(100) < 30)
-            setRingPixel(RING_OUTER_60, (uint8_t)random(60), strip_.Color(255, 255, 255));
-        }
-        break;
-      }
-
-      case ANIM_HR3: {
-        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-        uint32_t gold = strip_.Color(255, 200, 0);
-        if (elapsed < 1200) {
-          uint8_t n = (uint8_t)(elapsed * 30 / 1200);
-          for (uint8_t i = 0; i < n; i++) {
-            setRingPixel(RING_OUTER_60, i, gold);
-            setRingPixel(RING_OUTER_60, 59 - i, gold);
-          }
-        } else if (elapsed < 1400) {
-          for (uint8_t i = 0; i < 30; i++) {
-            setRingPixel(RING_OUTER_60, i, gold);
-            setRingPixel(RING_OUTER_60, 59 - i, gold);
-          }
-          setCenterPixel(strip_.Color(255, 255, 255));
-        } else if (elapsed < 2600) {
-          uint8_t n = (uint8_t)((elapsed - 1400) * 30 / 1200);
-          for (uint8_t i = n; i < 30; i++) {
-            setRingPixel(RING_OUTER_60, i, gold);
-            setRingPixel(RING_OUTER_60, 59 - i, gold);
-          }
-          setCenterPixel(strip_.Color(255, 255, 255));
-        }
-        break;
-      }
-
-      case ANIM_HR4: {
-        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-        uint8_t outerN, middleN, innerN;
-        if (elapsed < 2400) {
-          outerN = (uint8_t)(elapsed * 120 / 2400); middleN = 0; innerN = 0;
-        } else if (elapsed < 4320) {
-          outerN = 120; middleN = (uint8_t)((elapsed - 2400) * 48 / 1920); innerN = 0;
-        } else if (elapsed < 5760) {
-          outerN = 120; middleN = 48; innerN = (uint8_t)((elapsed - 4320) * 24 / 1440);
-        } else {
-          outerN = 120; middleN = 48; innerN = 24;
-        }
-        {
-          uint16_t hue = 0;
-          for (uint8_t p = 0; p < outerN; p++) {
-            setRingPixel(RING_OUTER_60, p % RING_OUTER_60.count, strip_.ColorHSV(hue));
-            hue += 1092;
-          }
-        }
-        {
-          uint16_t hue = 0;
-          for (uint8_t p = 0; p < middleN; p++) {
-            uint8_t idx = (uint8_t)((RING_MIDDLE_24.count * 2 - 1 - p) % RING_MIDDLE_24.count);
-            setRingPixel(RING_MIDDLE_24, idx, strip_.ColorHSV(hue));
-            hue += 2730;
-          }
-        }
-        {
-          uint16_t hue = 0;
-          for (uint8_t p = 0; p < innerN; p++) {
-            setRingPixel(RING_INNER_12, p % RING_INNER_12.count, strip_.ColorHSV(hue));
-            hue += 5461;
-          }
-        }
-        break;
-      }
-
-      case ANIM_HR5: {
-        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-        uint8_t breathNum = (uint8_t)(elapsed / 1667);
-        uint16_t hue = (uint16_t)(breathNum * 10923u);
-        for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-          setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hue + i * 1092u)));
+  void animH1(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    if (elapsed < 2000) {
+      uint8_t n = (uint8_t)(elapsed * RING_OUTER_60.count / 2000);
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_OUTER_60.count)));
+    } else {
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_OUTER_60.count)));
+      if (elapsed < 4000) {
+        uint8_t nm = (uint8_t)((elapsed - 2000) * RING_MIDDLE_24.count / 2000);
+        uint8_t ni = (uint8_t)((elapsed - 2000) * RING_INNER_12.count / 2000);
+        for (uint8_t i = 0; i < nm; i++)
+          setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_MIDDLE_24.count + 21845)));
+        for (uint8_t i = 0; i < ni; i++)
+          setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_INNER_12.count + 43690)));
+      } else {
         for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-          setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hue + i * 2730u)));
+          setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_MIDDLE_24.count + 21845)));
         for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-          setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hue + i * 5461u)));
-        {
-          float breathPhase = (float)(elapsed % 1667) * 3.14159f / 1667.0f;
-          strip_.setBrightness((uint8_t)(50 + fabsf(sinf(breathPhase)) * 205.0f));
-        }
-        break;
+          setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(i * 65536UL / RING_INNER_12.count + 43690)));
       }
+    }
+  }
 
-      // ===== QUARTER ADDITIONS =====
-
-      case ANIM_Q4: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 1400) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        const uint8_t tl = settings_.get().trailLength;
-        uint32_t headColor = paletteColor(0);
-        if (se < 600) {
-          uint8_t pos = (uint8_t)(se * 60 / 600) % 60;
-          setRingPixel(RING_OUTER_60, pos, headColor);
-          for (uint8_t t = 1; t <= tl; t++) {
-            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-            setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
-          }
-        } else if (se < 1000) {
-          uint8_t fadeAmt = (uint8_t)(255u - (se - 600u) * 255u / 400u);
-          for (uint8_t t = 0; t < tl; t++) {
-            uint8_t tp = (uint8_t)((60 - t) % 60);
-            uint8_t trailBr = (uint8_t)((uint32_t)fadeAmt * (tl - t) / tl);
-            setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
-          }
-        }
-        break;
+  void animH2(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    uint8_t flash = (uint8_t)(elapsed / 600);
+    if (flash < 3) {
+      bool swapped = (elapsed % 600) >= 300;
+      for (uint8_t i = 0; i < 30; i++) {
+        setRingPixel(RING_OUTER_60, i,      swapped ? strip_.Color(0, 255, 255) : strip_.Color(255, 0, 0));
+        setRingPixel(RING_OUTER_60, i + 30, swapped ? strip_.Color(255, 0, 0)   : strip_.Color(0, 255, 255));
       }
+    }
+  }
 
-      case ANIM_Q5: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        const uint8_t tl = settings_.get().trailLength;
-        if (se < 1500) {
-          uint8_t pos  = (uint8_t)(se * 60 / 1500) % 60;
-          uint8_t pos2 = (pos + 30) % 60;
-          uint32_t cA = paletteColor(0);
-          uint32_t cB = paletteColor(128);
-          setRingPixel(RING_OUTER_60, pos, cA);
-          setRingPixel(RING_OUTER_60, pos2, cB);
-          for (uint8_t t = 1; t <= tl; t++) {
-            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-            setRingPixel(RING_OUTER_60, (pos  + 60 - t) % 60, scale(cA, trailBr));
-            setRingPixel(RING_OUTER_60, (pos2 + 60 - t) % 60, scale(cB, trailBr));
-          }
-        }
-        break;
+  void animH3(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &settings = settings_.get();
+    uint8_t wave = (uint8_t)(elapsed / 1300);
+    if (wave < 3) {
+      uint32_t phase = elapsed % 1300;
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
+        uint8_t brightness = 64 + (uint8_t)((sinf((i + wave * 10) * 0.1f) + 1.0f) * 96.0f);
+        setRingPixel(RING_OUTER_60, i, strip_.Color(0, brightness, brightness));
       }
+      strip_.setBrightness(phase < 500 ? 64 : settings.dayBrightness);
+    }
+  }
 
-      case ANIM_Q6: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 800) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          uint8_t step = (uint8_t)(se / 200);
-          if (step < 4) {
-            const uint8_t positions[] = {0, 15, 30, 45};
-            const uint8_t palPos[]    = {0, 85, 170, 255};
-            setRingPixel(RING_OUTER_60, positions[step], paletteColor(palPos[step]));
-          }
-        }
-        break;
+  void animHr1(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    renderHourlyChime(now);
+  }
+
+  void animHr2(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    uint8_t newStep;
+    if      (elapsed < 500)  newStep = 0;
+    else if (elapsed < 600)  newStep = 1;
+    else if (elapsed < 1000) newStep = 2;
+    else if (elapsed < 1400) newStep = 3;
+    else if (elapsed < 1800) newStep = 4;
+    else                     newStep = 5;
+    if (newStep != animStep_) animStep_ = newStep;
+
+    if (animStep_ >= 1) setCenterPixel(strip_.Color(255, 255, 255));
+    if (animStep_ >= 2) {
+      randomSeed(0xABCD + 2 * 137);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+        setRingPixel(RING_INNER_12, i, strip_.ColorHSV(random(65536)));
+    }
+    if (animStep_ >= 3) {
+      randomSeed(0xABCD + 3 * 137);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV(random(65536)));
+    }
+    if (animStep_ >= 4) {
+      randomSeed(0xABCD + 4 * 137);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV(random(65536)));
+    }
+    if (animStep_ >= 5) {
+      uint8_t sparkStep = (uint8_t)((elapsed - 1800) / 150);
+      randomSeed(0x1234 + sparkStep * 31);
+      if (random(100) < 30)
+        setRingPixel(RING_OUTER_60, (uint8_t)random(60), strip_.Color(255, 255, 255));
+    }
+  }
+
+  void animHr3(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    uint32_t gold = strip_.Color(255, 200, 0);
+    if (elapsed < 1200) {
+      uint8_t n = (uint8_t)(elapsed * 30 / 1200);
+      for (uint8_t i = 0; i < n; i++) {
+        setRingPixel(RING_OUTER_60, i, gold);
+        setRingPixel(RING_OUTER_60, 59 - i, gold);
       }
-
-      // ===== HALF-HOUR ADDITIONS =====
-
-      case ANIM_H4: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        const uint8_t tl = settings_.get().trailLength;
-        uint32_t headColor = paletteColor(0);
-        if (se < 3000) {
-          uint8_t pos = (uint8_t)(se * 60 / 1500) % 60;
-          setRingPixel(RING_OUTER_60, pos, headColor);
-          for (uint8_t t = 1; t <= tl; t++) {
-            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-            setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
-          }
-        } else if (se < 3300) {
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-        }
-        break;
+    } else if (elapsed < 1400) {
+      for (uint8_t i = 0; i < 30; i++) {
+        setRingPixel(RING_OUTER_60, i, gold);
+        setRingPixel(RING_OUTER_60, 59 - i, gold);
       }
-
-      case ANIM_H5: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 3500) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        if (se < 300) {
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-        } else {
-          uint32_t fp = se - 300;
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-            uint8_t rate     = (uint8_t)((i * 7 + 13) % 8 + 2);
-            uint32_t ft      = (uint32_t)rate * 300;
-            uint8_t  pct     = (fp < ft) ? (uint8_t)(255u - fp * 255u / ft) : 0u;
-            if (pct > 0)
-              setRingPixel(RING_OUTER_60, i, scale(paletteColor((uint8_t)(i * 4)), pct));
-          }
-        }
-        break;
+      setCenterPixel(strip_.Color(255, 255, 255));
+    } else if (elapsed < 2600) {
+      uint8_t n = (uint8_t)((elapsed - 1400) * 30 / 1200);
+      for (uint8_t i = n; i < 30; i++) {
+        setRingPixel(RING_OUTER_60, i, gold);
+        setRingPixel(RING_OUTER_60, 59 - i, gold);
       }
+      setCenterPixel(strip_.Color(255, 255, 255));
+    }
+  }
 
-      case ANIM_H6: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          const uint8_t tl = settings_.get().trailLength;
-          uint32_t headColor = paletteColor(0);
-          uint32_t passTime = se % 800;
-          uint32_t passNum  = se / 800;
-          uint8_t pos = (passNum % 2 == 0)
-              ? (uint8_t)(passTime * 59 / 800)
-              : (uint8_t)(59 - passTime * 59 / 800);
-          setRingPixel(RING_OUTER_60, pos, headColor);
-          for (uint8_t t = 1; t <= tl; t++) {
-            uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-            uint8_t tp = (passNum % 2 == 0)
-                ? (uint8_t)((pos + 60 - t) % 60)
-                : (uint8_t)((pos + t) % 60);
-            setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
-          }
-        }
-        break;
+  void animHr4(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    uint8_t outerN, middleN, innerN;
+    if (elapsed < 2400) {
+      outerN = (uint8_t)(elapsed * 120 / 2400); middleN = 0; innerN = 0;
+    } else if (elapsed < 4320) {
+      outerN = 120; middleN = (uint8_t)((elapsed - 2400) * 48 / 1920); innerN = 0;
+    } else if (elapsed < 5760) {
+      outerN = 120; middleN = 48; innerN = (uint8_t)((elapsed - 4320) * 24 / 1440);
+    } else {
+      outerN = 120; middleN = 48; innerN = 24;
+    }
+    {
+      uint16_t hue = 0;
+      for (uint8_t p = 0; p < outerN; p++) {
+        setRingPixel(RING_OUTER_60, p % RING_OUTER_60.count, strip_.ColorHSV(hue));
+        hue += 1092;
       }
-
-      case ANIM_H7: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 3000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        if (se < 2000) {
-          uint8_t fi = (uint8_t)((se / 125) % 4);
-          const uint8_t palPos[] = {0, 85, 170, 255};
-          uint32_t c = paletteColor(palPos[fi]);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
-        } else {
-          uint8_t fadeAmt = (uint8_t)(255u - (se - 2000u) * 255u / 500u);
-          uint32_t c = scale(paletteColor(0), fadeAmt);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
-        }
-        break;
+    }
+    {
+      uint16_t hue = 0;
+      for (uint8_t p = 0; p < middleN; p++) {
+        uint8_t idx = (uint8_t)((RING_MIDDLE_24.count * 2 - 1 - p) % RING_MIDDLE_24.count);
+        setRingPixel(RING_MIDDLE_24, idx, strip_.ColorHSV(hue));
+        hue += 2730;
       }
-
-      // ===== HOUR ADDITIONS =====
-
-      case ANIM_HR6: {
-        if (elapsed >= 8500) { animPhase_ = ANIM_IDLE; return; }
-        const uint8_t br = settings_.get().animationBrightness;
-        if (elapsed < 500) {
-          uint8_t rb = (uint8_t)(elapsed * 255 / 500);
-          uint32_t white = strip_.Color(rb, rb, rb);
-          strip_.setBrightness(br);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, white);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, white);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, white);
-        } else if (elapsed < 6000) {
-          strip_.setBrightness(br);
-          uint16_t hueOff = (uint16_t)((elapsed - 500) * 65536UL / 5500);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-            setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
-        } else {
-          uint8_t fadeAmt = (elapsed < 8000) ? (uint8_t)(255u - (elapsed - 6000u) * 255u / 2000u) : 0u;
-          strip_.setBrightness(fadeAmt);
-          uint16_t hueOff = (uint16_t)((6000 - 500) * 65536UL / 5500);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-            setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
-        }
-        break;
+    }
+    {
+      uint16_t hue = 0;
+      for (uint8_t p = 0; p < innerN; p++) {
+        setRingPixel(RING_INNER_12, p % RING_INNER_12.count, strip_.ColorHSV(hue));
+        hue += 5461;
       }
+    }
+  }
 
-      case ANIM_HR7: {
-        if (elapsed >= 8000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          const uint8_t tl  = settings_.get().trailLength;
-          const uint8_t gbr = settings_.get().animationBrightness;
-          for (uint8_t d = 0; d < 8; d++) {
-            uint32_t period  = (uint32_t)(d * 3 + 5) % 8 * 600 + 1800;
-            uint8_t  offset  = (uint8_t)((d * 7 + 3) % 60);
-            uint8_t  pos     = (uint8_t)((elapsed % period * 60 / period + offset) % 60);
-            setRingPixel(RING_OUTER_60, pos, strip_.Color(0, gbr, 0));
-            for (uint8_t t = 1; t <= tl; t++) {
-              uint8_t trailBr = (uint8_t)((uint32_t)gbr * (tl - t + 1) / (tl + 1));
-              setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, strip_.Color(0, trailBr, 0));
-            }
-          }
-        }
-        break;
+  void animHr5(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    uint8_t breathNum = (uint8_t)(elapsed / 1667);
+    uint16_t hue = (uint16_t)(breathNum * 10923u);
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+      setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hue + i * 1092u)));
+    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+      setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hue + i * 2730u)));
+    for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+      setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hue + i * 5461u)));
+    {
+      float breathPhase = (float)(elapsed % 1667) * 3.14159f / 1667.0f;
+      strip_.setBrightness((uint8_t)(50 + fabsf(sinf(breathPhase)) * 205.0f));
+    }
+  }
+
+  void animQ4(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 1400) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    const uint8_t tl = settings_.get().trailLength;
+    uint32_t headColor = paletteColor(0);
+    if (se < 600) {
+      uint8_t pos = (uint8_t)(se * 60 / 600) % 60;
+      setRingPixel(RING_OUTER_60, pos, headColor);
+      for (uint8_t t = 1; t <= tl; t++) {
+        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+        setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
       }
-
-      case ANIM_HR8: {
-        if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-        {
-          const uint8_t br = settings_.get().animationBrightness;
-          strip_.setBrightness(elapsed < 9000 ? br : (uint8_t)((10000u - elapsed) * br / 1000u));
-          uint8_t outerOff  = (uint8_t)(elapsed * 256 / 3000);
-          uint8_t middleOff = (uint8_t)(86u - (uint8_t)(elapsed * 256 / 5000));
-          uint8_t innerOff  = (uint8_t)(171u + (uint8_t)(elapsed * 256 / 7000));
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(outerOff + i * 256 / RING_OUTER_60.count)));
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(middleOff + i * 256 / RING_MIDDLE_24.count)));
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-            setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(innerOff + i * 256 / RING_INNER_12.count)));
-        }
-        break;
+    } else if (se < 1000) {
+      uint8_t fadeAmt = (uint8_t)(255u - (se - 600u) * 255u / 400u);
+      for (uint8_t t = 0; t < tl; t++) {
+        uint8_t tp = (uint8_t)((60 - t) % 60);
+        uint8_t trailBr = (uint8_t)((uint32_t)fadeAmt * (tl - t) / tl);
+        setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
       }
+    }
+  }
 
-      case ANIM_HR9: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 7000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        if (se < 3000) {
-          uint8_t n = (uint8_t)(se * RING_OUTER_60.count / 3000);
-          for (uint8_t i = 0; i < n; i++)
-            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-        } else if (se < 4500) {
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-          uint8_t n = (uint8_t)((se - 3000) * RING_MIDDLE_24.count / 1500);
-          for (uint8_t i = 0; i < n; i++)
-            setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
-        } else {
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
-          uint8_t n = (uint8_t)((se - 4500) * RING_INNER_12.count / 1000);
-          if (n > RING_INNER_12.count) n = RING_INNER_12.count;
-          for (uint8_t i = 0; i < n; i++)
-            setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21)));
-        }
-        break;
+  void animQ5(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    const uint8_t tl = settings_.get().trailLength;
+    if (se < 1500) {
+      uint8_t pos  = (uint8_t)(se * 60 / 1500) % 60;
+      uint8_t pos2 = (pos + 30) % 60;
+      uint32_t cA = paletteColor(0);
+      uint32_t cB = paletteColor(128);
+      setRingPixel(RING_OUTER_60, pos, cA);
+      setRingPixel(RING_OUTER_60, pos2, cB);
+      for (uint8_t t = 1; t <= tl; t++) {
+        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+        setRingPixel(RING_OUTER_60, (pos  + 60 - t) % 60, scale(cA, trailBr));
+        setRingPixel(RING_OUTER_60, (pos2 + 60 - t) % 60, scale(cB, trailBr));
       }
+    }
+  }
 
-      case ANIM_HR10: {
-        if (elapsed >= 10500) { animPhase_ = ANIM_IDLE; return; }
-        {
-          const uint8_t br = settings_.get().animationBrightness;
-          uint32_t baseColor = strip_.Color((uint8_t)(20u * br / 255u), 0, (uint8_t)(60u * br / 255u));
-          float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
-          uint8_t breathBr = (uint8_t)(br * (0.8f + 0.2f * sinf(breathPhase)));
-          strip_.setBrightness(breathBr);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, baseColor);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, baseColor);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, baseColor);
-          const uint16_t strikeTimes[] = {500, 2000, 3500, 5000, 7000};
-          for (uint8_t s = 0; s < 5; s++) {
-            if (elapsed >= strikeTimes[s] && elapsed < strikeTimes[s] + 80u) {
-              uint8_t p1 = (uint8_t)((strikeTimes[s] * 13u + 7u) % 60u);
-              uint8_t p2 = (uint8_t)((strikeTimes[s] * 23u + 31u) % 60u);
-              uint8_t p3 = (uint8_t)((strikeTimes[s] * 37u + 53u) % 60u);
-              setRingPixel(RING_OUTER_60, p1, strip_.Color(255, 255, 255));
-              setRingPixel(RING_OUTER_60, p2, strip_.Color(255, 255, 255));
-              setRingPixel(RING_OUTER_60, p3, strip_.Color(255, 255, 255));
-              setCenterPixel(strip_.Color(255, 255, 255));
-            }
-          }
-        }
-        break;
+  void animQ6(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 800) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      uint8_t step = (uint8_t)(se / 200);
+      if (step < 4) {
+        const uint8_t positions[] = {0, 15, 30, 45};
+        const uint8_t palPos[]    = {0, 85, 170, 255};
+        setRingPixel(RING_OUTER_60, positions[step], paletteColor(palPos[step]));
       }
+    }
+  }
 
-      // ===== REMINDER ANIMATIONS =====
-
-      case ANIM_REM1: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          uint32_t c = paletteColor(0, true);
-          const uint16_t starts[] = {0, 350, 700, 1050};
-          for (uint8_t r = 0; r < 4; r++) {
-            if (se < starts[r]) continue;
-            uint32_t rElap = se - starts[r];
-            if (rElap >= 1500) continue;
-            uint32_t cp = rElap % 500;
-            uint8_t pct;
-            if (cp < 200)      pct = (uint8_t)(cp * 255u / 200u);
-            else if (cp < 300) pct = 255;
-            else               pct = (uint8_t)(255u - (cp - 300u) * 255u / 200u);
-            uint32_t rc = scale(c, pct);
-            switch (r) {
-              case 0: for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);  break;
-              case 1: for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc); break;
-              case 2: for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);  break;
-              case 3: setCenterPixel(rc); break;
-            }
-          }
-        }
-        break;
+  void animH4(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    const uint8_t tl = settings_.get().trailLength;
+    uint32_t headColor = paletteColor(0);
+    if (se < 3000) {
+      uint8_t pos = (uint8_t)(se * 60 / 1500) % 60;
+      setRingPixel(RING_OUTER_60, pos, headColor);
+      for (uint8_t t = 1; t <= tl; t++) {
+        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+        setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
       }
+    } else if (se < 3300) {
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+    }
+  }
 
-      case ANIM_REM2: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          const ClockSettings &s2 = settings_.get();
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, ringColor(s2.outerMarkerRed, s2.outerMarkerGreen, s2.outerMarkerBlue, 38));
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, ringColor(s2.minutesRed, s2.minutesGreen, s2.minutesBlue, 38));
-          uint32_t period = 667;
-          uint8_t pos = (uint8_t)((se % period) * RING_INNER_12.count / period);
-          uint32_t c = paletteColor(0, true);
-          setRingPixel(RING_INNER_12, pos, c);
-          for (uint8_t t = 1; t <= 2; t++) {
-            uint8_t trailBr = (uint8_t)(255u * (2u - t + 1u) / 3u);
-            setRingPixel(RING_INNER_12, (pos + RING_INNER_12.count - t) % RING_INNER_12.count, scale(c, trailBr));
-          }
-        }
-        break;
+  void animH5(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 3500) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    if (se < 300) {
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+    } else {
+      uint32_t fp = se - 300;
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
+        uint8_t rate     = (uint8_t)((i * 7 + 13) % 8 + 2);
+        uint32_t ft      = (uint32_t)rate * 300;
+        uint8_t  pct     = (fp < ft) ? (uint8_t)(255u - fp * 255u / ft) : 0u;
+        if (pct > 0)
+          setRingPixel(RING_OUTER_60, i, scale(paletteColor((uint8_t)(i * 4)), pct));
       }
+    }
+  }
 
-      case ANIM_REM3: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          uint32_t c = paletteColor(0, true);
-          uint32_t cp = se % 1160;
-          uint8_t pct;
-          if      (cp < 80)  pct = (uint8_t)(cp * 255u / 80u);
-          else if (cp < 160) pct = 255;
-          else if (cp < 280) pct = (uint8_t)(255u - (cp - 160u) * 255u / 120u);
-          else if (cp < 360) pct = (uint8_t)((cp - 280u) * 255u / 80u);
-          else if (cp < 440) pct = 255;
-          else if (cp < 640) pct = (uint8_t)(255u - (cp - 440u) * 255u / 200u);
-          else               pct = 38;
-          uint32_t rc = scale(c, pct);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);
-          setCenterPixel(rc);
-        }
-        break;
+  void animH6(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      const uint8_t tl = settings_.get().trailLength;
+      uint32_t headColor = paletteColor(0);
+      uint32_t passTime = se % 800;
+      uint32_t passNum  = se / 800;
+      uint8_t pos = (passNum % 2 == 0)
+          ? (uint8_t)(passTime * 59 / 800)
+          : (uint8_t)(59 - passTime * 59 / 800);
+      setRingPixel(RING_OUTER_60, pos, headColor);
+      for (uint8_t t = 1; t <= tl; t++) {
+        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
+        uint8_t tp = (passNum % 2 == 0)
+            ? (uint8_t)((pos + 60 - t) % 60)
+            : (uint8_t)((pos + t) % 60);
+        setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
       }
+    }
+  }
 
-      case ANIM_REM4: {
-        const uint32_t se = scaledElapsed(elapsed);
-        if (se >= 6000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        if (se < 1000) {
-          uint8_t pct = (uint8_t)(se * 255u / 1000u);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-            setRingPixel(RING_INNER_12, i, scale(strip_.Color(60, 0, 0), pct));
-        } else if (se < 2500) {
-          uint8_t ip = (uint8_t)((se - 1000u) * 32u / 1500u);
-          uint32_t ic = paletteColor(ip, true);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, ic);
-          uint8_t mp = (uint8_t)((se - 1000u) * 128u / 1500u);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-            setRingPixel(RING_MIDDLE_24, i, scale(strip_.Color(60, 0, 0), mp));
-        } else if (se < 4000) {
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, paletteColor(32, true));
-          uint8_t mp = (uint8_t)((se - 2500u) * 32u / 1500u);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, paletteColor(mp, true));
-          uint8_t op = (uint8_t)((se - 2500u) * 128u / 1500u);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-            setRingPixel(RING_OUTER_60, i, scale(strip_.Color(60, 0, 0), op));
-        } else {
-          uint8_t pos = (uint8_t)((se - 4000u) * 128u / 2000u + 64u);
-          uint32_t c = paletteColor(pos, true);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+  void animH7(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 3000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    if (se < 2000) {
+      uint8_t fi = (uint8_t)((se / 125) % 4);
+      const uint8_t palPos[] = {0, 85, 170, 255};
+      uint32_t c = paletteColor(palPos[fi]);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+    } else {
+      uint8_t fadeAmt = (uint8_t)(255u - (se - 2000u) * 255u / 500u);
+      uint32_t c = scale(paletteColor(0), fadeAmt);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+    }
+  }
+
+  void animHr6(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 8500) { animPhase_ = ANIM_IDLE; return; }
+    const uint8_t br = settings_.get().animationBrightness;
+    if (elapsed < 500) {
+      uint8_t rb = (uint8_t)(elapsed * 255 / 500);
+      uint32_t white = strip_.Color(rb, rb, rb);
+      strip_.setBrightness(br);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, white);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, white);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, white);
+    } else if (elapsed < 6000) {
+      strip_.setBrightness(br);
+      uint16_t hueOff = (uint16_t)((elapsed - 500) * 65536UL / 5500);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+        setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
+    } else {
+      uint8_t fadeAmt = (elapsed < 8000) ? (uint8_t)(255u - (elapsed - 6000u) * 255u / 2000u) : 0u;
+      strip_.setBrightness(fadeAmt);
+      uint16_t hueOff = (uint16_t)((6000 - 500) * 65536UL / 5500);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+        setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
+    }
+  }
+
+  void animHr7(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 8000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      const uint8_t tl  = settings_.get().trailLength;
+      const uint8_t gbr = settings_.get().animationBrightness;
+      for (uint8_t d = 0; d < 8; d++) {
+        uint32_t period  = (uint32_t)(d * 3 + 5) % 8 * 600 + 1800;
+        uint8_t  offset  = (uint8_t)((d * 7 + 3) % 60);
+        uint8_t  pos     = (uint8_t)((elapsed % period * 60 / period + offset) % 60);
+        setRingPixel(RING_OUTER_60, pos, strip_.Color(0, gbr, 0));
+        for (uint8_t t = 1; t <= tl; t++) {
+          uint8_t trailBr = (uint8_t)((uint32_t)gbr * (tl - t + 1) / (tl + 1));
+          setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, strip_.Color(0, trailBr, 0));
         }
-        break;
       }
+    }
+  }
 
-      case ANIM_REM5: {
-        if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-        animStep_++;
-        {
-          float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
-          uint8_t breathBr = (uint8_t)(settings_.get().animationBrightness * (0.8f + 0.2f * sinf(breathPhase)));
-          strip_.setBrightness(breathBr);
-          uint8_t seed = animStep_;
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-            uint8_t pn = (uint8_t)((i * 7 + seed * 3) % 160);
-            setRingPixel(RING_OUTER_60, i, paletteColor(pn, true));
-          }
-          for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) {
-            uint8_t pn = (uint8_t)((i * 11 + seed * 5) % 160);
-            setRingPixel(RING_MIDDLE_24, i, paletteColor(pn, true));
-          }
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++) {
-            uint8_t pn = (uint8_t)((i * 17 + seed * 7) % 160);
-            setRingPixel(RING_INNER_12, i, paletteColor(pn, true));
-          }
-          if (elapsed % 200 < 50) {
-            uint8_t sp = (uint8_t)((seed * 47 + 13) % 60);
-            setRingPixel(RING_OUTER_60, sp, strip_.Color(255, 220, 100));
-          }
+  void animHr8(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    {
+      const uint8_t br = settings_.get().animationBrightness;
+      strip_.setBrightness(elapsed < 9000 ? br : (uint8_t)((10000u - elapsed) * br / 1000u));
+      uint8_t outerOff  = (uint8_t)(elapsed * 256 / 3000);
+      uint8_t middleOff = (uint8_t)(86u - (uint8_t)(elapsed * 256 / 5000));
+      uint8_t innerOff  = (uint8_t)(171u + (uint8_t)(elapsed * 256 / 7000));
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(outerOff + i * 256 / RING_OUTER_60.count)));
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(middleOff + i * 256 / RING_MIDDLE_24.count)));
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+        setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(innerOff + i * 256 / RING_INNER_12.count)));
+    }
+  }
+
+  void animHr9(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 7000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    if (se < 3000) {
+      uint8_t n = (uint8_t)(se * RING_OUTER_60.count / 3000);
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+    } else if (se < 4500) {
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+      uint8_t n = (uint8_t)((se - 3000) * RING_MIDDLE_24.count / 1500);
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
+    } else {
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
+      uint8_t n = (uint8_t)((se - 4500) * RING_INNER_12.count / 1000);
+      if (n > RING_INNER_12.count) n = RING_INNER_12.count;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21)));
+    }
+  }
+
+  void animHr10(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 10500) { animPhase_ = ANIM_IDLE; return; }
+    {
+      const uint8_t br = settings_.get().animationBrightness;
+      uint32_t baseColor = strip_.Color((uint8_t)(20u * br / 255u), 0, (uint8_t)(60u * br / 255u));
+      float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
+      uint8_t breathBr = (uint8_t)(br * (0.8f + 0.2f * sinf(breathPhase)));
+      strip_.setBrightness(breathBr);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, baseColor);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, baseColor);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, baseColor);
+      const uint16_t strikeTimes[] = {500, 2000, 3500, 5000, 7000};
+      for (uint8_t s = 0; s < 5; s++) {
+        if (elapsed >= strikeTimes[s] && elapsed < strikeTimes[s] + 80u) {
+          uint8_t p1 = (uint8_t)((strikeTimes[s] * 13u + 7u) % 60u);
+          uint8_t p2 = (uint8_t)((strikeTimes[s] * 23u + 31u) % 60u);
+          uint8_t p3 = (uint8_t)((strikeTimes[s] * 37u + 53u) % 60u);
+          setRingPixel(RING_OUTER_60, p1, strip_.Color(255, 255, 255));
+          setRingPixel(RING_OUTER_60, p2, strip_.Color(255, 255, 255));
+          setRingPixel(RING_OUTER_60, p3, strip_.Color(255, 255, 255));
+          setCenterPixel(strip_.Color(255, 255, 255));
         }
-        break;
       }
+    }
+  }
 
-      case ANIM_REM6: {
-        if (elapsed >= 4000) { animPhase_ = ANIM_IDLE; return; }
-        strip_.setBrightness(settings_.get().animationBrightness);
-        {
-          uint32_t c = paletteColor(0, true);
-          uint32_t dimOuter = scale(c, 30);
-          for (uint8_t i = 0; i < RING_OUTER_60.count; i++) setRingPixel(RING_OUTER_60, i, dimOuter);
-          bool glitch = (elapsed % 700) >= 550 && (elapsed % 700) < 670;
-          if (!glitch) {
-            bool on = (elapsed % 82) < 40;
-            if (on) {
-              for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, c);
-            }
-          }
+  void animRem1(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      uint32_t c = paletteColor(0, true);
+      const uint16_t starts[] = {0, 350, 700, 1050};
+      for (uint8_t r = 0; r < 4; r++) {
+        if (se < starts[r]) continue;
+        uint32_t rElap = se - starts[r];
+        if (rElap >= 1500) continue;
+        uint32_t cp = rElap % 500;
+        uint8_t pct;
+        if (cp < 200)      pct = (uint8_t)(cp * 255u / 200u);
+        else if (cp < 300) pct = 255;
+        else               pct = (uint8_t)(255u - (cp - 300u) * 255u / 200u);
+        uint32_t rc = scale(c, pct);
+        switch (r) {
+          case 0: for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);  break;
+          case 1: for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc); break;
+          case 2: for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);  break;
+          case 3: setCenterPixel(rc); break;
         }
-        break;
       }
+    }
+  }
 
-      default:
-        animPhase_ = ANIM_IDLE;
-        break;
+  void animRem2(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      const ClockSettings &s2 = settings_.get();
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, ringColor(s2.outerMarkerRed, s2.outerMarkerGreen, s2.outerMarkerBlue, 38));
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, ringColor(s2.minutesRed, s2.minutesGreen, s2.minutesBlue, 38));
+      uint32_t period = 667;
+      uint8_t pos = (uint8_t)((se % period) * RING_INNER_12.count / period);
+      uint32_t c = paletteColor(0, true);
+      setRingPixel(RING_INNER_12, pos, c);
+      for (uint8_t t = 1; t <= 2; t++) {
+        uint8_t trailBr = (uint8_t)(255u * (2u - t + 1u) / 3u);
+        setRingPixel(RING_INNER_12, (pos + RING_INNER_12.count - t) % RING_INNER_12.count, scale(c, trailBr));
+      }
+    }
+  }
+
+  void animRem3(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      uint32_t c = paletteColor(0, true);
+      uint32_t cp = se % 1160;
+      uint8_t pct;
+      if      (cp < 80)  pct = (uint8_t)(cp * 255u / 80u);
+      else if (cp < 160) pct = 255;
+      else if (cp < 280) pct = (uint8_t)(255u - (cp - 160u) * 255u / 120u);
+      else if (cp < 360) pct = (uint8_t)((cp - 280u) * 255u / 80u);
+      else if (cp < 440) pct = 255;
+      else if (cp < 640) pct = (uint8_t)(255u - (cp - 440u) * 255u / 200u);
+      else               pct = 38;
+      uint32_t rc = scale(c, pct);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);
+      setCenterPixel(rc);
+    }
+  }
+
+  void animRem4(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    const uint32_t se = scaledElapsed(elapsed);
+    if (se >= 6000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    if (se < 1000) {
+      uint8_t pct = (uint8_t)(se * 255u / 1000u);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+        setRingPixel(RING_INNER_12, i, scale(strip_.Color(60, 0, 0), pct));
+    } else if (se < 2500) {
+      uint8_t ip = (uint8_t)((se - 1000u) * 32u / 1500u);
+      uint32_t ic = paletteColor(ip, true);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, ic);
+      uint8_t mp = (uint8_t)((se - 1000u) * 128u / 1500u);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+        setRingPixel(RING_MIDDLE_24, i, scale(strip_.Color(60, 0, 0), mp));
+    } else if (se < 4000) {
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, paletteColor(32, true));
+      uint8_t mp = (uint8_t)((se - 2500u) * 32u / 1500u);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, paletteColor(mp, true));
+      uint8_t op = (uint8_t)((se - 2500u) * 128u / 1500u);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+        setRingPixel(RING_OUTER_60, i, scale(strip_.Color(60, 0, 0), op));
+    } else {
+      uint8_t pos = (uint8_t)((se - 4000u) * 128u / 2000u + 64u);
+      uint32_t c = paletteColor(pos, true);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+    }
+  }
+
+  void animRem5(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    animStep_++;
+    {
+      float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
+      uint8_t breathBr = (uint8_t)(settings_.get().animationBrightness * (0.8f + 0.2f * sinf(breathPhase)));
+      strip_.setBrightness(breathBr);
+      uint8_t seed = animStep_;
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
+        uint8_t pn = (uint8_t)((i * 7 + seed * 3) % 160);
+        setRingPixel(RING_OUTER_60, i, paletteColor(pn, true));
+      }
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) {
+        uint8_t pn = (uint8_t)((i * 11 + seed * 5) % 160);
+        setRingPixel(RING_MIDDLE_24, i, paletteColor(pn, true));
+      }
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++) {
+        uint8_t pn = (uint8_t)((i * 17 + seed * 7) % 160);
+        setRingPixel(RING_INNER_12, i, paletteColor(pn, true));
+      }
+      if (elapsed % 200 < 50) {
+        uint8_t sp = (uint8_t)((seed * 47 + 13) % 60);
+        setRingPixel(RING_OUTER_60, sp, strip_.Color(255, 220, 100));
+      }
+    }
+  }
+
+  void animRem6(uint32_t now) {
+    uint32_t elapsed = now - animStartMs_;
+    if (elapsed >= 4000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    {
+      uint32_t c = paletteColor(0, true);
+      uint32_t dimOuter = scale(c, 30);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) setRingPixel(RING_OUTER_60, i, dimOuter);
+      bool glitch = (elapsed % 700) >= 550 && (elapsed % 700) < 670;
+      if (!glitch) {
+        bool on = (elapsed % 82) < 40;
+        if (on) {
+          for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, c);
+        }
+      }
     }
   }
 
@@ -2254,230 +2273,11 @@ class WebUi {
  private:
   void setupRoutes() {
     server_.on("/", HTTP_GET, [&]() {
-      static const char HTML_P1[] PROGMEM =
-        "<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\n"
-        "<title>ESP32 Ring Clock</title>\n"
-        "<style>\n"
-        ":root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}\n"
-        "*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}\n"
-        "main{display:grid;grid-template-columns:minmax(280px,430px) minmax(310px,1fr);gap:18px;max-width:1120px;margin:0 auto;padding:18px}\n"
-        ".stage,.panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008}\n"
-        ".stage{position:sticky;top:14px;align-self:start;padding:16px}.clock-wrap{display:grid;place-items:center;min-height:380px}\n"
-        "h1{font-size:18px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin:0 0 12px}#now{font-size:42px;font-weight:750;letter-spacing:0;margin:8px 0 2px}.state{color:var(--muted);font-size:13px;line-height:1.4;min-height:20px}\n"
-        ".grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.panel{padding:14px;margin-bottom:12px}.panel h2{font-size:15px;margin:0 0 12px;color:#dbe7f7}\n"
-        "label{display:block;color:var(--muted);font-size:12px;margin:10px 0 4px}input,select,button{font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px;min-height:38px}\n"
-        "input[type=number]{width:82px}input[type=color]{width:58px;padding:3px}.row{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.ringrow{display:grid;grid-template-columns:82px 66px 1fr 54px;gap:8px;align-items:center;margin:8px 0}.ringrow span{color:#dbe7f7}\n"
-        "button{cursor:pointer;background:#203146;border-color:#42546d}button.primary{background:#145875;border-color:#2d9ccb;color:white}.toggle{display:flex;gap:8px;flex-wrap:wrap}.toggle label{display:flex;gap:6px;align-items:center;margin:0;color:#dce6f5;background:#0c1017;border:1px solid #303846;border-radius:6px;padding:8px}\n"
-        "svg{width:min(86vw,380px);height:auto;display:block}.led{opacity:.18;transition:fill .18s,opacity .18s,filter .18s}.on{opacity:1;filter:drop-shadow(0 0 5px currentColor)}.ghost{opacity:.4}.marker{opacity:.5}.center{filter:drop-shadow(0 0 12px currentColor)}\n"
-        "@media(max-width:820px){main{grid-template-columns:1fr}.stage{position:static}.grid{grid-template-columns:1fr}.clock-wrap{min-height:300px}}\n"
-        "</style></head>\n";
-      static const char HTML_P2[] PROGMEM =
-        "<body><main>\n"
-        "<section class='stage'>\n"
-        "<h1>ESP32 Ring Clock</h1><p class='sub'>Outer 60 LEDs are the clock face, minute hand, and second hand; middle/inner rings show hours.</p>\n"
-        "<div class='clock-wrap'><svg id='clockSvg' viewBox='0 0 420 420' role='img' aria-label='NeoPixel clock preview'></svg></div>\n"
-        "<div id='now'>--:--:--</div><div id='state' class='state'>Connecting...</div>\n"
-        "</section>\n"
-        "<section>\n"
-        "<div class='grid'>\n"
-        "<div class='panel'><h2>Time</h2>\n"
-        "<form onsubmit='setTime();return false;' class='row'>\n"
-        "<div><label>Hour</label><input id='h' type='number' min='0' max='23' placeholder='HH'></div>\n"
-        "<div><label>Minute</label><input id='m' type='number' min='0' max='59' placeholder='MM'></div>\n"
-        "<div><label>Second</label><input id='s' type='number' min='0' max='59' placeholder='SS'></div>\n"
-        "<button class='primary' type='submit'>Set</button></form>\n"
-        "<div class='row'><button onclick='post(\"/addMinute\")'>+1 min</button><button onclick='post(\"/subMinute\")'>-1 min</button><button onclick='syncBrowser()'>Browser sync</button><button onclick='post(\"/syncNtp\")'>NTP sync</button></div>\n"
-        "</div>\n"
-        "<div class='panel'><h2>Display</h2>\n"
-        "<div class='row'><div><label>Day</label><input id='dayBrightness' type='number' min='0' max='255'></div><div><label>Night</label><input id='nightBrightness' type='number' min='0' max='255'></div><div><label>Night start</label><input id='nightStartHour' type='number' min='0' max='23'></div><div><label>Night end</label><input id='nightEndHour' type='number' min='0' max='23'></div></div>\n"
-        "<label>Preview effect</label><select id='previewMode'><option value='live'>Live clock</option><option value='trail'>All-ring trails</option><option value='spark'>Hourly sparkle</option></select>\n"
-        "</div></div>\n"
-        "<div class='panel'><h2>Rings</h2>\n"
-        "<div class='ringrow'><span>Outer marks</span><input id='outerMarkerColor' type='color'><input id='outerMarkerLevel' type='range' min='0' max='255'><output id='outerMarkerLevelOut'></output></div>\n"
-        "<div class='ringrow'><span>Outer fill</span><input id='outerFillerColor' type='color'><input id='outerFillerLevel' type='range' min='0' max='255'><output id='outerFillerLevelOut'></output></div>\n"
-        "<div class='ringrow'><span>Outer sec</span><input id='secondsColor' type='color'><input id='secondsLevel' type='range' min='0' max='255'><output id='secondsLevelOut'></output></div>\n"
-        "<div class='ringrow'><span>Outer min</span><input id='minutesColor' type='color'><input id='minutesLevel' type='range' min='0' max='255'><output id='minutesLevelOut'></output></div>\n"
-        "<div class='ringrow'><span>Hour rings</span><input id='hoursColor' type='color'><input id='hoursLevel' type='range' min='0' max='255'><output id='hoursLevelOut'></output></div>\n"
-        "<div class='ringrow'><span>Center</span><input id='centerColor' type='color'><input id='centerLevel' type='range' min='0' max='255'><output id='centerLevelOut'></output></div>\n"
-        "<div class='row'><div><label>Theme</label><select id='colorTheme'><option value='0'>Classic</option><option value='1'>Aqua</option><option value='2'>Magenta</option></select></div></div>\n"
-        "<div class='toggle'><label><input id='secondTrail' type='checkbox'>Second trail</label><label><input id='progressSeconds' type='checkbox'>Progress ring</label><label><input id='hourlyChime' type='checkbox'>Hourly chime</label><label><input id='statusAnimations' type='checkbox'>Status</label></div>\n"
-        "<div class='row'><div><label>Ring rotation offset (0-59 LEDs)</label><input id='outerRingOffset' type='number' min='0' max='59' style='width:70px'></div></div>\n"
-        "<div class='row'><button class='primary' onclick='saveSettings()'>Save display</button></div>\n"
-        "</div>\n"
-        "<div class='panel'><h2>Auto-Brightness</h2>\n"
-        "<select id='autoBrightnessMode'>\n"
-        "  <option value='0'>Manual</option>\n"
-        "  <option value='1'>Auto (light sensor)</option>\n"
-        "  <option value='2'>Scheduled (day/night)</option>\n"
-        "</select>\n"
-        "<div id='autoPanel' style='display:none'>\n"
-        "  <label>Current light: <span id='luxValue'>--</span> lux</label>\n"
-        "  <div class='row'>\n"
-        "    <div><label>Min bright</label><input id='minAutoBrightness' type='number' min='5' max='255'></div>\n"
-        "    <div><label>Max bright</label><input id='maxAutoBrightness' type='number' min='5' max='255'></div>\n"
-        "  </div>\n"
-        "</div>\n"
-        "<div class='row'><button class='primary' onclick='saveSettings()'>Save auto-brightness</button></div>\n"
-        "</div>\n"
-        "<div class='panel'><h2>Time Animations</h2>\n"
-        "<label><input id='intervalAnimationsEnabled' type='checkbox'> Enable interval animations</label>\n"
-        "<div class='row'>\n"
-        "  <div><label>Quarter (:15/:30/:45)</label><select id='quarterAnimation'>\n"
-        "    <option value='0'>Off</option>\n"
-        "    <option value='1'>Sparkle burst</option>\n"
-        "    <option value='2'>Quarter pulse</option>\n"
-        "    <option value='3'>Ring shimmer</option>\n"
-        "    <option value='4'>Laser ping</option>\n"
-        "    <option value='5'>DNA twist</option>\n"
-        "    <option value='6'>Tick spark</option>\n"
-        "  </select><button onclick=\"previewAnim('quarter','quarterAnimation')\">&#9654; Preview</button></div>\n"
-        "  <div><label>Half-hour (:30)</label><select id='halfHourAnimation'>\n"
-        "    <option value='0'>Off</option>\n"
-        "    <option value='1'>Rainbow sweep</option>\n"
-        "    <option value='2'>Dual flash</option>\n"
-        "    <option value='3'>Tidal pulse</option>\n"
-        "    <option value='4'>Comet chase</option>\n"
-        "    <option value='5'>Color explosion</option>\n"
-        "    <option value='6'>Knight Rider</option>\n"
-        "    <option value='7'>Strobe party</option>\n"
-        "  </select><button onclick=\"previewAnim('halfhour','halfHourAnimation')\">&#9654; Preview</button></div>\n"
-        "</div>\n"
-        "<label>Top of hour (:00)</label><select id='hourAnimation'>\n"
-        "  <option value='0'>Off</option>\n"
-        "  <option value='1'>Current chime</option>\n"
-        "  <option value='2'>Firework burst</option>\n"
-        "  <option value='3'>Zenith cascade</option>\n"
-        "  <option value='4'>Rainbow spiral</option>\n"
-        "  <option value='5'>Breathing mandala</option>\n"
-        "  <option value='6'>Supernova</option>\n"
-        "  <option value='7'>Matrix rain</option>\n"
-        "  <option value='8'>Galaxy spin</option>\n"
-        "  <option value='9'>Color wipe</option>\n"
-        "  <option value='10'>Thunderstorm</option>\n"
-        "</select><button onclick=\"previewAnim('hour','hourAnimation')\">&#9654; Preview</button>\n"
-        "<div class='row'><button class='primary' onclick='saveSettings()'>Save animations</button></div>\n"
-        "</div>\n"
-        "<div class='panel'><h2>&#127775; Animation Style</h2>\n"
-        "<div class='row'>\n"
-        "  <div><label>Color palette</label><select id='animationPalette'>\n"
-        "    <option value='0'>Rainbow</option>\n"
-        "    <option value='1'>Fire</option>\n"
-        "    <option value='2'>Ocean</option>\n"
-        "    <option value='3'>Forest</option>\n"
-        "    <option value='4'>Candy</option>\n"
-        "    <option value='5'>Neon</option>\n"
-        "    <option value='6'>Monochrome (hour color)</option>\n"
-        "    <option value='7'>Clock colors</option>\n"
-        "  </select></div>\n"
-        "  <div><label>Reminder palette</label><select id='reminderPalette'>\n"
-        "    <option value='0'>Amber (warm)</option>\n"
-        "    <option value='1'>Red (urgent)</option>\n"
-        "    <option value='2'>Magenta (bold)</option>\n"
-        "    <option value='3'>Cyan-warm (unusual)</option>\n"
-        "  </select></div>\n"
-        "</div>\n"
-        "<div class='row'>\n"
-        "  <div><label>Speed</label><select id='animationSpeed'>\n"
-        "    <option value='1'>1 - Dreamy slow</option>\n"
-        "    <option value='2'>2 - Relaxed</option>\n"
-        "    <option value='3'>3 - Normal</option>\n"
-        "    <option value='4'>4 - Energetic</option>\n"
-        "    <option value='5'>5 - Hyperactive</option>\n"
-        "  </select></div>\n"
-        "  <div><label>Peak brightness</label>\n"
-        "    <input id='animationBrightness' type='range' min='50' max='255'>\n"
-        "    <output id='animationBrightnessOut'></output>\n"
-        "  </div>\n"
-        "  <div><label>Trail length</label>\n"
-        "    <input id='trailLength' type='range' min='2' max='12'>\n"
-        "    <output id='trailLengthOut'></output>\n"
-        "  </div>\n"
-        "</div>\n"
-        "<div class='row'>\n"
-        "  <div><label>Preview with</label><select id='stylePreviewType'>\n"
-        "    <option value='quarter'>Quarter animation</option>\n"
-        "    <option value='halfhour'>Half-hour animation</option>\n"
-        "    <option value='hour'>Hour animation</option>\n"
-        "    <option value='reminder'>Reminder animation</option>\n"
-        "  </select></div>\n"
-        "  <button onclick='previewStyleAnim()'>&#9654; Preview style</button>\n"
-        "  <button class='primary' onclick='saveAnimStyle()'>Save style</button>\n"
-        "</div>\n"
-        "</div>\n"
-        "<div class='panel'><h2>Focus Reminders (ADHD)</h2>\n"
-        "<p class='sub' style='font-size:12px;color:#92a0b5'>Visual nudge system for hyperfocus interruption. Fires animations at set intervals on selected days/times.</p>\n"
-        "<div class='toggle'><label><input id='focusReminder_enabled' type='checkbox'> Enable focus reminders</label></div>\n"
-        "<div class='row'>\n"
-        "  <div><label>Start hour</label><input id='focusReminder_startHour' type='number' min='0' max='23' placeholder='HH'></div>\n"
-        "  <div><label>End hour</label><input id='focusReminder_endHour' type='number' min='0' max='23' placeholder='HH'></div>\n"
-        "  <div><label>Interval (min)</label><input id='focusReminder_intervalMinutes' type='number' min='1' max='1440' placeholder='60'></div>\n"
-        "</div>\n"
-        "<label>Days of week</label>\n"
-        "<div class='toggle' id='daysToggle' style='display:flex;gap:4px;flex-wrap:wrap'></div>\n"
-        "<div><label>Animation</label><select id='focusReminder_animation'>\n"
-        "  <option value='0'>Use quarter animation</option>\n"
-        "  <option value='1'>Use half-hour animation</option>\n"
-        "  <option value='2'>Use hour animation</option>\n"
-        "  <option value='3'>Use quarter animation (alt)</option>\n"
-        "  <option value='4'>Use half-hour animation (alt)</option>\n"
-        "  <option value='5'>Use hour animation (alt)</option>\n"
-        "  <option value='6'>Amber pulse (warm inward wave)</option>\n"
-        "  <option value='7'>Attention ring (amber radar)</option>\n"
-        "  <option value='8'>Heartbeat (double-beat pulse)</option>\n"
-        "  <option value='9'>Sunrise wake (red to yellow)</option>\n"
-        "  <option value='10'>Campfire flicker (warm sparks)</option>\n"
-        "  <option value='11'>Neon sign (amber buzz)</option>\n"
-        "</select><button onclick=\"previewAnim('reminder','focusReminder_animation')\">&#9654; Preview</button></div>\n"
-        "<div class='row'><button class='primary' onclick='saveFocusReminder()'>Save reminder</button></div>\n"
-        "</div>\n"
-        "<div class='panel'><h2>Network</h2><div id='net' class='state'>--</div><div class='row'><button onclick='loadNet()'>Refresh network</button></div></div>\n"
-        "<div class='panel'><h2>&#9881; Admin</h2><div class='row'>"
-        "<a href='/update' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>Firmware Update</a>"
-        "<a href='/wifi' style='display:inline-block;padding:10px 16px;background:#145875;border:1px solid #2d9ccb;color:white;border-radius:6px;text-decoration:none;font-size:14px'>WiFi Settings</a>"
-        "</div></div>\n"
-        "<div class='panel'><h2>Demo Mode (Video Recording)</h2>\n"
-        "<p class='sub' style='font-size:12px;color:#92a0b5'>Automated 93-second feature showcase. Use /demo/overlay in OBS for live subtitles.</p>\n"
-        "<div class='row'>\n"
-        "  <button class='primary' onclick='startDemo()' id='demoStartBtn'>▶ Start Demo</button>\n"
-        "  <button onclick='stopDemo()' id='demoStopBtn' style='display:none;background:#8b3a3a;border-color:#c75555'>⏹ Stop</button>\n"
-        "</div>\n"
-        "<div id='demoStatus' class='state' style='margin-top:12px;padding:8px;background:#0c1017;border:1px solid #2c3442;border-radius:4px'>Idle</div>\n"
-        "</div>\n"
-        "</section></main>\n";
-      static const char HTML_P3[] PROGMEM =
-        "<script>\n"
-        "const counts={outer:60,middle:24,inner:12}, radii={outer:182,middle:134,inner:88};\n"
-        "const leds={outer:[],middle:[],inner:[]}; let settings={}, current={hour:12,minute:0,second:0}, netTimer=0;\n"
-        "function qs(id){return document.getElementById(id)} function pad(n){return String(n).padStart(2,'0')}\n"
-        "function makeClock(){const svg=qs('clockSvg'); for(const ring of ['outer','middle','inner']){for(let i=0;i<counts[ring];i++){const a=(i/counts[ring])*Math.PI*2-Math.PI/2,x=210+Math.cos(a)*radii[ring],y=210+Math.sin(a)*radii[ring],c=document.createElementNS('http://www.w3.org/2000/svg','circle');c.setAttribute('cx',x);c.setAttribute('cy',y);c.setAttribute('r',ring==='outer'?4.4:ring==='middle'?5.8:7.2);c.classList.add('led');svg.appendChild(c);leds[ring].push(c)}} const center=document.createElementNS('http://www.w3.org/2000/svg','circle');center.id='centerLed';center.setAttribute('cx',210);center.setAttribute('cy',210);center.setAttribute('r',17);center.classList.add('led','center');svg.appendChild(center)}\n"
-        "function setLed(el,color,level,cls='on'){el.style.color=color;el.setAttribute('fill',color);el.style.opacity=Math.max(.04,level/255);el.className.baseVal='led '+cls}\n"
-        "function clearRing(r){for(const el of leds[r]){el.setAttribute('fill','#243044');el.style.opacity=.22;el.className.baseVal='led'}}\n"
-        "function level(id){return Number(qs(id+'Level')?.value||180)} function color(id){return qs(id+'Color')?.value||'#ffffff'}\n"
-        "function draw(){clearRing('middle');clearRing('inner');for(let i=0;i<60;i++){const mark=i%5===0;setLed(leds.outer[i],mark?color('outerMarker'):color('outerFiller'),mark?level('outerMarker'):level('outerFiller'),mark?'marker':'ghost')}let s=current.second,m=current.minute,h=current.hour%12,hoff=current.minute>=30?1:0,h24=(h*2+hoff)%24;const mode=qs('previewMode')?.value||'live',tick=Math.floor(Date.now()/90);if(settings.progressSeconds){for(let i=0;i<=s;i++)setLed(leds.outer[i],color('seconds'),38,'ghost')}if(settings.secondTrail||mode==='trail'){for(let i=1;i<7;i++)setLed(leds.outer[(s+60-i)%60],color('seconds'),Math.max(20,level('seconds')-(i*32)),'ghost')}if(mode==='trail'){for(let i=1;i<5;i++){setLed(leds.outer[(m+60-i)%60],color('minutes'),Math.max(25,level('minutes')-(i*42)),'ghost');setLed(leds.middle[(h24+24-i)%24],color('hours'),Math.max(25,level('hours')-(i*42)),'ghost');setLed(leds.inner[(h+12-i)%12],color('hours'),Math.max(25,level('hours')-(i*52)),'ghost')}}if(mode==='spark'){for(let i=0;i<10;i++){setLed(leds.outer[(tick+i*6)%60],i%2?color('hours'):color('minutes'),90+(i*10),'ghost')}}for(let i=0;i<24;i++)setLed(leds.middle[i],color('hours'),22,'marker');for(let i=0;i<12;i++)setLed(leds.inner[i],color('center'),24,'marker');setLed(leds.outer[s],color('seconds'),level('seconds'));setLed(leds.outer[m],color('minutes'),level('minutes'));setLed(leds.middle[h24],color('hours'),level('hours'));setLed(leds.inner[h],color('hours'),level('hours'));setLed(leds.inner[(h+hoff)%12],color('hours'),level('hours'));const pulse=45+Math.floor((Math.sin(Date.now()/450)+1)*85);setLed(qs('centerLed'),color('center'),Math.min(level('center'),pulse),'on')}\n"
-        "async function refresh(){const r=await fetch('/time');const t=await r.json();current=t;const h12=t.hour%12||12;const ampm=t.hour<12?'AM':'PM';qs('now').textContent=`${pad(h12)}:${pad(t.minute)}:${pad(t.second)} ${ampm}`;qs('state').textContent=`IP ${t.ip||'-'} | Wi-Fi ${t.wifi?'on':'off'} | NTP ${t.ntpSynced?'synced':'waiting'}`;draw()}\n"
-        "async function loadNet(){const r=await fetch('/net');const n=await r.json();qs('net').textContent=`${n.hostname} | ${n.ssid} | IP ${n.ip} | GW ${n.gateway} | RSSI ${n.rssi} dBm`}\n"
-        "async function loadSettings(){const r=await fetch('/settings');settings=await r.json();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])qs(k).value=settings[k];for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])qs(k).value=settings[k];for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])qs(k).checked=!!settings[k];qs('autoBrightnessMode').value=settings.autoBrightnessMode;qs('minAutoBrightness').value=settings.minAutoBrightness;qs('maxAutoBrightness').value=settings.maxAutoBrightness;qs('quarterAnimation').value=settings.quarterAnimation;qs('halfHourAnimation').value=settings.halfHourAnimation;qs('hourAnimation').value=settings.hourAnimation;qs('intervalAnimationsEnabled').checked=!!settings.intervalAnimationsEnabled;qs('focusReminder_enabled').checked=!!settings.focusReminder_enabled;qs('focusReminder_startHour').value=settings.focusReminder_startHour||8;qs('focusReminder_endHour').value=settings.focusReminder_endHour||22;qs('focusReminder_intervalMinutes').value=settings.focusReminder_intervalMinutes||60;qs('focusReminder_animation').value=settings.focusReminder_animation||0;const daysToggle=qs('daysToggle');daysToggle.innerHTML='';const daysNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];for(let i=0;i<7;i++){const label=document.createElement('label');const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=!!(settings.focusReminder_daysMask&(1<<i));checkbox.id='focusReminder_day'+i;label.appendChild(checkbox);label.appendChild(document.createTextNode(daysNames[i]));daysToggle.appendChild(label)}qs('outerRingOffset').value=settings.outerRingOffset||0;qs('animationPalette').value=settings.animationPalette??0;qs('animationSpeed').value=settings.animationSpeed??3;qs('animationBrightness').value=settings.animationBrightness??200;qs('trailLength').value=settings.trailLength??4;qs('reminderPalette').value=settings.reminderPalette??0;qs('autoBrightnessMode').onchange=()=>{qs('autoPanel').style.display=Number(qs('autoBrightnessMode').value)===1?'block':'none'};qs('autoBrightnessMode').onchange();bindLive();draw();refreshLux();setInterval(refreshLux,2000)}\n"
-        "async function refreshLux(){const r=await fetch('/lux');const data=await r.json();if(data.available){qs('luxValue').textContent=data.lux.toFixed(1)}}\n"
-        "function bindLive(){for(const k of ['outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value;draw()};qs(k).oninput=upd;upd()}for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor','previewMode'])qs(k).oninput=draw;for(const k of ['secondTrail','progressSeconds'])qs(k).oninput=()=>{settings[k]=qs(k).checked;draw()};for(const k of ['animationBrightness','trailLength']){const out=qs(k+'Out');const upd=()=>{out.value=qs(k).value};qs(k).oninput=upd;upd()}}\n"
-        "async function post(url,body){await fetch(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});await refresh()}\n"
-        "function setTime(){post('/set',`hour=${h.value}&minute=${m.value}&second=${s.value}`)}\n"
-        "function syncBrowser(){const d=new Date();post('/syncBrowser',`hour=${d.getHours()}&minute=${d.getMinutes()}&second=${d.getSeconds()}`)}\n"
-        "function saveSettings(){const p=new URLSearchParams();for(const k of ['dayBrightness','nightBrightness','nightStartHour','nightEndHour','colorTheme','outerMarkerLevel','outerFillerLevel','secondsLevel','minutesLevel','hoursLevel','centerLevel'])p.set(k,qs(k).value);for(const k of ['outerMarkerColor','outerFillerColor','secondsColor','minutesColor','hoursColor','centerColor'])p.set(k,qs(k).value);for(const k of ['secondTrail','progressSeconds','hourlyChime','statusAnimations'])p.set(k,qs(k).checked?1:0);p.set('autoBrightnessMode',qs('autoBrightnessMode').value);p.set('minAutoBrightness',qs('minAutoBrightness').value);p.set('maxAutoBrightness',qs('maxAutoBrightness').value);p.set('quarterAnimation',qs('quarterAnimation').value);p.set('halfHourAnimation',qs('halfHourAnimation').value);p.set('hourAnimation',qs('hourAnimation').value);p.set('intervalAnimationsEnabled',qs('intervalAnimationsEnabled').checked?1:0);p.set('outerRingOffset',qs('outerRingOffset').value);post('/settings',p.toString()).then(loadSettings)}\n"
-        "function saveFocusReminder(){const p=new URLSearchParams();p.set('focusReminder_enabled',qs('focusReminder_enabled').checked?1:0);p.set('focusReminder_startHour',qs('focusReminder_startHour').value);p.set('focusReminder_endHour',qs('focusReminder_endHour').value);p.set('focusReminder_intervalMinutes',qs('focusReminder_intervalMinutes').value);p.set('focusReminder_animation',qs('focusReminder_animation').value);let daysMask=0;for(let i=0;i<7;i++){if(qs('focusReminder_day'+i).checked)daysMask|=(1<<i)}p.set('focusReminder_daysMask',daysMask);post('/settings',p.toString()).then(loadSettings)}\n"
-        "function previewAnim(type,modeId){const mode=qs(modeId).value;fetch('/previewAnimation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'type='+type+'&mode='+mode})}\n"
-        "function previewStyleAnim(){const t=qs('stylePreviewType').value;const modeMap={quarter:'quarterAnimation',halfhour:'halfHourAnimation',hour:'hourAnimation',reminder:'focusReminder_animation'};const mode=qs(modeMap[t]).value;fetch('/previewAnimation',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'type='+t+'&mode='+mode})}\n"
-        "function saveAnimStyle(){const p=new URLSearchParams();p.set('animationPalette',qs('animationPalette').value);p.set('animationSpeed',qs('animationSpeed').value);p.set('animationBrightness',qs('animationBrightness').value);p.set('trailLength',qs('trailLength').value);p.set('reminderPalette',qs('reminderPalette').value);post('/settings',p.toString()).then(loadSettings)}\n"
-        "async function startDemo(){await fetch('/demo/start',{method:'POST'});qs('demoStartBtn').style.display='none';qs('demoStopBtn').style.display='inline-block';updateDemoStatus();demoStatusInterval=setInterval(updateDemoStatus,500)}\n"
-        "async function stopDemo(){await fetch('/demo/stop',{method:'POST'});qs('demoStartBtn').style.display='inline-block';qs('demoStopBtn').style.display='none';qs('demoStatus').textContent='Idle';clearInterval(demoStatusInterval)}\n"
-        "async function updateDemoStatus(){try{const r=await fetch('/demo/status');const data=await r.json();if(data.active){const elapsed=data.elapsed_ms,dur=data.step_duration_ms,pct=Math.round(100*elapsed/dur);qs('demoStatus').textContent=`Step ${data.step+1}/6: ${data.subtitle} (${pct}%)`}else{qs('demoStatus').textContent='Idle'}}catch(e){}}\n"
-        "let demoStatusInterval=0;\n"
-        "makeClock();loadSettings();refresh();loadNet();setInterval(refresh,1000);setInterval(draw,90);\n"
-        "</script></body></html>";
       server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
       server_.send(200, "text/html", "");
-      server_.sendContent_P(HTML_P1);
-      server_.sendContent_P(HTML_P2);
-      server_.sendContent_P(HTML_P3);
+      server_.sendContent_P(INDEX_P1);
+      server_.sendContent_P(INDEX_P2);
+      server_.sendContent_P(INDEX_P3);
       server_.client().flush();
     });
 
@@ -2691,52 +2491,6 @@ class WebUi {
       if (WiFi.status() == WL_CONNECTED) {
         snprintf(wifiSt, sizeof(wifiSt), "%s (%s)", wifiStatusText(WiFi.status()), WiFi.SSID().c_str());
       }
-      static const char WIFI_P1[] PROGMEM =
-        "<!doctype html><html><head>\n"
-        "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\n"
-        "<title>WiFi Settings</title>\n"
-        "<style>\n"
-        ":root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}\n"
-        "*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}\n"
-        "main{max-width:480px;margin:40px auto;padding:20px}\n"
-        ".panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;padding:24px;box-shadow:0 18px 45px #0008}\n"
-        "h1{font-size:18px;margin:0 0 16px}\n"
-        ".info{background:#0c1017;border:1px solid var(--line);border-radius:6px;padding:12px;margin-bottom:20px;font-size:13px;color:var(--muted);line-height:1.8}\n"
-        "label{display:block;color:var(--muted);font-size:12px;margin:12px 0 4px}\n"
-        "input{width:100%;font:inherit;border-radius:6px;border:1px solid #374253;background:#0c1017;color:var(--text);padding:8px 10px;min-height:38px}\n"
-        ".row{display:flex;gap:10px;margin-top:20px}\n"
-        "button{font:inherit;border-radius:6px;cursor:pointer;padding:10px 20px;min-height:40px;border:1px solid #42546d;background:#203146;color:var(--text)}\n"
-        "button.primary{background:#145875;border-color:#2d9ccb;color:white}\n"
-        "#status{margin-top:14px;min-height:18px;font-size:13px;color:var(--accent)}\n"
-        "a{color:var(--accent);text-decoration:none;font-size:13px}a:hover{text-decoration:underline}\n"
-        "</style></head><body><main>\n"
-        "<div class='panel'>\n"
-        "<h1>&#128246; WiFi Settings</h1>\n"
-        "<div class='info'><strong>Saved SSID:</strong> ";
-      static const char WIFI_MID[] PROGMEM =
-        "<br><strong>Status:</strong> ";
-      static const char WIFI_P2[] PROGMEM =
-        "</div>\n"
-        "<form onsubmit='save();return false;'>\n"
-        "<label>SSID</label><input id='ssid' type='text' maxlength='32' placeholder='Network name' required>\n"
-        "<label>Password</label><input id='pass' type='password' maxlength='64' placeholder='Leave blank for open network'>\n"
-        "<div class='row'><button type='submit' class='primary'>Save &amp; Connect</button><button type='button' onclick='history.back()'>Cancel</button></div>\n"
-        "</form>\n"
-        "<div id='status'></div>\n"
-        "<p style='margin-top:20px'><a href='/'>&#8592; Back to clock</a></p>\n"
-        "</div></main>\n"
-        "<script>\n"
-        "async function save(){\n"
-        "  const ssid=document.getElementById('ssid').value.trim();\n"
-        "  const pass=document.getElementById('pass').value;\n"
-        "  if(!ssid){alert('SSID required');return}\n"
-        "  document.getElementById('status').textContent='Saving...';\n"
-        "  try{\n"
-        "    const r=await fetch('/wifi',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'ssid='+encodeURIComponent(ssid)+'&pass='+encodeURIComponent(pass)});\n"
-        "    document.getElementById('status').textContent=await r.text();\n"
-        "  }catch(e){document.getElementById('status').textContent='Saved. Device reconnecting \xe2\x80\x94 you may need to rejoin the network.';}\n"
-        "}\n"
-        "</script></body></html>";
       server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
       server_.send(200, "text/html", "");
       server_.sendContent_P(WIFI_P1);
@@ -2771,89 +2525,6 @@ class WebUi {
 
     // ===== Firmware Update Web Page (GET /update) =====
     server_.on("/update", HTTP_GET, [&]() {
-      static const char UPDATE_P1[] PROGMEM =
-        "<!doctype html><html><head>\n"
-        "<meta charset='utf-8'><meta name='viewport' content='width=device-width,initial-scale=1'>\n"
-        "<title>Firmware Update - ESP32 Ring Clock</title>\n"
-        "<style>\n"
-        ":root{color-scheme:dark;--bg:#090b10;--panel:#151922;--panel2:#10141c;--line:#2c3442;--text:#eef3fb;--muted:#92a0b5;--accent:#6bd7ff}\n"
-        "*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% 18%,#17202f 0,#090b10 54%);color:var(--text);font-family:system-ui,Segoe UI,sans-serif}\n"
-        "main{max-width:600px;margin:40px auto;padding:20px}\n"
-        ".panel{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);border-radius:8px;box-shadow:0 18px 45px #0008;padding:24px;margin-bottom:16px}\n"
-        "h1{margin:0 0 8px;font-size:24px}p{color:var(--muted);margin:0 0 16px}\n"
-        "input[type=file]{display:block;margin:16px 0;padding:8px;background:#0c1017;border:1px solid #374253;border-radius:6px;color:var(--text)}\n"
-        "button{background:#145875;border:1px solid #2d9ccb;color:white;padding:12px 24px;border-radius:6px;font-size:16px;cursor:pointer;margin:8px 8px 8px 0}\n"
-        "button:hover{background:#1a6a8f}button.danger{background:#8b2e2e;border-color:#c04040}\n"
-        ".progress{width:100%;height:24px;background:#0c1017;border:1px solid #374253;border-radius:4px;overflow:hidden;margin:16px 0}\n"
-        ".progress-bar{height:100%;background:#6bd7ff;width:0%;transition:width 0.3s;display:flex;align-items:center;justify-content:center;font-size:12px;color:#090b10}\n"
-        ".status{margin:16px 0;padding:12px;border-radius:6px;display:none}\n"
-        ".status.success{background:#0a3a2a;border:1px solid #10a060;color:#90ff90}\n"
-        ".status.error{background:#3a0a0a;border:1px solid #a01010;color:#ff9090}\n"
-        ".status.info{background:#0a1a3a;border:1px solid #1060a0;color:#90d0ff}\n"
-        "#updateForm{margin:16px 0}\n"
-        ".info-box{background:#0c1017;border-left:3px solid #6bd7ff;padding:12px;margin:16px 0;border-radius:4px}\n"
-        "a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}\n"
-        "</style></head>\n"
-        "<body><main>\n"
-        "<div class='panel'>\n"
-        "<h1>&#128295; Firmware Update</h1>\n"
-        "<p>Upload a new .bin firmware file to update the clock.</p>\n"
-        "<div class='info-box'>\n"
-        "<strong>Current Firmware:</strong> Latest<br>\n"
-        "<strong>Flash Size:</strong> ~700 KB<br>\n"
-        "<strong>Device:</strong> XIAO ESP32-C3\n"
-        "</div>\n"
-        "<div id='updateForm'>\n"
-        "<input type='file' id='binFile' accept='.bin' required>\n"
-        "<button onclick='uploadFirmware()'>Upload &amp; Update</button>\n"
-        "<button onclick='history.back()'>Cancel</button>\n"
-        "</div>\n"
-        "<div class='progress' id='progress' style='display:none'>\n"
-        "<div class='progress-bar' id='progressBar'>0%</div>\n"
-        "</div>\n"
-        "<div class='status' id='status'></div>\n"
-        "</main>\n";
-      static const char UPDATE_P2[] PROGMEM =
-        "<script>\n"
-        "function uploadFirmware(){\n"
-        "  const file=document.getElementById('binFile').files[0];\n"
-        "  if(!file){alert('Please select a .bin file');return}\n"
-        "  if(!file.name.endsWith('.bin')){alert('File must be .bin format');return}\n"
-        "  if(file.size>800000){alert('File too large (max ~700KB)');return}\n"
-        "  const xhr=new XMLHttpRequest();\n"
-        "  xhr.upload.onprogress=(e)=>{\n"
-        "    if(e.lengthComputable){\n"
-        "      const pct=Math.round(e.loaded/e.total*100);\n"
-        "      document.getElementById('progressBar').style.width=pct+'%';\n"
-        "      document.getElementById('progressBar').textContent=pct+'%';\n"
-        "    }\n"
-        "  };\n"
-        "  xhr.onload=()=>{\n"
-        "    const msg=document.getElementById('status');\n"
-        "    if(xhr.status===200){\n"
-        "      msg.innerHTML='&#10003; Upload successful! Device will reboot with new firmware...';\n"
-        "      msg.className='status success';\n"
-        "      document.getElementById('updateForm').style.display='none';\n"
-        "      setTimeout(()=>{window.location.href='/'},5000);\n"
-        "    }else{\n"
-        "      msg.innerHTML='&#10007; Update failed: '+xhr.responseText;\n"
-        "      msg.className='status error';\n"
-        "    }\n"
-        "    msg.style.display='block';\n"
-        "  };\n"
-        "  xhr.onerror=()=>{\n"
-        "    const msg=document.getElementById('status');\n"
-        "    msg.innerHTML='&#10007; Upload error (connection lost?)';\n"
-        "    msg.className='status error';\n"
-        "    msg.style.display='block';\n"
-        "  };\n"
-        "  document.getElementById('progress').style.display='block';\n"
-        "  const fd=new FormData();\n"
-        "  fd.append('firmware',file,file.name);\n"
-        "  xhr.open('POST','/update');\n"
-        "  xhr.send(fd);\n"
-        "}\n"
-        "</script></body></html>";
       server_.setContentLength(CONTENT_LENGTH_UNKNOWN);
       server_.send(200, "text/html", "");
       server_.sendContent_P(UPDATE_P1);
@@ -2910,87 +2581,6 @@ class WebUi {
     });
 
     server_.on("/demo/overlay", HTTP_GET, [&]() {
-      static const char OVERLAY_HTML[] = R"(
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset='utf-8'>
-  <meta name='viewport' content='width=device-width,initial-scale=1'>
-  <title>Demo Overlay</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #000;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    }
-    #overlay {
-      position: fixed;
-      bottom: 33vh;
-      left: 50%;
-      transform: translateX(-50%);
-      text-align: center;
-      opacity: 0;
-      transition: opacity 300ms ease;
-    }
-    #overlay.active {
-      opacity: 1;
-    }
-    #subtitle {
-      font-size: 48px;
-      color: white;
-      background: rgba(0, 0, 0, 0.6);
-      padding: 20px 40px;
-      border-radius: 50px;
-      display: inline-block;
-      max-width: 80vw;
-      word-wrap: break-word;
-    }
-  </style>
-</head>
-<body>
-  <div id='overlay'>
-    <div id='subtitle'></div>
-  </div>
-
-  <script>
-    const overlay = document.getElementById('overlay');
-    const subtitle = document.getElementById('subtitle');
-    let lastSubtitle = '';
-
-    async function updateStatus() {
-      try {
-        const response = await fetch('/demo/status');
-        const data = await response.json();
-
-        if (data.active) {
-          if (data.subtitle !== lastSubtitle) {
-            overlay.classList.remove('active');
-            setTimeout(() => {
-              subtitle.textContent = data.subtitle;
-              overlay.classList.add('active');
-              lastSubtitle = data.subtitle;
-            }, 50);
-          } else if (!overlay.classList.contains('active')) {
-            overlay.classList.add('active');
-          }
-        } else {
-          overlay.classList.remove('active');
-          lastSubtitle = '';
-        }
-      } catch (e) {
-        console.error('Status fetch failed:', e);
-      }
-    }
-
-    updateStatus();
-    setInterval(updateStatus, 500);
-  </script>
-</body>
-</html>
-      )";
       server_.send(200, "text/html", OVERLAY_HTML);
     });
   }

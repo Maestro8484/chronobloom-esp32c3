@@ -5,6 +5,28 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.2.0] — 2026-05-16
+
+### Changed (refactor — no behavior change)
+- **WebUI HTML/JS extracted to PROGMEM headers**
+  - New file: `src/web_html.h`
+  - `WebUi::setupRoutes` reduced from 742 lines to 313 lines (~429 lines removed)
+  - Constants: `INDEX_P1/P2/P3`, `WIFI_P1/MID/P2`, `UPDATE_P1/P2`, `OVERLAY_HTML`
+  - All string sends use `sendContent_P` PROGMEM-aware variants (unchanged from before)
+- **`ClockRenderer::tickAnimation` decomposed into per-case methods**
+  - `tickAnimation` reduced from 650 lines to 35 lines (dispatcher only)
+  - 30 new private methods: `animQ1–Q6`, `animH1–H7`, `animHr1–Hr10`, `animRem1–Rem6`
+  - One method per case; no logic merged or split further
+
+### Notes
+- Refactor only — runtime behavior is byte-identical
+- `symmap.json` regenerated; 30 new `ClockRenderer::anim*` symbols added (139 total)
+- No `SETTINGS_VERSION` change
+- No EEPROM impact
+- `src/main.cpp` reduced from 3578 to 3167 lines
+
+---
+
 ## [v2.1.1] — 2026-05-16
 
 ### Fixed
