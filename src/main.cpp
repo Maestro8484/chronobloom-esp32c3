@@ -1092,13 +1092,14 @@ class ClockRenderer {
   void animQ1(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 600) { animPhase_ = ANIM_IDLE; return; }
+    const uint8_t br = settings_.get().animationBrightness;
     setCenterPixel(strip_.Color(255, 255, 255));
     for (uint8_t i = 0; i < 60; i += 15)
       setRingPixel(RING_OUTER_60, i, strip_.Color(255, 255, 255));
     if (elapsed < 100) {
-      strip_.setBrightness(255);
+      strip_.setBrightness(br);
     } else if (elapsed < 500) {
-      strip_.setBrightness((uint8_t)(255 - ((elapsed - 100) * 255) / 400));
+      strip_.setBrightness((uint8_t)(br - ((elapsed - 100) * br) / 400));
     } else {
       strip_.setBrightness(0);
     }
@@ -1109,7 +1110,7 @@ class ClockRenderer {
     if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
     const ClockSettings &settings = settings_.get();
     uint32_t markerColor = ringColor(settings.outerMarkerRed, settings.outerMarkerGreen,
-                                     settings.outerMarkerBlue, 255);
+                                     settings.outerMarkerBlue, settings.animationBrightness);
     bool bright = (elapsed % 1000) < 500;
     uint32_t c = bright ? markerColor : scale(markerColor, 128);
     for (uint8_t i = 0; i < 60; i += 5)
@@ -1121,12 +1122,13 @@ class ClockRenderer {
     if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
     const ClockSettings &settings = settings_.get();
     renderFace(settings);
-    strip_.setBrightness((elapsed % 600) < 400 ? 255 : settings.dayBrightness);
+    strip_.setBrightness((elapsed % 600) < 400 ? settings.animationBrightness : settings.dayBrightness);
   }
 
   void animH1(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
     if (elapsed < 2000) {
       uint8_t n = (uint8_t)(elapsed * RING_OUTER_60.count / 2000);
       for (uint8_t i = 0; i < n; i++)
@@ -1153,6 +1155,7 @@ class ClockRenderer {
   void animH2(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
     uint8_t flash = (uint8_t)(elapsed / 600);
     if (flash < 3) {
       bool swapped = (elapsed % 600) >= 300;
@@ -1174,19 +1177,21 @@ class ClockRenderer {
         uint8_t brightness = 64 + (uint8_t)((sinf((i + wave * 10) * 0.1f) + 1.0f) * 96.0f);
         setRingPixel(RING_OUTER_60, i, strip_.Color(0, brightness, brightness));
       }
-      strip_.setBrightness(phase < 500 ? 64 : settings.dayBrightness);
+      strip_.setBrightness(phase < 500 ? settings.animationBrightness / 4 : settings.animationBrightness);
     }
   }
 
   void animHr1(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
     renderHourlyChime(now);
   }
 
   void animHr2(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
     uint8_t newStep;
     if      (elapsed < 500)  newStep = 0;
     else if (elapsed < 600)  newStep = 1;
@@ -1223,6 +1228,7 @@ class ClockRenderer {
   void animHr3(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
     uint32_t gold = strip_.Color(255, 200, 0);
     if (elapsed < 1200) {
       uint8_t n = (uint8_t)(elapsed * 30 / 1200);
@@ -1249,6 +1255,7 @@ class ClockRenderer {
   void animHr4(uint32_t now) {
     uint32_t elapsed = now - animStartMs_;
     if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
     uint8_t outerN, middleN, innerN;
     if (elapsed < 2400) {
       outerN = (uint8_t)(elapsed * 120 / 2400); middleN = 0; innerN = 0;
@@ -1295,8 +1302,9 @@ class ClockRenderer {
     for (uint8_t i = 0; i < RING_INNER_12.count; i++)
       setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hue + i * 5461u)));
     {
+      const uint8_t br = settings_.get().animationBrightness;
       float breathPhase = (float)(elapsed % 1667) * 3.14159f / 1667.0f;
-      strip_.setBrightness((uint8_t)(50 + fabsf(sinf(breathPhase)) * 205.0f));
+      strip_.setBrightness((uint8_t)(br * (0.2f + 0.8f * fabsf(sinf(breathPhase)))));
     }
   }
 

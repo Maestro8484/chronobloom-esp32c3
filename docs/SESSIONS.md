@@ -31,10 +31,19 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 19 | Ring dimming + reset button | renderFace ambient fix, /diag extension, /settings/reset endpoint, web UI reset button | Done (2026-05-17, v2.2.1) |
 | 20 | renderFace ambient fix + complexity audit | Flatten ambient scale to 50/50; write code complexity handoff for Claude Chat | Done (2026-05-17, v2.2.2) |
 | 21 | outerRingBrightness + theme export/import | New EEPROM field for outer ring brightness, new color defaults, client-side theme JSON export/import | Done (2026-05-17, v2.3.0) |
+| 22 | Animation brightness + preview fixes | Fix 11 legacy animations ignoring animationBrightness; fix Animation Style preview saving/dispatching | Done (2026-05-17, v2.3.1) |
 
 ---
 
 ## Completed Sessions
+
+### Session 22 — Animation Brightness + Preview Fixes (Done 2026-05-17, v2.3.1)
+- **Root issue 1 — legacy animations bypassed `animationBrightness`**: `animQ1`–`animQ3`, `animH1`–`animH3`, `animHr1`–`animHr5` (11 functions) all called `strip_.setBrightness(255)` or used `ColorHSV` with no brightness arg. The newer animations (Q4+, H4+, Hr6+) already used `setBrightness(animationBrightness)` correctly. Fixed each legacy function: Q1 scales fade formula to `animationBrightness`; Q2 passes `animationBrightness` to `ringColor()`; Q3 replaces `255` flash with `animationBrightness`; H1/H2 add `setBrightness(animationBrightness)` at entry; H3 replaces `64`/`dayBrightness` pair with `animationBrightness/4`/`animationBrightness`; Hr1–Hr4 add `setBrightness(animationBrightness)` at entry; Hr5 breathing formula `50 + sinf()*205` replaced with `br*(0.2+0.8*sinf())`.
+- **Root issue 2 — `previewStyleAnim()` did not save settings before firing**: function was synchronous, posted to `/previewAnimation` immediately. The animation ran with the previously-saved style values, so any changes to palette/brightness/speed in the UI had no effect on preview. Fixed by making function `async` and `await`-ing a `/settings` POST before triggering the animation.
+- **Root issue 3 — "Preview with" picker coupled to assigned animation slots**: old dropdown listed types (quarter/halfhour/hour); JS then read the assigned mode for that type. If mode was 0 (Off) the server rejected silently; if mode 1 (animQ1, 600ms) the user got a 600ms white flash. Replaced the entire `stylePreviewType` select with a direct `type:mode` picker listing 11 palette-capable animations by name and duration (Q4–Q6, H4–H7, Hr7, Hr9, Rem1–2). `previewStyleAnim()` now splits the `"type:mode"` value directly, no per-type dropdown lookup.
+- **Symmap regenerated**: 139 functions (unchanged count), line numbers shifted due to `setBrightness` insertions in 9 functions.
+- **Build**: `esp32c3_v3_8inch` SUCCESS, RAM 11.1%, Flash 57.4%.
+- **Commit**: see git log.
 
 ### Session 21 — outerRingBrightness + Theme Export/Import (Done 2026-05-17, v2.3.0)
 - **`ClockSettings` struct** (`src/main.cpp` line 390): added `uint8_t outerRingBrightness` after `reminderPalette`; EEPROM size grows by 1 byte.

@@ -5,6 +5,27 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.1] — 2026-05-17
+
+### Fixed
+- **`animQ1`** (`src/main.cpp`): `strip_.setBrightness(255)` hardcode replaced — peak and fade now scale to `settings.animationBrightness`.
+- **`animQ2`** (`src/main.cpp`): `ringColor()` level argument was hardcoded `255`; now uses `settings.animationBrightness`.
+- **`animQ3`** (`src/main.cpp`): flash brightness of `255` replaced with `settings.animationBrightness`; dim state preserved at `dayBrightness`.
+- **`animH1`** (`src/main.cpp`): `ColorHSV` calls had no brightness arg (defaulted to 255); `strip_.setBrightness(animationBrightness)` added at entry.
+- **`animH2`** (`src/main.cpp`): hardcoded full-saturation colors at 255; `strip_.setBrightness(animationBrightness)` added at entry.
+- **`animH3`** (`src/main.cpp`): `setBrightness` called with `64` (dim) and `dayBrightness` (bright); both replaced with `animationBrightness/4` and `animationBrightness`.
+- **`animHr1`–`animHr4`** (`src/main.cpp`): no `setBrightness` call; `strip_.setBrightness(animationBrightness)` added at entry in each.
+- **`animHr5`** (`src/main.cpp`): breathing formula `50 + sinf() * 205` replaced with `br * (0.2 + 0.8 * sinf())` so peak equals `animationBrightness`.
+- **`previewStyleAnim()` JS** (`src/web_html.h`): function was synchronous — triggered `/previewAnimation` before style settings were saved, so palette/brightness/speed changes had no effect on the preview. Now `async`; `await`s a `/settings` POST first.
+- **"Preview with" → "Preview animation" dropdown** (`src/web_html.h`): old picker mapped to animation *types* (quarter/halfhour/hour), then read the currently-assigned mode for that type. If assigned mode was 0 (Off) the server rejected silently; if mode 1 (animQ1, 600ms) the user saw a brief flash. Replaced with a direct `type:mode` picker listing 11 palette-capable animations (Q4–Q6, H4–H7, Hr7, Hr9, Rem1–2) so preview always shows a meaningful palette demonstration independent of saved slot assignments.
+
+### Files changed
+- `src/main.cpp` — animQ1, animQ2, animQ3, animH1, animH2, animH3, animHr1, animHr2, animHr3, animHr4, animHr5
+- `src/web_html.h` — previewStyleAnim() JS, stylePreviewType select options
+- `platformio.ini` — FIRMWARE_VERSION 2.3.0 → 2.3.1
+
+---
+
 ## [v2.3.0] — 2026-05-17
 
 ### Added
