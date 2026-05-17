@@ -26,10 +26,28 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 14 | Demo Mode firmware | DemoMode class, LuxSensor override, /demo endpoints, WebUI controls | Done (2026-05-16, v2.2.0) |
 | 15 | Symmap regeneration | Fix gen_symmap.py parser bugs, regenerate inventory, update HARDWARE.md | Done (2026-05-16) |
 | 16 | v2.1.1 firmware fixes | Ring rotation rounding, brightness floor, EEPROM wear fix, /diag expansion | Done (2026-05-16) |
+| 17 | web_html.h modularization | Extract PROGMEM HTML/JS constants from main.cpp into src/web_html.h; update #include | Done (2026-05-16) |
+| 18 | Docs: session closure system | PRIMER.md refresh, PRIMER-extended.md refresh, SESSION_CLOSURE.md created, SESSIONS.md updated | Done (2026-05-17) |
 
 ---
 
 ## Completed Sessions
+
+### Session 18 — Docs: Session Closure System (Done 2026-05-17)
+- **Root cause addressed**: Session 17 (web_html.h modularization) was undocumented — no SESSIONS.md entry, no CHANGELOG.md entry, no symmap regen note
+- **SESSION_CLOSURE.md created**: mandatory end-of-session checklist covering SESSIONS.md update, CHANGELOG.md update, gen_symmap.py run, PRIMER-extended.md staleness check, and commit
+- **PRIMER.md updated**: added session closure reminder block and closure warning to the paste-in primer template
+- **PRIMER-extended.md fully refreshed**: updated feature state to v2.2.0, corrected pin reference (GPIO5/GPIO9 buttons, GPIO3/4 removed), corrected file structure (web_html.h, gen_symmap.py), updated function count and line estimate, updated build commands, updated all doc links
+- **SESSIONS.md updated**: Session 17 row added, Session 18 row added, this narrative block added
+- No firmware changes. No symmap regen required.
+
+### Session 17 — web_html.h Modularization (Done 2026-05-16)
+- All PROGMEM HTML/JS string constants extracted from WebUi::setupRoutes in main.cpp into src/web_html.h (~36KB, created 2026-05-16 21:08)
+- main.cpp gained `#include "web_html.h"` at line 17
+- setupRoutes now references INDEX_P1/P2/P3 and other PROGMEM symbols from the header rather than defining them inline
+- symmap.json SHA256 is stale post-modularization (line numbers shifted); regen required before next firmware session
+- No EEPROM changes, no SETTINGS_VERSION bump, no new functions added
+- Session was not closed at time of completion — no SESSIONS.md entry, no CHANGELOG.md entry written then. Retroactively documented in Session 18.
 
 ### Session 16 — Firmware Fixes (Done 2026-05-16, v2.1.1)
 - **setRingPixel rounding**: Added `+30` bias to rotation expression; middle/inner rings now track outerRingOffset proportionally instead of quantizing to 2.5/5 LED steps

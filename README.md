@@ -21,6 +21,7 @@ PlatformIO firmware for the Seeed Studio XIAO ESP32-C3 version of the 3-ring Neo
 - OTA firmware updates over WiFi (ArduinoOTA, port 3232)
 - mDNS hostname with automatic reconnect after WiFi drop
 - **Focus Reminders** — Visual nudge animations at configurable intervals for hyperfocus interruption (ADHD support)
+- **Demo Mode** — Automated feature showcase sequence for video recording with live subtitle overlay (OBS-ready)
 
 ## Development
 

@@ -1,15 +1,19 @@
 TASK: [paste here]
 
-ChronoBloom ESP32-C3 LED clock project. Claude Code on SuperMaster Desktop.
-Single firmware file: src/main.cpp. Two variants: 8inch, 15inch.
+Potentially Involved Functions/Hardware: [paste here]
+
+ChronoBloom ESP32-C3 LED clock project. Claude Desktop GUI (Chat + Code) on SuperMaster Desktop PC, direct local file/repo access via filesystem MCP.
+Two variants: esp32c3_v3_8inch and esp32c3_v3_15inch. esp32c3_v3_8inch is current default env.
 
 Repo: C:\Users\SuperMaster\Documents\PlatformIO\chronobloom-esp32c3
-Local repo is source of truth. GitHub is secondary mirror.
+Local repo is source of truth — supersedes GitHub and any prior chat context.
 
-Read CLAUDE.md first. It contains session rules and workflow constraints.
-
-Build: pio run -e esp32c3_v3_8inch
-Flash: pio run -e esp32c3_v3_8inch -t upload
-OTA:   pio run -e esp32c3_v3_8inch -t upload --upload-port esp32c3-v3-8inch.local:3232
-
+Read CLAUDE.md first via filesystem MCP before doing anything else. That file is the session anchor.
 Read minimum files the task requires. State what you read and why.
+
+Chat = planning only unless explicitly requested. Claude Code = all implementation.
+
+--- SESSION CLOSURE REQUIRED AT END OF EVERY SESSION ---
+Before ending any session, Claude Code MUST execute docs/SESSION_CLOSURE.md protocol.
+Summary: update SESSIONS.md status table + completed block, update CHANGELOG.md if firmware changed, run gen_symmap.py if main.cpp or web_html.h changed, commit all doc changes.
+Failure to close is a workflow violation. See docs/SESSION_CLOSURE.md for full checklist.
