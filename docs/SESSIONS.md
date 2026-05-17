@@ -29,10 +29,19 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 17 | web_html.h modularization | Extract PROGMEM HTML/JS constants from main.cpp into src/web_html.h; update #include | Done (2026-05-16) |
 | 18 | Docs: session closure system | PRIMER.md refresh, PRIMER-extended.md refresh, SESSION_CLOSURE.md created, SESSIONS.md updated | Done (2026-05-17) |
 | 19 | Ring dimming + reset button | renderFace ambient fix, /diag extension, /settings/reset endpoint, web UI reset button | Done (2026-05-17, v2.2.1) |
+| 20 | renderFace ambient fix + complexity audit | Flatten ambient scale to 50/50; write code complexity handoff for Claude Chat | Done (2026-05-17, v2.2.2) |
 
 ---
 
 ## Completed Sessions
+
+### Session 20 — renderFace Ambient Fix + Complexity Audit (Done 2026-05-17, v2.2.2)
+- **Root cause identified**: v2.2.1 renderFace fix used `hoursLevel/6` and `centerLevel/6` as ambient scales, but those two settings have different defaults (255 vs 180), producing unequal ambient brightness per ring despite identical divisors — same class of error as the original magic numbers it replaced
+- **Fix**: `renderFace()` lines 840–843 — replaced both expressions with flat constant `50` (~20% of full). Two lines of code instead of four. No coupling to per-ring color settings.
+- **Handoff document**: `docs/chat-handoff-code-complexity-audit.md` — seven audit targets identified for Claude Chat review: magic numbers, parallel structures, unintended dual-role settings, auto-brightness curve constants, confirmed JS/firmware mismatch bug in `draw()`, trail brightness array, setRingPixel rotation formula opacity
+- **Confirmed bug flagged (not fixed this session)**: `draw()` JS in `web_html.h` still renders ambient at `22`/`24` — does not match firmware `50`/`50`; web UI preview is visually wrong
+- **Build**: 8" env clean. RAM 11.1%, Flash 56.9%. Not yet flashed (device offline).
+- **platformio.ini**: FIRMWARE_VERSION 2.2.1 → 2.2.2
 
 ### Session 19 — Ring Dimming Fix + Reset Button (Done 2026-05-17, v2.2.1)
 - **Investigation**: diagnosed outer ring appearing much brighter than middle/inner rings. Root cause confirmed in `renderFace()` lines 840–843: ambient fill hardcoded at 22/255 (~8.6%) for middle ring and 24/255 (~9.4%) for inner ring, vs outer ring at 51–86%. Single `setBrightness()` scalar applies uniformly — no per-ring compensation exists.

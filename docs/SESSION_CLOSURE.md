@@ -122,5 +122,5 @@ These are documented failure modes. Avoid them.
 
 ## Session Numbering Reference
 Check docs/SESSIONS.md status table for the current highest session number before assigning the next one.
-As of 2026-05-17: last documented session is Session 19 (ring dimming fix + reset button, 2026-05-17, v2.2.1).
-Next session to be documented: Session 20.
+As of 2026-05-17: last documented session is Session 20 (renderFace ambient fix + complexity audit, 2026-05-17, v2.2.2).
+Next session to be documented: Session 21.

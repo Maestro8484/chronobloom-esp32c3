@@ -5,6 +5,22 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.2.2] — 2026-05-17
+
+### Fixed
+- **`ClockRenderer::renderFace` ambient scale simplified**: replaced `hoursLevel/6` and `centerLevel/6` expressions (introduced in v2.2.1) with a flat `50/255` (~20%) for both middle and inner rings. The ratio formulas introduced an unintended dependency — `hoursLevel` defaults to 255 and `centerLevel` defaults to 180, so the same divisor produced different ambient levels per ring. A single constant is correct: both rings should glow at the same ambient intensity fraction regardless of their indicator color settings.
+
+### Files changed
+- `src/main.cpp` — `renderFace` lines 840–843 (4 lines → 2 lines)
+- `platformio.ini` — FIRMWARE_VERSION 2.2.1 → 2.2.2
+
+### Notes
+- No EEPROM change. No `SETTINGS_VERSION` bump.
+- Known follow-up: `draw()` JS preview in `web_html.h` still uses old ambient values `22`/`24` — does not match firmware `50`/`50`. Flagged in `docs/chat-handoff-code-complexity-audit.md` for next session.
+- Build: 8" env clean. RAM 11.1%, Flash 56.9%.
+
+---
+
 ## [v2.2.1] — 2026-05-17
 
 ### Fixed

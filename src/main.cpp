@@ -838,11 +838,9 @@ class ClockRenderer {
     const uint32_t outerFiller = ringColor(settings.outerFillerRed, settings.outerFillerGreen,
                                            settings.outerFillerBlue, settings.outerFillerLevel);
     const uint32_t middleAmbient = scale(ringColor(settings.hoursRed, settings.hoursGreen,
-                                                  settings.hoursBlue, 255),
-                                        max((uint8_t)1, (uint8_t)(settings.hoursLevel / 6)));
+                                                  settings.hoursBlue, 255), 50);
     const uint32_t innerAmbient = scale(ringColor(settings.centerRed, settings.centerGreen,
-                                                 settings.centerBlue, 255),
-                                       max((uint8_t)1, (uint8_t)(settings.centerLevel / 6)));
+                                                 settings.centerBlue, 255), 50);
     for (uint8_t i = 0; i < RING_OUTER_60.count; ++i) {
       setRingPixel(RING_OUTER_60, i, (i % 5 == 0) ? outerMarker : outerFiller);
     }
