@@ -387,10 +387,11 @@ struct ClockSettings {
   uint8_t animationBrightness;  // 50-255 peak brightness during animations
   uint8_t trailLength;          // 2-12 LEDs (chase/sweep trail length)
   uint8_t reminderPalette;      // 0=Amber,1=Red,2=Magenta,3=Cyan (reminder animations only)
+  uint8_t outerRingBrightness;  // 0-100 percent multiplier applied to outer ring colors
 };
 
 constexpr uint8_t SETTINGS_MAGIC = 0xC1;
-constexpr uint8_t SETTINGS_VERSION = 11;
+constexpr uint8_t SETTINGS_VERSION = 12;
 constexpr size_t EEPROM_BYTES = 256;
 
 class SettingsStore {
@@ -421,17 +422,18 @@ class SettingsStore {
  private:
   static ClockSettings defaults() {
     return {SETTINGS_MAGIC, SETTINGS_VERSION, 44, 5, 22, 7, 0, 0, 0, 1, 1,
-            70,  150, 255, 220,   // outerMarker: bright blue-white
-            0,   5,   200, 130,   // outerFiller: deep royal blue
-            180, 220, 255, 255,   // seconds:     ice blue
-            255, 80,  0,   245,   // minutes:     orange
+            110, 185, 255, 210,   // outerMarker: periwinkle blue
+            0,   8,   200, 145,   // outerFiller: deep royal blue
+            100, 255, 180, 230,   // seconds:     mint green
+            255, 100, 0,   220,   // minutes:     orange
             220, 0,   180, 255,   // hours:       hot pink/magenta
             255, 60,  0,   180,   // center:      warm orange-red
             1,   10,  255,        // autoBrightness: mode=auto, min=10, max=255
             3,   1,   4,   1,     // animations: shimmer, sweep, spiral, enabled
             0,   8,   22,   60,   0, 0, 60, 60,  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
             0,   // outerRingOffset: no rotation
-            0, 3, 200, 4, 0};  // animPalette, animSpeed, animBrightness, trailLength, reminderPalette
+            0, 3, 200, 4, 0,      // animPalette, animSpeed, animBrightness, trailLength, reminderPalette
+            90}; // outerRingBrightness
   }
 
   static bool valid(const ClockSettings &settings) {
@@ -456,7 +458,8 @@ class SettingsStore {
            settings.animationSpeed >= 1 && settings.animationSpeed <= 5 &&
            settings.animationBrightness >= 50 && settings.animationBrightness <= 255 &&
            settings.trailLength >= 2 && settings.trailLength <= 12 &&
-           settings.reminderPalette <= 3;
+           settings.reminderPalette <= 3 &&
+           settings.outerRingBrightness <= 100;
   }
 
   static ClockSettings sanitize(ClockSettings settings) {
@@ -493,6 +496,7 @@ class SettingsStore {
     if (settings.animationBrightness < 50) settings.animationBrightness = 200;
     if (settings.trailLength < 2 || settings.trailLength > 12) settings.trailLength = 4;
     if (settings.reminderPalette > 3) settings.reminderPalette = 0;
+    if (settings.outerRingBrightness > 100) settings.outerRingBrightness = 90;
     if (settings.dayBrightness < 5) settings.dayBrightness = 44;
     if (settings.nightBrightness < 1) settings.nightBrightness = 5;
     return settings;
@@ -847,12 +851,15 @@ class ClockRenderer {
                                            settings.outerMarkerBlue, settings.outerMarkerLevel);
     const uint32_t outerFiller = ringColor(settings.outerFillerRed, settings.outerFillerGreen,
                                            settings.outerFillerBlue, settings.outerFillerLevel);
+    const uint8_t orbScale = (uint8_t)((uint16_t)settings.outerRingBrightness * 255 / 100);
+    const uint32_t outerMarkerScaled = scale(outerMarker, orbScale);
+    const uint32_t outerFillerScaled = scale(outerFiller, orbScale);
     const uint32_t middleAmbient = scale(ringColor(settings.hoursRed, settings.hoursGreen,
                                                   settings.hoursBlue, 255), 50);
     const uint32_t innerAmbient = scale(ringColor(settings.centerRed, settings.centerGreen,
                                                  settings.centerBlue, 255), 50);
     for (uint8_t i = 0; i < RING_OUTER_60.count; ++i) {
-      setRingPixel(RING_OUTER_60, i, (i % 5 == 0) ? outerMarker : outerFiller);
+      setRingPixel(RING_OUTER_60, i, (i % 5 == 0) ? outerMarkerScaled : outerFillerScaled);
     }
     for (uint8_t i = 0; i < RING_MIDDLE_24.count; ++i) {
       setRingPixel(RING_MIDDLE_24, i, middleAmbient);
@@ -2437,6 +2444,7 @@ class WebUi {
       if (server_.hasArg("animationBrightness")) settings.animationBrightness = clampByte(server_.arg("animationBrightness").toInt(), 50, 255);
       if (server_.hasArg("trailLength"))         settings.trailLength         = clampByte(server_.arg("trailLength").toInt(), 2, 12);
       if (server_.hasArg("reminderPalette"))     settings.reminderPalette     = clampByte(server_.arg("reminderPalette").toInt(), 0, 3);
+      if (server_.hasArg("outerRingBrightness")) settings.outerRingBrightness = clampByte(server_.arg("outerRingBrightness").toInt(), 0, 100);
       settings_.update(settings);
       renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
       model_.markDirty();
@@ -2630,7 +2638,7 @@ class WebUi {
     snprintf(mc, sizeof(mc), "#%02X%02X%02X", s.minutesRed, s.minutesGreen, s.minutesBlue);
     snprintf(hc, sizeof(hc), "#%02X%02X%02X", s.hoursRed, s.hoursGreen, s.hoursBlue);
     snprintf(cc, sizeof(cc), "#%02X%02X%02X", s.centerRed, s.centerGreen, s.centerBlue);
-    char buf[1100];
+    char buf[1150];
     snprintf(buf, sizeof(buf),
       "{\"dayBrightness\":%u,\"nightBrightness\":%u"
       ",\"nightStartHour\":%u,\"nightEndHour\":%u"
@@ -2651,7 +2659,8 @@ class WebUi {
       ",\"focusReminder_durationSeconds\":%u,\"outerRingOffset\":%u"
       ",\"animationPalette\":%u,\"animationSpeed\":%u"
       ",\"animationBrightness\":%u,\"trailLength\":%u"
-      ",\"reminderPalette\":%u}",
+      ",\"reminderPalette\":%u"
+      ",\"outerRingBrightness\":%u}",
       s.dayBrightness, s.nightBrightness,
       s.nightStartHour, s.nightEndHour,
       s.colorTheme, s.secondTrail, s.progressSeconds,
@@ -2671,7 +2680,8 @@ class WebUi {
       s.focusReminder_durationSeconds, s.outerRingOffset,
       s.animationPalette, s.animationSpeed,
       s.animationBrightness, s.trailLength,
-      s.reminderPalette);
+      s.reminderPalette,
+      s.outerRingBrightness);
     return String(buf);
   }
 

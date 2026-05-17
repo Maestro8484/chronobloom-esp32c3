@@ -30,10 +30,28 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 18 | Docs: session closure system | PRIMER.md refresh, PRIMER-extended.md refresh, SESSION_CLOSURE.md created, SESSIONS.md updated | Done (2026-05-17) |
 | 19 | Ring dimming + reset button | renderFace ambient fix, /diag extension, /settings/reset endpoint, web UI reset button | Done (2026-05-17, v2.2.1) |
 | 20 | renderFace ambient fix + complexity audit | Flatten ambient scale to 50/50; write code complexity handoff for Claude Chat | Done (2026-05-17, v2.2.2) |
+| 21 | outerRingBrightness + theme export/import | New EEPROM field for outer ring brightness, new color defaults, client-side theme JSON export/import | Done (2026-05-17, v2.3.0) |
 
 ---
 
 ## Completed Sessions
+
+### Session 21 — outerRingBrightness + Theme Export/Import (Done 2026-05-17, v2.3.0)
+- **`ClockSettings` struct** (`src/main.cpp` line 390): added `uint8_t outerRingBrightness` after `reminderPalette`; EEPROM size grows by 1 byte.
+- **`SETTINGS_VERSION`** bumped 11 → 12; EEPROM auto-resets on first boot. New color defaults applied in `defaults()`: outerMarker 110/185/255 L210, outerFiller 0/8/200 L145, seconds 100/255/180 L230, minutes 255/100/0 L220, outerRingBrightness=90.
+- **`SettingsStore::valid()`** (`src/main.cpp`): added `&& settings.outerRingBrightness <= 100` to boolean chain.
+- **`SettingsStore::sanitize()`** (`src/main.cpp`): added clamp `if > 100 → 90` after reminderPalette clamp.
+- **`renderFace()`** (`src/main.cpp` lines 849–871): added `orbScale` integer computation and `outerMarkerScaled`/`outerFillerScaled`; pixel loop now uses scaled colors instead of raw.
+- **`WebUi::settingsJson()`** (`src/main.cpp`): added `outerRingBrightness` to JSON; buf 1100→1150.
+- **`WebUi::setupRoutes()` POST /settings** (`src/main.cpp`): added `outerRingBrightness` clampByte(0,100) handler.
+- **Rings panel** (`src/web_html.h`): added `outerRingBrightness` number input (0–100) after centerLevel row.
+- **Color Theme panel** (`src/web_html.h`): new panel with Export/Import buttons and `themeStatus` feedback div; inserted before Network panel.
+- **`loadSettings()` JS** (`src/web_html.h`): added `outerRingBrightness` value assignment.
+- **`saveSettings()` JS** (`src/web_html.h`): added `outerRingBrightness` to numeric POST fields array.
+- **`exportTheme()` JS** (`src/web_html.h`): serializes 6 colors + 6 levels + outerRingBrightness to `chronobloom-theme.json`; blob download.
+- **`importTheme(file)` JS** (`src/web_html.h`): reads JSON, applies fields to UI, calls draw+saveSettings.
+- **Build**: both envs clean. RAM 11.1%, Flash 57.1%. Flashed 8inch via USB COM6.
+- **Symmap**: regenerated — 139 functions, all line numbers shifted ~10–14 lines due to struct expansion.
 
 ### Session 20 — renderFace Ambient Fix + Complexity Audit (Done 2026-05-17, v2.2.2)
 - **Root cause identified**: v2.2.1 renderFace fix used `hoursLevel/6` and `centerLevel/6` as ambient scales, but those two settings have different defaults (255 vs 180), producing unequal ambient brightness per ring despite identical divisors — same class of error as the original magic numbers it replaced

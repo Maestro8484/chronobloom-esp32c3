@@ -5,6 +5,39 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.0] — 2026-05-17
+
+### Added
+- **`ClockSettings.outerRingBrightness`** (new EEPROM field, uint8_t, 0–100%): per-ring brightness multiplier for the outer 60-LED ring, applied as integer scale before the pixel loop.
+- **`renderFace()` outer ring scaling** (`src/main.cpp` lines 849–871): `orbScale` computed as `outerRingBrightness * 255 / 100`; `outerMarkerScaled` and `outerFillerScaled` replace raw `outerMarker`/`outerFiller` in pixel loop.
+- **`SettingsStore::defaults()` new defaults** (`src/main.cpp`): `outerRingBrightness=90`; updated colors: outerMarker R/G/B 110/185/255 L210, outerFiller 0/8/200 L145, seconds 100/255/180 L230, minutes 255/100/0 L220.
+- **Theme export/import panel** (`src/web_html.h` INDEX_P2): new "Color Theme" panel with Export and Import (file picker) buttons; `themeStatus` div for feedback.
+- **Outer ring brightness input** (`src/web_html.h` INDEX_P2 Rings panel): number input `id='outerRingBrightness'` min=0 max=100, inserted after centerLevel ringrow.
+- **`exportTheme()` JS** (`src/web_html.h` INDEX_P3): serializes all 6 ring colors, 6 levels, and `outerRingBrightness` to `chronobloom-theme.json`; triggers browser download.
+- **`importTheme(file)` JS** (`src/web_html.h` INDEX_P3): reads JSON file, applies colors/levels/brightness to UI, calls `draw()` and `saveSettings()`.
+
+### Changed
+- **`SETTINGS_VERSION`** bumped 11 → 12. EEPROM auto-resets on first boot after flash.
+- **`SettingsStore::valid()`**: added `&& settings.outerRingBrightness <= 100`.
+- **`SettingsStore::sanitize()`**: added `if (settings.outerRingBrightness > 100) settings.outerRingBrightness = 90`.
+- **`WebUi::settingsJson()`**: added `outerRingBrightness` to JSON format string and args; buf 1100→1150.
+- **`WebUi::setupRoutes()` POST /settings**: added `outerRingBrightness` clampByte handler (0–100).
+- **`loadSettings()` JS**: sets `outerRingBrightness` input from settings JSON.
+- **`saveSettings()` JS**: includes `outerRingBrightness` in numeric POST fields array.
+- **`platformio.ini`**: `FIRMWARE_VERSION` 2.2.2 → 2.3.0.
+
+### Files changed
+- `src/main.cpp` — struct, SETTINGS_VERSION, defaults, valid, sanitize, renderFace, settingsJson, setupRoutes
+- `src/web_html.h` — outer ring brightness input, Color Theme panel, loadSettings, saveSettings, exportTheme, importTheme
+- `platformio.ini` — FIRMWARE_VERSION
+
+### Notes
+- EEPROM incompatible with v2.2.x — auto-resets to new defaults on first boot.
+- Build: 8" env clean. RAM 11.1%, Flash 57.1%.
+- Theme JSON is client-side only; no new firmware endpoints required.
+
+---
+
 ## [v2.2.3] — 2026-05-17
 
 ### Fixed
