@@ -1120,9 +1120,16 @@ class ClockRenderer {
   void animQ3(uint32_t now) {
     uint32_t elapsed = scaledElapsed(now - animStartMs_);
     if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
-    const ClockSettings &settings = settings_.get();
-    renderFace(settings);
-    strip_.setBrightness((elapsed % 600) < 400 ? settings.animationBrightness : settings.dayBrightness);
+    strip_.setBrightness(settings_.get().animationBrightness);
+    const bool bright = (elapsed % 600) < 400;
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
+      uint32_t c = paletteColor((uint8_t)(i * 256 / RING_OUTER_60.count));
+      setRingPixel(RING_OUTER_60, i, bright ? c : scale(c, 64));
+    }
+    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) {
+      uint32_t c = paletteColor((uint8_t)(i * 256 / RING_MIDDLE_24.count + 85));
+      setRingPixel(RING_MIDDLE_24, i, bright ? c : scale(c, 64));
+    }
   }
 
   void animH1(uint32_t now) {

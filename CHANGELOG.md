@@ -5,6 +5,21 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.3] — 2026-05-17
+
+### Fixed
+- **`animQ3` palette response** (`src/main.cpp`): replaced `renderFace(settings)` call with palette-colored ring fills using `paletteColor()`. Previously the animation drew the clock face in configured clock colors regardless of the Animation Palette setting. Now outer ring (RING_OUTER_60) and middle ring (RING_MIDDLE_24) fill with palette-sampled colors in a bright/dim cycle (400ms bright, 200ms dim at 64/255 scale). `strip_.setBrightness(animationBrightness)` applied. Function grew from 7 to 14 lines.
+- **`saveAnimStyle()` JS purple flash** (`src/web_html.h`): converted from synchronous `post()` to `async fetch` with `silent=1` in POST body. The Save Style button no longer triggers the 1.3 s `STATUS_SETTINGS_SAVED` purple spinner on the LED ring.
+
+### Files changed
+- `src/main.cpp` — `animQ3` (lines 1120–1133)
+- `src/web_html.h` — `saveAnimStyle` (line 236)
+- `platformio.ini` — `FIRMWARE_VERSION` 2.3.2 → 2.3.3
+- `docs/symmap.json` — regenerated (animQ3 +7 lines; all subsequent functions shifted)
+- `docs/FUNCTION_INVENTORY.md` — regenerated
+
+---
+
 ## [v2.3.2] — 2026-05-17
 
 ### Fixed

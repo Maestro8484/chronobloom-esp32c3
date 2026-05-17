@@ -33,10 +33,18 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 21 | outerRingBrightness + theme export/import | New EEPROM field for outer ring brightness, new color defaults, client-side theme JSON export/import | Done (2026-05-17, v2.3.0) |
 | 22 | Animation brightness + preview fixes | Fix 11 legacy animations ignoring animationBrightness; fix Animation Style preview saving/dispatching | Done (2026-05-17, v2.3.1) |
 | 23 | Preview/palette/speed fix (v2.3.2) | Fix preview not applying unsaved sliders, suppress settings-saved flash, add palette+speed to animH1/animHr4/animQ3 | Done (2026-05-17, v2.3.2) |
+| 24 | animQ3 palette fix + saveAnimStyle silent (v2.3.3) | Replace renderFace() in animQ3 with paletteColor ring fill; suppress STATUS_SETTINGS_SAVED flash from Save Style button | Done (2026-05-17, v2.3.3) |
 
 ---
 
 ## Completed Sessions
+
+### Session 24 — animQ3 Palette Fix + saveAnimStyle Silent (Done 2026-05-17, v2.3.3)
+- **Root cause 1 — `animQ3` called `renderFace()`, bypassing palette entirely** (`src/main.cpp` lines 1120–1133): `renderFace()` draws the clock face using configured CLOCK COLORS (hours, minutes, markers) — `animationPalette` is never consulted. Moving the palette slider had zero visual effect on Q3 (the user's active quarter animation). Fixed: removed `renderFace()` call; replaced with two palette-colored ring fills — outer ring (`RING_OUTER_60`) and middle ring (`RING_MIDDLE_24`) — using `paletteColor()` with per-pixel hue offsets (outer: 0–255, middle: 85–340 wrapped). Bright/dark phase cycle uses `scale(c, 64)` for the dim frame, controlled by `(elapsed % 600) < 400`. `strip_.setBrightness(animationBrightness)` applied at entry. Function grew 8 lines (7 → 14), shifting all subsequent function line numbers.
+- **Root cause 2 — `saveAnimStyle()` triggered STATUS_SETTINGS_SAVED flash** (`src/web_html.h` line 236): the Save Style button called `post('/settings', p.toString()).then(loadSettings)` without `silent=1`, causing a 1.3 s purple spinning-dot overlay. If user clicked Save then Preview within 1.3 s, the purple spinner was still running when the preview fired. Fixed: converted to `async function`; uses `fetch` with `silent=1` in POST body; `await`s completion before calling `loadSettings()`. No more purple flash on Save Style.
+- **Symmap regenerated**: 139 functions (count unchanged); `animQ3` end line 1126 → 1133; all subsequent functions shifted +7.
+- **Build**: `esp32c3_v3_8inch` SUCCESS, RAM 11.1%, Flash 57.4%.
+- **platformio.ini**: `FIRMWARE_VERSION` bumped `2.3.2` → `2.3.3`.
 
 ### Session 23 — Preview/Palette/Speed Fix (Done 2026-05-17, v2.3.2)
 - **Root issue 1 — `previewAnim()` ignored unsaved style sliders**: all three regular Preview buttons (Q/H/Hr/Reminder) called `previewAnim(type, modeId)` which POSTed only `type+mode` to `/previewAnimation` — never saved current `animationBrightness`, `animationPalette`, `animationSpeed`, `trailLength`, or `reminderPalette` first. If the user dragged the brightness slider to 50 but hadn't saved, the preview played at the last-saved value. Fixed: `previewAnim` is now `async`, silently POSTs all five style fields to `/settings?silent=1` before POSTing to `/previewAnimation`. Returns early if mode=0.

@@ -1,7 +1,7 @@
 {
   "generated_by": "tools/gen_symmap.py",
   "source_file": "src/main.cpp",
-  "source_sha256": "55e2b46b6308294c39971fa8a40dc7618b334b8ae4080584d5f1415bd752e1b4",
+  "source_sha256": "22a19b3fea1726fa65b75fe3e8caaea811452da930ec834e9d3520ffb177dd7a",
   "functions": [
     {
       "name": "configureWiFiHostname",
@@ -286,417 +286,417 @@
     {
       "name": "ClockRenderer::animQ3",
       "start_line": 1120,
-      "end_line": 1126
+      "end_line": 1133
     },
     {
       "name": "ClockRenderer::animH1",
-      "start_line": 1128,
-      "end_line": 1153
+      "start_line": 1135,
+      "end_line": 1160
     },
     {
       "name": "ClockRenderer::animH2",
-      "start_line": 1155,
-      "end_line": 1167
+      "start_line": 1162,
+      "end_line": 1174
     },
     {
       "name": "ClockRenderer::animH3",
-      "start_line": 1169,
-      "end_line": 1182
-    },
-    {
-      "name": "ClockRenderer::animHr1",
-      "start_line": 1184,
+      "start_line": 1176,
       "end_line": 1189
     },
     {
-      "name": "ClockRenderer::animHr2",
+      "name": "ClockRenderer::animHr1",
       "start_line": 1191,
-      "end_line": 1226
+      "end_line": 1196
+    },
+    {
+      "name": "ClockRenderer::animHr2",
+      "start_line": 1198,
+      "end_line": 1233
     },
     {
       "name": "ClockRenderer::animHr3",
-      "start_line": 1228,
-      "end_line": 1253
+      "start_line": 1235,
+      "end_line": 1260
     },
     {
       "name": "ClockRenderer::animHr4",
-      "start_line": 1255,
-      "end_line": 1283
+      "start_line": 1262,
+      "end_line": 1290
     },
     {
       "name": "ClockRenderer::animHr5",
-      "start_line": 1285,
-      "end_line": 1301
+      "start_line": 1292,
+      "end_line": 1308
     },
     {
       "name": "ClockRenderer::animQ4",
-      "start_line": 1303,
-      "end_line": 1325
+      "start_line": 1310,
+      "end_line": 1332
     },
     {
       "name": "ClockRenderer::animQ5",
-      "start_line": 1327,
-      "end_line": 1346
+      "start_line": 1334,
+      "end_line": 1353
     },
     {
       "name": "ClockRenderer::animQ6",
-      "start_line": 1348,
-      "end_line": 1361
+      "start_line": 1355,
+      "end_line": 1368
     },
     {
       "name": "ClockRenderer::animH4",
-      "start_line": 1363,
-      "end_line": 1381
+      "start_line": 1370,
+      "end_line": 1388
     },
     {
       "name": "ClockRenderer::animH5",
-      "start_line": 1383,
-      "end_line": 1401
+      "start_line": 1390,
+      "end_line": 1408
     },
     {
       "name": "ClockRenderer::animH6",
-      "start_line": 1403,
-      "end_line": 1425
+      "start_line": 1410,
+      "end_line": 1432
     },
     {
       "name": "ClockRenderer::animH7",
-      "start_line": 1427,
-      "end_line": 1446
+      "start_line": 1434,
+      "end_line": 1453
     },
     {
       "name": "ClockRenderer::animHr6",
-      "start_line": 1448,
-      "end_line": 1479
+      "start_line": 1455,
+      "end_line": 1486
     },
     {
       "name": "ClockRenderer::animHr7",
-      "start_line": 1481,
-      "end_line": 1499
+      "start_line": 1488,
+      "end_line": 1506
     },
     {
       "name": "ClockRenderer::animHr8",
-      "start_line": 1501,
-      "end_line": 1517
+      "start_line": 1508,
+      "end_line": 1524
     },
     {
       "name": "ClockRenderer::animHr9",
-      "start_line": 1519,
-      "end_line": 1544
+      "start_line": 1526,
+      "end_line": 1551
     },
     {
       "name": "ClockRenderer::animHr10",
-      "start_line": 1546,
-      "end_line": 1571
+      "start_line": 1553,
+      "end_line": 1578
     },
     {
       "name": "ClockRenderer::animRem1",
-      "start_line": 1573,
-      "end_line": 1599
+      "start_line": 1580,
+      "end_line": 1606
     },
     {
       "name": "ClockRenderer::animRem2",
-      "start_line": 1601,
-      "end_line": 1621
+      "start_line": 1608,
+      "end_line": 1628
     },
     {
       "name": "ClockRenderer::animRem3",
-      "start_line": 1623,
-      "end_line": 1645
+      "start_line": 1630,
+      "end_line": 1652
     },
     {
       "name": "ClockRenderer::animRem4",
-      "start_line": 1647,
-      "end_line": 1677
+      "start_line": 1654,
+      "end_line": 1684
     },
     {
       "name": "ClockRenderer::animRem5",
-      "start_line": 1679,
-      "end_line": 1705
+      "start_line": 1686,
+      "end_line": 1712
     },
     {
       "name": "ClockRenderer::animRem6",
-      "start_line": 1707,
-      "end_line": 1723
+      "start_line": 1714,
+      "end_line": 1730
     },
     {
       "name": "ClockRenderer::chimeActive",
-      "start_line": 1725,
-      "end_line": 1727
+      "start_line": 1732,
+      "end_line": 1734
     },
     {
       "name": "ClockRenderer::statusActive",
-      "start_line": 1729,
-      "end_line": 1731
+      "start_line": 1736,
+      "end_line": 1738
     },
     {
       "name": "ClockRenderer::logShow",
-      "start_line": 1733,
-      "end_line": 1757
-    },
-    {
-      "name": "ClockRenderer::dim",
-      "start_line": 1759,
+      "start_line": 1740,
       "end_line": 1764
     },
     {
-      "name": "ClockRenderer::scale",
+      "name": "ClockRenderer::dim",
       "start_line": 1766,
-      "end_line": 1773
+      "end_line": 1771
+    },
+    {
+      "name": "ClockRenderer::scale",
+      "start_line": 1773,
+      "end_line": 1780
     },
     {
       "name": "ClockRenderer::pulse",
-      "start_line": 1775,
-      "end_line": 1782
+      "start_line": 1782,
+      "end_line": 1789
     },
     {
       "name": "ClockRenderer::centerIdleActive",
-      "start_line": 1784,
-      "end_line": 1786
+      "start_line": 1791,
+      "end_line": 1793
     },
     {
       "name": "ClockRenderer::renderCenterIdle",
-      "start_line": 1788,
-      "end_line": 1797
+      "start_line": 1795,
+      "end_line": 1804
     },
     {
       "name": "ClockRenderer::setCenterPixel",
-      "start_line": 1799,
-      "end_line": 1813
+      "start_line": 1806,
+      "end_line": 1820
     },
     {
       "name": "ClockRenderer::setSacrificialPixelDark",
-      "start_line": 1815,
-      "end_line": 1821
+      "start_line": 1822,
+      "end_line": 1828
     },
     {
       "name": "ClockRenderer::setRingPixel",
-      "start_line": 1823,
-      "end_line": 1833
+      "start_line": 1830,
+      "end_line": 1840
     },
     {
       "name": "TemperatureInput::begin",
-      "start_line": 1857,
-      "end_line": 1857
+      "start_line": 1864,
+      "end_line": 1864
     },
     {
       "name": "TemperatureInput::available",
-      "start_line": 1858,
-      "end_line": 1858
-    },
-    {
-      "name": "TemperatureInput::celsius",
-      "start_line": 1859,
-      "end_line": 1859
-    },
-    {
-      "name": "TimeSync::TimeSync",
       "start_line": 1865,
       "end_line": 1865
     },
     {
+      "name": "TemperatureInput::celsius",
+      "start_line": 1866,
+      "end_line": 1866
+    },
+    {
+      "name": "TimeSync::TimeSync",
+      "start_line": 1872,
+      "end_line": 1872
+    },
+    {
       "name": "TimeSync::begin",
-      "start_line": 1867,
-      "end_line": 1877
+      "start_line": 1874,
+      "end_line": 1884
     },
     {
       "name": "TimeSync::syncNow",
-      "start_line": 1879,
-      "end_line": 1903
+      "start_line": 1886,
+      "end_line": 1910
     },
     {
       "name": "TimeSync::loop",
-      "start_line": 1905,
-      "end_line": 1915
+      "start_line": 1912,
+      "end_line": 1922
     },
     {
       "name": "TimeSync::synced",
-      "start_line": 1917,
-      "end_line": 1917
+      "start_line": 1924,
+      "end_line": 1924
     },
     {
       "name": "TimeSync::lastDeltaSec",
-      "start_line": 1919,
-      "end_line": 1919
+      "start_line": 1926,
+      "end_line": 1926
     },
     {
       "name": "setupWiFi",
-      "start_line": 1937,
-      "end_line": 2017
+      "start_line": 1944,
+      "end_line": 2024
     },
     {
       "name": "setupOTA",
-      "start_line": 2020,
-      "end_line": 2055
+      "start_line": 2027,
+      "end_line": 2062
     },
     {
       "name": "DemoMode::DemoMode",
-      "start_line": 2068,
-      "end_line": 2069
-    },
-    {
-      "name": "DemoMode::start",
-      "start_line": 2071,
+      "start_line": 2075,
       "end_line": 2076
     },
     {
-      "name": "DemoMode::stop",
+      "name": "DemoMode::start",
       "start_line": 2078,
-      "end_line": 2081
+      "end_line": 2083
+    },
+    {
+      "name": "DemoMode::stop",
+      "start_line": 2085,
+      "end_line": 2088
     },
     {
       "name": "DemoMode::loop",
-      "start_line": 2083,
-      "end_line": 2162
+      "start_line": 2090,
+      "end_line": 2169
     },
     {
       "name": "DemoMode::statusJson",
-      "start_line": 2164,
-      "end_line": 2178
+      "start_line": 2171,
+      "end_line": 2185
     },
     {
       "name": "WebUi::setLuxSensor",
-      "start_line": 2215,
-      "end_line": 2215
+      "start_line": 2222,
+      "end_line": 2222
     },
     {
       "name": "WebUi::begin",
-      "start_line": 2217,
-      "end_line": 2275
+      "start_line": 2224,
+      "end_line": 2282
     },
     {
       "name": "WebUi::loop",
-      "start_line": 2277,
-      "end_line": 2291
+      "start_line": 2284,
+      "end_line": 2298
     },
     {
       "name": "WebUi::enabled",
-      "start_line": 2293,
-      "end_line": 2293
+      "start_line": 2300,
+      "end_line": 2300
     },
     {
       "name": "WebUi::apMode",
-      "start_line": 2294,
-      "end_line": 2294
+      "start_line": 2301,
+      "end_line": 2301
     },
     {
       "name": "WebUi::setupRoutes",
-      "start_line": 2299,
-      "end_line": 2631
+      "start_line": 2306,
+      "end_line": 2638
     },
     {
       "name": "WebUi::settingsJson",
-      "start_line": 2633,
-      "end_line": 2687
+      "start_line": 2640,
+      "end_line": 2694
     },
     {
       "name": "WebUi::boolJson",
-      "start_line": 2689,
-      "end_line": 2691
+      "start_line": 2696,
+      "end_line": 2698
     },
     {
       "name": "WebUi::clampByte",
-      "start_line": 2693,
-      "end_line": 2697
+      "start_line": 2700,
+      "end_line": 2704
     },
     {
       "name": "WebUi::clampWord",
-      "start_line": 2699,
-      "end_line": 2703
+      "start_line": 2706,
+      "end_line": 2710
     },
     {
       "name": "WebUi::colorHex",
-      "start_line": 2705,
-      "end_line": 2709
-    },
-    {
-      "name": "WebUi::hexNibble",
-      "start_line": 2711,
+      "start_line": 2712,
       "end_line": 2716
     },
     {
-      "name": "WebUi::parseColor",
+      "name": "WebUi::hexNibble",
       "start_line": 2718,
-      "end_line": 2729
+      "end_line": 2723
+    },
+    {
+      "name": "WebUi::parseColor",
+      "start_line": 2725,
+      "end_line": 2736
     },
     {
       "name": "WebUi::wifiStatusText",
-      "start_line": 2731,
-      "end_line": 2750
+      "start_line": 2738,
+      "end_line": 2757
     },
     {
       "name": "WebUi::htmlPage",
-      "start_line": 2752,
-      "end_line": 2752
+      "start_line": 2759,
+      "end_line": 2759
     },
     {
       "name": "FocusReminderScheduler::FocusReminderScheduler",
-      "start_line": 2769,
-      "end_line": 2770
+      "start_line": 2776,
+      "end_line": 2777
     },
     {
       "name": "FocusReminderScheduler::checkAndFire",
-      "start_line": 2772,
-      "end_line": 2805
+      "start_line": 2779,
+      "end_line": 2812
     },
     {
       "name": "FocusReminderScheduler::getDayOfWeek",
-      "start_line": 2808,
-      "end_line": 2813
+      "start_line": 2815,
+      "end_line": 2820
     },
     {
       "name": "FocusReminderScheduler::triggerReminderAnimation",
-      "start_line": 2815,
-      "end_line": 2817
+      "start_line": 2822,
+      "end_line": 2824
     },
     {
       "name": "ButtonInput::begin",
-      "start_line": 2829,
-      "end_line": 2832
+      "start_line": 2836,
+      "end_line": 2839
     },
     {
       "name": "ButtonInput::poll",
-      "start_line": 2834,
-      "end_line": 2887
+      "start_line": 2841,
+      "end_line": 2894
     },
     {
       "name": "ButtonInput::consumeUp",
-      "start_line": 2891,
-      "end_line": 2896
+      "start_line": 2898,
+      "end_line": 2903
     },
     {
       "name": "ButtonInput::consumeDown",
-      "start_line": 2897,
-      "end_line": 2902
+      "start_line": 2904,
+      "end_line": 2909
     },
     {
       "name": "ButtonInput::consumeUpPress",
-      "start_line": 2905,
-      "end_line": 2905
+      "start_line": 2912,
+      "end_line": 2912
     },
     {
       "name": "ButtonInput::consumeDownPress",
-      "start_line": 2906,
-      "end_line": 2906
+      "start_line": 2913,
+      "end_line": 2913
     },
     {
       "name": "setupDemoModeRoutes",
-      "start_line": 2957,
-      "end_line": 2961
+      "start_line": 2964,
+      "end_line": 2968
     },
     {
       "name": "logRuntimeStatus",
-      "start_line": 2963,
-      "end_line": 3003
+      "start_line": 2970,
+      "end_line": 3010
     },
     {
       "name": "setup",
-      "start_line": 3005,
-      "end_line": 3144
+      "start_line": 3012,
+      "end_line": 3151
     },
     {
       "name": "loop",
-      "start_line": 3146,
-      "end_line": 3213
+      "start_line": 3153,
+      "end_line": 3220
     }
   ]
 }
