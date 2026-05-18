@@ -3231,7 +3231,7 @@ void loop() {
   }
 
   if (renderer.animating()) {
-    renderer.renderAnimFrame(now);
+    renderer.renderAnimFrame(millis());  // fresh millis(): animStartMs_ may be newer than loop's now
     if (!renderer.animating()) {
       timeModel.markDirty();
     }

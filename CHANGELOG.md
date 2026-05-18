@@ -5,6 +5,17 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.6] — 2026-05-17
+
+### Fixed
+- **`renderAnimFrame` uint32 underflow — preview always 1-frame flicker** (`src/main.cpp` `loop()`): `loop()` captures `now = millis()` before `webUi.loop()` runs. The `/previewAnimation` HTTP handler (inside `webUi.loop()`) calls `triggerAnimDirect(..., millis())`, setting `animStartMs_` to a timestamp newer than `now`. `renderer.renderAnimFrame(now)` then computed `elapsed = now - animStartMs_` → uint32 underflow → ~4.3 billion → `elapsed >= 5000` immediately true → animation terminated on frame 1. Every web preview fired exactly one frame (a flicker) and ended. Scheduled animations at `:00/:15/:30/:45` were unaffected because their triggers pass the same stale `now`. Fix: `renderAnimFrame(now)` → `renderAnimFrame(millis())`. This bug has been present since v2.1.0 (Session 12).
+
+### Files changed
+- `src/main.cpp` — `loop()` line 3233
+- `platformio.ini` — `FIRMWARE_VERSION` 2.3.5 → 2.3.6
+
+---
+
 ## [v2.3.5] — 2026-05-17
 
 ### Added

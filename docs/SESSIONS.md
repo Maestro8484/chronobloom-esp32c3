@@ -36,10 +36,18 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 24 | animQ3 palette fix + saveAnimStyle silent (v2.3.3) | Replace renderFace() in animQ3 with paletteColor ring fill; suppress STATUS_SETTINGS_SAVED flash from Save Style button | Done (2026-05-17, v2.3.3) |
 | 25 | Browser cache fix (v2.3.4) | Add Cache-Control: no-cache header to / GET — browser was serving stale cached page, making all JS fixes since v2.3.2 invisible | Done (2026-05-17, v2.3.4) |
 | 26 | /diag diagnostic fields (v2.3.5) | Add anim_phase, last_anim_source, last_anim_mode, settings_save_count to /diag JSON | Done (2026-05-17, v2.3.5) |
+| 27 | renderAnimFrame uint32 underflow fix (v2.3.6) | loop() captures now before webUi.loop(); handler sets animStartMs_ to newer millis(); renderAnimFrame(now) underflows → 1-frame flicker. Fix: renderAnimFrame(millis()) | Done (2026-05-17, v2.3.6) |
 
 ---
 
 ## Completed Sessions
+
+### Session 27 — renderAnimFrame uint32 Underflow Fix (Done 2026-05-17, v2.3.6)
+- **Root cause**: `loop()` captures `const uint32_t now = millis()` at the top (line 3191) before `webUi.loop()`. The `/previewAnimation` handler runs inside `webUi.loop()` and calls `triggerAnimDirect(..., millis())`, setting `animStartMs_` to a timestamp **newer** than `now`. Then `renderer.renderAnimFrame(now)` computes `elapsed = now - animStartMs_` → uint32 underflow → ~4,294,967,295 ms → `if (elapsed >= 5000)` is immediately true → animation sets `animPhase_ = ANIM_IDLE` and returns on frame 1. User sees a single-frame flicker. Every preview, every time.
+- **Why scheduled animations worked**: `triggerHourAnimation(now)` / `triggerQuarterAnimation(now)` / `triggerHalfHourAnimation(now)` all receive the same stale `now` from the top of loop, so `animStartMs_ = now` exactly. `elapsed = now - now = 0`. No underflow.
+- **Fix** (`src/main.cpp` `loop()` line 3233): Changed `renderer.renderAnimFrame(now)` → `renderer.renderAnimFrame(millis())`. Fresh `millis()` at render time guarantees `animStartMs_ <= render_now` regardless of when the trigger was set. One-character conceptual change, one line of code.
+- **Build**: `esp32c3_v3_8inch` SUCCESS.
+- **Note**: This bug has been present since preview was first added in v2.1.0 (Session 12). All prior session attempts to fix "preview has no effect" addressed the wrong layers (JS, settings POST, palette/brightness logic) — the animation was always rendering correctly but terminating in 1 frame before any pixels were shown.
 
 ### Session 26 — /diag Diagnostic Fields (Done 2026-05-17, v2.3.5)
 - **`anim_phase`** (`src/main.cpp`): Added `ClockRenderer::animPhaseName()` — switch on `animPhase_` returning short string names ("idle", "Q1"–"Q6", "H1"–"H7", "Hr1"–"Hr10", "Rem1"–"Rem6"). Shows what the renderer is actually doing at poll time.
