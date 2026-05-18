@@ -411,13 +411,17 @@ class SettingsStore {
   void update(const ClockSettings &settings) {
     settings_ = sanitize(settings);
     save();
+    settingsSaveCount_++;
   }
+
+  uint16_t saveCount() const { return settingsSaveCount_; }
 
   void resetToDefaults() {
     uint8_t zero = 0;
     EEPROM.put(0, zero);  // invalidate magic so begin() resets on next boot
     EEPROM.commit();
     settings_ = defaults();
+    settingsSaveCount_++;
   }
 
  private:
@@ -509,6 +513,7 @@ class SettingsStore {
   }
 
   ClockSettings settings_ = defaults();
+  uint16_t settingsSaveCount_ = 0;
 };
 
 // ===================== Time model =====================
@@ -685,6 +690,7 @@ class ClockRenderer {
     animStartMs_ = now;
     animStep_ = 255;  // force first-frame update
     animHue_ = 0;
+    lastAnimSource_ = "quarter"; lastAnimMode_ = mode;
   }
 
   void triggerHalfHourAnimation(uint32_t now) {
@@ -694,6 +700,7 @@ class ClockRenderer {
     animStartMs_ = now;
     animStep_ = 255;
     animHue_ = 0;
+    lastAnimSource_ = "halfhour"; lastAnimMode_ = mode;
   }
 
   void triggerHourAnimation(uint32_t now) {
@@ -703,6 +710,7 @@ class ClockRenderer {
     animStartMs_ = now;
     animStep_ = 255;
     animHue_ = 0;
+    lastAnimSource_ = "hour"; lastAnimMode_ = mode;
   }
 
   void triggerAnimDirect(AnimPhase phase, uint32_t now) {
@@ -710,6 +718,7 @@ class ClockRenderer {
     animStartMs_ = now;
     animStep_    = 255;
     animHue_     = 0;
+    lastAnimSource_ = "preview"; lastAnimMode_ = (uint8_t)phase;
   }
 
   void triggerReminderDirectAnimation(uint8_t mode, uint32_t now) {
@@ -728,9 +737,29 @@ class ClockRenderer {
     animStartMs_ = now;
     animStep_    = 0;
     animHue_     = 0;
+    lastAnimSource_ = "reminder"; lastAnimMode_ = mode;
   }
 
   bool animating() const { return animPhase_ != ANIM_IDLE; }
+  const char* lastAnimSource() const { return lastAnimSource_; }
+  uint8_t lastAnimMode() const { return lastAnimMode_; }
+  const char* animPhaseName() const {
+    switch (animPhase_) {
+      case ANIM_IDLE: return "idle";
+      case ANIM_Q1:   return "Q1";  case ANIM_Q2:  return "Q2";  case ANIM_Q3:  return "Q3";
+      case ANIM_Q4:   return "Q4";  case ANIM_Q5:  return "Q5";  case ANIM_Q6:  return "Q6";
+      case ANIM_H1:   return "H1";  case ANIM_H2:  return "H2";  case ANIM_H3:  return "H3";
+      case ANIM_H4:   return "H4";  case ANIM_H5:  return "H5";  case ANIM_H6:  return "H6";
+      case ANIM_H7:   return "H7";
+      case ANIM_HR1:  return "Hr1"; case ANIM_HR2:  return "Hr2"; case ANIM_HR3:  return "Hr3";
+      case ANIM_HR4:  return "Hr4"; case ANIM_HR5:  return "Hr5"; case ANIM_HR6:  return "Hr6";
+      case ANIM_HR7:  return "Hr7"; case ANIM_HR8:  return "Hr8"; case ANIM_HR9:  return "Hr9";
+      case ANIM_HR10: return "Hr10";
+      case ANIM_REM1: return "Rem1"; case ANIM_REM2: return "Rem2"; case ANIM_REM3: return "Rem3";
+      case ANIM_REM4: return "Rem4"; case ANIM_REM5: return "Rem5"; case ANIM_REM6: return "Rem6";
+      default:        return "?";
+    }
+  }
 
   void renderAnimFrame(uint32_t now) {
     const ClockSettings &settings = settings_.get();
@@ -1851,6 +1880,8 @@ class ClockRenderer {
   uint32_t animStartMs_ = 0;
   uint8_t animStep_ = 0;
   uint32_t animHue_ = 0;
+  const char* lastAnimSource_ = "none";
+  uint8_t lastAnimMode_ = 0;
   uint32_t lastShowMs_ = 0;
   uint32_t renderCount_ = 0;
   uint32_t minFrameMs_ = 0xFFFFFFFFu;
@@ -2377,7 +2408,7 @@ class WebUi {
           : ds.dayBrightness;
       uint8_t mid_amb_scale = max((uint8_t)1, (uint8_t)(ds.hoursLevel / 6));
       uint8_t inn_amb_scale = max((uint8_t)1, (uint8_t)(ds.centerLevel / 6));
-      char buf[1536];
+      char buf[1600];
       snprintf(buf, sizeof(buf),
         "{\"uptime_sec\":%lu,\"firmware_version\":\"%s\",\"settings_version\":%u"
         ",\"time\":\"%02u:%02u:%02u\""
@@ -2389,7 +2420,9 @@ class WebUi {
         ",\"middle_ambient_scale\":%u,\"inner_ambient_scale\":%u"
         ",\"button_event_count\":%lu,\"free_heap\":%lu"
         ",\"clock_pixel_count\":%u,\"ring_pixel_offset\":%u"
-        ",\"outer_ring_offset\":%u,\"sacrificial_enabled\":%s}",
+        ",\"outer_ring_offset\":%u,\"sacrificial_enabled\":%s"
+        ",\"anim_phase\":\"%s\",\"last_anim_source\":\"%s\",\"last_anim_mode\":%u"
+        ",\"settings_save_count\":%u}",
         (unsigned long)uptimeSec, FIRMWARE_VERSION, (unsigned)SETTINGS_VERSION,
         (unsigned)t.hour, (unsigned)t.minute, (unsigned)t.second,
         timeSync_.synced() ? "true" : "false", (int)timeSync_.lastDeltaSec(),
@@ -2402,7 +2435,9 @@ class WebUi {
         (unsigned long)g_buttonEventCount, (unsigned long)ESP.getFreeHeap(),
         (unsigned)CLOCK_PIXEL_COUNT, (unsigned)RING_PIXEL_OFFSET,
         (unsigned)ds.outerRingOffset,
-        SACRIFICIAL_PIXEL_ENABLED ? "true" : "false");
+        SACRIFICIAL_PIXEL_ENABLED ? "true" : "false",
+        renderer_.animPhaseName(), renderer_.lastAnimSource(), (unsigned)renderer_.lastAnimMode(),
+        (unsigned)settings_.saveCount());
       server_.send(200, "application/json", buf);
     });
 

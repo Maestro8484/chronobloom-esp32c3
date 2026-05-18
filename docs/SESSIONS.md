@@ -35,10 +35,20 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 23 | Preview/palette/speed fix (v2.3.2) | Fix preview not applying unsaved sliders, suppress settings-saved flash, add palette+speed to animH1/animHr4/animQ3 | Done (2026-05-17, v2.3.2) |
 | 24 | animQ3 palette fix + saveAnimStyle silent (v2.3.3) | Replace renderFace() in animQ3 with paletteColor ring fill; suppress STATUS_SETTINGS_SAVED flash from Save Style button | Done (2026-05-17, v2.3.3) |
 | 25 | Browser cache fix (v2.3.4) | Add Cache-Control: no-cache header to / GET — browser was serving stale cached page, making all JS fixes since v2.3.2 invisible | Done (2026-05-17, v2.3.4) |
+| 26 | /diag diagnostic fields (v2.3.5) | Add anim_phase, last_anim_source, last_anim_mode, settings_save_count to /diag JSON | Done (2026-05-17, v2.3.5) |
 
 ---
 
 ## Completed Sessions
+
+### Session 26 — /diag Diagnostic Fields (Done 2026-05-17, v2.3.5)
+- **`anim_phase`** (`src/main.cpp`): Added `ClockRenderer::animPhaseName()` — switch on `animPhase_` returning short string names ("idle", "Q1"–"Q6", "H1"–"H7", "Hr1"–"Hr10", "Rem1"–"Rem6"). Shows what the renderer is actually doing at poll time.
+- **`last_anim_source` + `last_anim_mode`** (`src/main.cpp`): Added `lastAnimSource_` (const char*) and `lastAnimMode_` (uint8_t) member vars to `ClockRenderer`, initialized to "none"/0. Set by all five trigger functions: "quarter" (mode=quarterAnimation), "halfhour" (mode=halfHourAnimation), "hour" (mode=hourAnimation), "reminder" (mode=focusReminder_animation), "preview" (mode=AnimPhase ordinal). Persists after animation ends so it shows what last fired, not just what's currently playing.
+- **`settings_save_count`** (`src/main.cpp`): Added `settingsSaveCount_` uint16 to `SettingsStore`, incremented in both `update()` and `resetToDefaults()`. Proves that a `/settings` POST was received and applied — counter bump confirms the silent POST landed.
+- **New public methods**: `SettingsStore::saveCount()`, `ClockRenderer::lastAnimSource()`, `ClockRenderer::lastAnimMode()`, `ClockRenderer::animPhaseName()` — 4 new functions.
+- **`/diag` JSON** (`src/main.cpp` `WebUi::setupRoutes`): Added 4 new fields to `snprintf`. buf expanded 1536 → 1600.
+- **Symmap regenerated**: 139 → 143 functions.
+- **Build**: `esp32c3_v3_8inch` SUCCESS, RAM 11.1%, Flash 57.5%.
 
 ### Session 25 — Browser Cache Fix (Done 2026-05-17, v2.3.4)
 - **Root cause — browser caching the HTML page**: The `/` GET handler had no `Cache-Control` header. Browsers (Chrome, Edge, Firefox) cache responses with no cache directives, meaning every firmware OTA flash left the browser serving the old page with old JS. This silently nullified every JS change made in v2.3.1, v2.3.2, and v2.3.3 — the user never ran the new preview/save logic.

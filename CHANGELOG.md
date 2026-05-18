@@ -5,6 +5,22 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.3.5] — 2026-05-17
+
+### Added
+- **`/diag` — `anim_phase`**: Current animation phase as a short string ("idle", "Q1"–"Q6", "H1"–"H7", "Hr1"–"Hr10", "Rem1"–"Rem6"). Shows what is actually rendering at poll time.
+- **`/diag` — `last_anim_source`**: Source of the last animation trigger: "quarter", "halfhour", "hour", "reminder", or "preview". Persists after the animation ends.
+- **`/diag` — `last_anim_mode`**: Mode number of the last animation trigger (matches the UI dropdown value; for "preview" source, carries the AnimPhase ordinal).
+- **`/diag` — `settings_save_count`**: Count of `SettingsStore::update()` calls since boot. A bump here proves a `/settings` POST was received and applied.
+
+### Files changed
+- `src/main.cpp` — `SettingsStore::update`, `resetToDefaults`, `saveCount` (new); `ClockRenderer` member vars, `animPhaseName` (new), `lastAnimSource` (new), `lastAnimMode` (new), all five trigger functions, `/diag` handler
+- `platformio.ini` — `FIRMWARE_VERSION` 2.3.4 → 2.3.5
+- `docs/symmap.json` — regenerated (139 → 143 functions)
+- `docs/FUNCTION_INVENTORY.md` — regenerated
+
+---
+
 ## [v2.3.4] — 2026-05-17
 
 ### Fixed
