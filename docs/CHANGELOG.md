@@ -2,6 +2,58 @@
 
 > Formerly neopixelClock-esp32c3-v3
 
+## [2.4.1] - 2026-05-18
+
+### Fixed
+- 8-inch factory defaults now use the same software ring rotation that the physical clock requires: `DEFAULT_OUTER_RING_OFFSET=1`.
+- Reset-to-defaults now restores `outerRingOffset` from the build-time default instead of hardcoding `0`.
+- 8-inch LED geometry remains explicit and valid: physical pixel 0 is sacrificial, ring pixels are 1-96, center pixel is 97, total strip count is 98.
+
+### Changed
+- `/diag` now reports `default_outer_ring_offset` beside the live saved `outer_ring_offset`.
+- Serial LED status now prints `defaultRot` beside the live software rotation.
+- Project docs now use the ChronoBloom anchor phrase and no longer reference the retired project nickname.
+- `FIRMWARE_VERSION` bumped `2.3.6` -> `2.4.1`.
+
+### Functions modified
+- `SettingsStore::defaults()` - uses `DEFAULT_OUTER_RING_OFFSET` for factory `outerRingOffset`.
+- `SettingsStore::sanitize()` - falls back to `DEFAULT_OUTER_RING_OFFSET` for invalid persisted ring rotations.
+- `WebUi::setupRoutes()` - adds `default_outer_ring_offset` to `/diag`.
+- `logRuntimeStatus()` - prints default software rotation in the serial status line.
+
+### Files changed
+- `platformio.ini` - firmware version, 8-inch/15-inch default outer ring rotation build flags.
+- `src/main.cpp` - build-time default rotation macro, validation, defaults, diagnostics.
+- `AGENTS.md`, `CLAUDE.md`, `WORKFLOW.md` - ChronoBloom wording cleanup.
+- `docs/symmap.json`, `docs/FUNCTION_INVENTORY.md` - regenerated.
+- `docs/CHANGELOG.md`, `docs/SESSIONS.md`, `docs/SESSION_CLOSURE.md` - closure documentation.
+
+---
+
+## [2.4.0] - 2026-05-18
+
+### Changed
+- Replaced the previous 29 animation modes with a smaller set of 16 smoother, palette-aware animations: quarter x3, half-hour x3, hour x5, reminder x5.
+- Tightened animation validation and sanitization limits to match the reduced mode counts.
+- Updated reminder routing and animation phase names so removed animation modes are no longer exposed internally.
+- Updated Web UI animation and focus reminder dropdown labels to match the new animation set.
+
+### Functions modified
+- `SettingsStore::valid()` - clamps animation mode maxima to the new supported mode counts.
+- `SettingsStore::sanitize()` - resets removed animation modes to `0`.
+- `ClockRenderer::triggerReminderDirectAnimation()` - maps reminder modes to the five remaining dedicated reminder animations.
+- `ClockRenderer::animPhaseName()` - removes labels for deleted animation phases.
+- `ClockRenderer::tickAnimation()` - dispatches only the retained animation functions.
+- `ClockRenderer::animQ1()` through `ClockRenderer::animRem5()` - replaced with the new animation implementations.
+
+### Files changed
+- `src/main.cpp` - animation implementation overhaul and mode bounds.
+- `src/web_html.h` - Web UI animation option labels and removed modes.
+- `docs/symmap.json`, `docs/FUNCTION_INVENTORY.md` - regenerated for shifted function ranges and reduced function count.
+- `docs/SESSIONS.md` - session closure entry.
+
+---
+
 ## [2.1.0] — 2026-05-16 (docs)
 
 ### Documentation

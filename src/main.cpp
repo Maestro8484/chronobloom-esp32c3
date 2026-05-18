@@ -58,6 +58,10 @@ using ClockWebServer = WebServer;
 #define RING_PIXEL_OFFSET 2
 #endif
 
+#ifndef DEFAULT_OUTER_RING_OFFSET
+#define DEFAULT_OUTER_RING_OFFSET 0
+#endif
+
 #ifndef SACRIFICIAL_PIXEL_ENABLED
 #define SACRIFICIAL_PIXEL_ENABLED 0
 #endif
@@ -141,6 +145,10 @@ constexpr RingConfig RING_INNER_12 = {12, RING_PIXEL_OFFSET + 84, true};
 
 #if (RING_PIXEL_OFFSET + 96) > CLOCK_PIXEL_COUNT
 #error "RING_PIXEL_OFFSET leaves too few pixels for the 60+24+12 ring chain."
+#endif
+
+#if (DEFAULT_OUTER_RING_OFFSET < 0) || (DEFAULT_OUTER_RING_OFFSET >= 60)
+#error "DEFAULT_OUTER_RING_OFFSET must be in the 0-59 LED range."
 #endif
 
 #if CENTER_PIXEL_ENABLED && !CENTER_PIXEL_SEPARATE_OUTPUT && (CENTER_PIXEL_INDEX >= RING_PIXEL_OFFSET) && (CENTER_PIXEL_INDEX < (RING_PIXEL_OFFSET + 96))
@@ -436,7 +444,7 @@ class SettingsStore {
             1,   10,  255,        // autoBrightness: mode=auto, min=10, max=255
             3,   1,   4,   1,     // animations: shimmer, sweep, spiral, enabled
             0,   8,   22,   60,   0, 0, 60, 60,  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
-            0,   // outerRingOffset: no rotation
+            DEFAULT_OUTER_RING_OFFSET,   // outerRingOffset: build-time default rotation
             0, 3, 200, 4, 0,      // animPalette, animSpeed, animBrightness, trailLength, reminderPalette
             90}; // outerRingBrightness
   }
@@ -449,14 +457,14 @@ class SettingsStore {
            settings.progressSeconds <= 1 && settings.hourlyChime <= 1 &&
            settings.statusAnimations <= 1 && settings.autoBrightnessMode <= 2 &&
            settings.minAutoBrightness <= 255 && settings.maxAutoBrightness <= 255 &&
-           settings.quarterAnimation <= 6 && settings.halfHourAnimation <= 7 &&
-           settings.hourAnimation <= 10 && settings.intervalAnimationsEnabled <= 1 &&
+           settings.quarterAnimation <= 3 && settings.halfHourAnimation <= 3 &&
+           settings.hourAnimation <= 5 && settings.intervalAnimationsEnabled <= 1 &&
            settings.focusReminder_enabled <= 1 &&
            settings.focusReminder_startHour < 24 &&
            settings.focusReminder_endHour < 24 &&
            settings.focusReminder_intervalMinutes >= 1 && settings.focusReminder_intervalMinutes <= 1440 &&
            settings.focusReminder_daysMask <= 127 &&
-           settings.focusReminder_animation <= 11 &&
+           settings.focusReminder_animation <= 10 &&
            settings.focusReminder_durationSeconds >= 1 && settings.focusReminder_durationSeconds <= 60 &&
            settings.outerRingOffset < 60 &&
            settings.animationPalette <= 7 &&
@@ -482,9 +490,9 @@ class SettingsStore {
       settings.minAutoBrightness = 10;
       settings.maxAutoBrightness = 255;
     }
-    if (settings.quarterAnimation > 6) settings.quarterAnimation = 0;
-    if (settings.halfHourAnimation > 7) settings.halfHourAnimation = 0;
-    if (settings.hourAnimation > 10) settings.hourAnimation = 0;
+    if (settings.quarterAnimation > 3) settings.quarterAnimation = 0;
+    if (settings.halfHourAnimation > 3) settings.halfHourAnimation = 0;
+    if (settings.hourAnimation > 5) settings.hourAnimation = 0;
     settings.intervalAnimationsEnabled = settings.intervalAnimationsEnabled ? 1 : 0;
     settings.focusReminder_enabled = settings.focusReminder_enabled ? 1 : 0;
     if (settings.focusReminder_startHour >= 24) settings.focusReminder_startHour = 8;
@@ -492,10 +500,10 @@ class SettingsStore {
     if (settings.focusReminder_intervalMinutes < 1) settings.focusReminder_intervalMinutes = 60;
     if (settings.focusReminder_intervalMinutes > 1440) settings.focusReminder_intervalMinutes = 1440;
     settings.focusReminder_daysMask &= 127;  // Mask to 7 bits (Sun-Sat)
-    if (settings.focusReminder_animation > 11) settings.focusReminder_animation = 0;
+    if (settings.focusReminder_animation > 10) settings.focusReminder_animation = 0;
     if (settings.focusReminder_durationSeconds < 1) settings.focusReminder_durationSeconds = 60;
     if (settings.focusReminder_durationSeconds > 60) settings.focusReminder_durationSeconds = 60;
-    if (settings.outerRingOffset >= 60) settings.outerRingOffset = 0;
+    if (settings.outerRingOffset >= 60) settings.outerRingOffset = DEFAULT_OUTER_RING_OFFSET;
     if (settings.animationPalette > 7) settings.animationPalette = 0;
     if (settings.animationSpeed < 1 || settings.animationSpeed > 5) settings.animationSpeed = 3;
     if (settings.animationBrightness < 50) settings.animationBrightness = 200;
@@ -729,10 +737,10 @@ class ClockRenderer {
     if (mode == 4) { triggerHalfHourAnimation(now); return; }
     if (mode == 5) { triggerHourAnimation(now); return; }
     static const AnimPhase remPhases[] = {
-      ANIM_REM1, ANIM_REM2, ANIM_REM3, ANIM_REM4, ANIM_REM5, ANIM_REM6
+      ANIM_REM1, ANIM_REM2, ANIM_REM3, ANIM_REM4, ANIM_REM5
     };
     const uint8_t idx = mode - 6;
-    if (idx >= 6) return;
+    if (idx >= 5) return;
     animPhase_   = remPhases[idx];
     animStartMs_ = now;
     animStep_    = 0;
@@ -746,17 +754,12 @@ class ClockRenderer {
   const char* animPhaseName() const {
     switch (animPhase_) {
       case ANIM_IDLE: return "idle";
-      case ANIM_Q1:   return "Q1";  case ANIM_Q2:  return "Q2";  case ANIM_Q3:  return "Q3";
-      case ANIM_Q4:   return "Q4";  case ANIM_Q5:  return "Q5";  case ANIM_Q6:  return "Q6";
-      case ANIM_H1:   return "H1";  case ANIM_H2:  return "H2";  case ANIM_H3:  return "H3";
-      case ANIM_H4:   return "H4";  case ANIM_H5:  return "H5";  case ANIM_H6:  return "H6";
-      case ANIM_H7:   return "H7";
-      case ANIM_HR1:  return "Hr1"; case ANIM_HR2:  return "Hr2"; case ANIM_HR3:  return "Hr3";
-      case ANIM_HR4:  return "Hr4"; case ANIM_HR5:  return "Hr5"; case ANIM_HR6:  return "Hr6";
-      case ANIM_HR7:  return "Hr7"; case ANIM_HR8:  return "Hr8"; case ANIM_HR9:  return "Hr9";
-      case ANIM_HR10: return "Hr10";
+      case ANIM_Q1:  return "Q1";  case ANIM_Q2:  return "Q2";  case ANIM_Q3:  return "Q3";
+      case ANIM_H1:  return "H1";  case ANIM_H2:  return "H2";  case ANIM_H3:  return "H3";
+      case ANIM_HR1: return "Hr1"; case ANIM_HR2: return "Hr2"; case ANIM_HR3: return "Hr3";
+      case ANIM_HR4: return "Hr4"; case ANIM_HR5: return "Hr5";
       case ANIM_REM1: return "Rem1"; case ANIM_REM2: return "Rem2"; case ANIM_REM3: return "Rem3";
-      case ANIM_REM4: return "Rem4"; case ANIM_REM5: return "Rem5"; case ANIM_REM6: return "Rem6";
+      case ANIM_REM4: return "Rem4"; case ANIM_REM5: return "Rem5";
       default:        return "?";
     }
   }
@@ -1096,665 +1099,439 @@ class ClockRenderer {
       case ANIM_HR3:  animHr3(now);  break;
       case ANIM_HR4:  animHr4(now);  break;
       case ANIM_HR5:  animHr5(now);  break;
-      case ANIM_Q4:   animQ4(now);   break;
-      case ANIM_Q5:   animQ5(now);   break;
-      case ANIM_Q6:   animQ6(now);   break;
-      case ANIM_H4:   animH4(now);   break;
-      case ANIM_H5:   animH5(now);   break;
-      case ANIM_H6:   animH6(now);   break;
-      case ANIM_H7:   animH7(now);   break;
-      case ANIM_HR6:  animHr6(now);  break;
-      case ANIM_HR7:  animHr7(now);  break;
-      case ANIM_HR8:  animHr8(now);  break;
-      case ANIM_HR9:  animHr9(now);  break;
-      case ANIM_HR10: animHr10(now); break;
       case ANIM_REM1: animRem1(now); break;
       case ANIM_REM2: animRem2(now); break;
       case ANIM_REM3: animRem3(now); break;
       case ANIM_REM4: animRem4(now); break;
       case ANIM_REM5: animRem5(now); break;
-      case ANIM_REM6: animRem6(now); break;
       default: animPhase_ = ANIM_IDLE; break;
     }
   }
 
-  void animQ1(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 600) { animPhase_ = ANIM_IDLE; return; }
-    const uint8_t br = settings_.get().animationBrightness;
-    setCenterPixel(strip_.Color(255, 255, 255));
-    for (uint8_t i = 0; i < 60; i += 15)
-      setRingPixel(RING_OUTER_60, i, strip_.Color(255, 255, 255));
-    if (elapsed < 100) {
-      strip_.setBrightness(br);
-    } else if (elapsed < 500) {
-      strip_.setBrightness((uint8_t)(br - ((elapsed - 100) * br) / 400));
-    } else {
-      strip_.setBrightness(0);
+  // ── Quarter animations (modes 1-3, 2000-2800ms) ──────────────────────────
+
+  void animQ1(uint32_t now) {  // Slow Comet
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 2500;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    const uint8_t tl = s.trailLength;
+    uint8_t env = (se < 300u) ? (uint8_t)((uint32_t)se * br / 300u)
+                : (se > 2200u) ? (uint8_t)((dur - se) * br / 300u) : br;
+    strip_.setBrightness(env);
+    uint8_t pos = (uint8_t)(se * 60u / dur);
+    uint32_t c = paletteColor((uint8_t)(pos * 4u));
+    setRingPixel(RING_OUTER_60, pos, c);
+    for (uint8_t t = 1; t <= tl; t++) {
+      uint8_t tbr = (uint8_t)(255u * (tl - t + 1u) / (tl + 1u));
+      setRingPixel(RING_OUTER_60, (pos + 60u - t) % 60u, scale(c, tbr));
     }
   }
 
-  void animQ2(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
-    const ClockSettings &settings = settings_.get();
-    uint32_t markerColor = ringColor(settings.outerMarkerRed, settings.outerMarkerGreen,
-                                     settings.outerMarkerBlue, settings.animationBrightness);
-    bool bright = (elapsed % 1000) < 500;
-    uint32_t c = bright ? markerColor : scale(markerColor, 128);
-    for (uint8_t i = 0; i < 60; i += 5)
-      setRingPixel(RING_OUTER_60, i, c);
+  void animQ2(uint32_t now) {  // Dual Orbit
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 2800;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    const uint8_t tl = s.trailLength;
+    uint8_t env = (se < 300u) ? (uint8_t)((uint32_t)se * br / 300u)
+                : (se > 2500u) ? (uint8_t)((dur - se) * br / 300u) : br;
+    strip_.setBrightness(env);
+    uint8_t posA = (uint8_t)(se * 120u / dur % 60u);
+    uint8_t posB = (posA + 30u) % 60u;
+    uint32_t cA = paletteColor(0);
+    uint32_t cB = paletteColor(128);
+    setRingPixel(RING_OUTER_60, posA, cA);
+    setRingPixel(RING_OUTER_60, posB, cB);
+    for (uint8_t t = 1; t <= tl; t++) {
+      uint8_t tbr = (uint8_t)(255u * (tl - t + 1u) / (tl + 1u));
+      setRingPixel(RING_OUTER_60, (posA + 60u - t) % 60u, scale(cA, tbr));
+      setRingPixel(RING_OUTER_60, (posB + 60u - t) % 60u, scale(cB, tbr));
+    }
   }
 
-  void animQ3(uint32_t now) {
-    uint32_t elapsed = scaledElapsed(now - animStartMs_);
-    if (elapsed >= 2500) { animPhase_ = ANIM_IDLE; return; }
+  void animQ3(uint32_t now) {  // Bloom Ripple
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 2500;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
     strip_.setBrightness(settings_.get().animationBrightness);
-    const bool bright = (elapsed % 600) < 400;
-    for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-      uint32_t c = paletteColor((uint8_t)(i * 256 / RING_OUTER_60.count));
-      setRingPixel(RING_OUTER_60, i, bright ? c : scale(c, 64));
-    }
-    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) {
-      uint32_t c = paletteColor((uint8_t)(i * 256 / RING_MIDDLE_24.count + 85));
-      setRingPixel(RING_MIDDLE_24, i, bright ? c : scale(c, 64));
-    }
-  }
-
-  void animH1(uint32_t now) {
-    uint32_t elapsed = scaledElapsed(now - animStartMs_);
-    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    if (elapsed < 2000) {
-      uint8_t n = (uint8_t)(elapsed * RING_OUTER_60.count / 2000);
-      for (uint8_t i = 0; i < n; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 256 / RING_OUTER_60.count)));
-    } else {
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 256 / RING_OUTER_60.count)));
-      if (elapsed < 4000) {
-        uint8_t nm = (uint8_t)((elapsed - 2000) * RING_MIDDLE_24.count / 2000);
-        uint8_t ni = (uint8_t)((elapsed - 2000) * RING_INNER_12.count / 2000);
-        for (uint8_t i = 0; i < nm; i++)
-          setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 256 / RING_MIDDLE_24.count + 85)));
-        for (uint8_t i = 0; i < ni; i++)
-          setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 256 / RING_INNER_12.count + 170)));
-      } else {
-        for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-          setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 256 / RING_MIDDLE_24.count + 85)));
-        for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-          setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 256 / RING_INNER_12.count + 170)));
-      }
-    }
-  }
-
-  void animH2(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    uint8_t flash = (uint8_t)(elapsed / 600);
-    if (flash < 3) {
-      bool swapped = (elapsed % 600) >= 300;
-      for (uint8_t i = 0; i < 30; i++) {
-        setRingPixel(RING_OUTER_60, i,      swapped ? strip_.Color(0, 255, 255) : strip_.Color(255, 0, 0));
-        setRingPixel(RING_OUTER_60, i + 30, swapped ? strip_.Color(255, 0, 0)   : strip_.Color(0, 255, 255));
-      }
-    }
-  }
-
-  void animH3(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-    const ClockSettings &settings = settings_.get();
-    uint8_t wave = (uint8_t)(elapsed / 1300);
-    if (wave < 3) {
-      uint32_t phase = elapsed % 1300;
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-        uint8_t brightness = 64 + (uint8_t)((sinf((i + wave * 10) * 0.1f) + 1.0f) * 96.0f);
-        setRingPixel(RING_OUTER_60, i, strip_.Color(0, brightness, brightness));
-      }
-      strip_.setBrightness(phase < 500 ? settings.animationBrightness / 4 : settings.animationBrightness);
-    }
-  }
-
-  void animHr1(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    renderHourlyChime(now);
-  }
-
-  void animHr2(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    uint8_t newStep;
-    if      (elapsed < 500)  newStep = 0;
-    else if (elapsed < 600)  newStep = 1;
-    else if (elapsed < 1000) newStep = 2;
-    else if (elapsed < 1400) newStep = 3;
-    else if (elapsed < 1800) newStep = 4;
-    else                     newStep = 5;
-    if (newStep != animStep_) animStep_ = newStep;
-
-    if (animStep_ >= 1) setCenterPixel(strip_.Color(255, 255, 255));
-    if (animStep_ >= 2) {
-      randomSeed(0xABCD + 2 * 137);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-        setRingPixel(RING_INNER_12, i, strip_.ColorHSV(random(65536)));
-    }
-    if (animStep_ >= 3) {
-      randomSeed(0xABCD + 3 * 137);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV(random(65536)));
-    }
-    if (animStep_ >= 4) {
-      randomSeed(0xABCD + 4 * 137);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV(random(65536)));
-    }
-    if (animStep_ >= 5) {
-      uint8_t sparkStep = (uint8_t)((elapsed - 1800) / 150);
-      randomSeed(0x1234 + sparkStep * 31);
-      if (random(100) < 30)
-        setRingPixel(RING_OUTER_60, (uint8_t)random(60), strip_.Color(255, 255, 255));
-    }
-  }
-
-  void animHr3(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    uint32_t gold = strip_.Color(255, 200, 0);
-    if (elapsed < 1200) {
-      uint8_t n = (uint8_t)(elapsed * 30 / 1200);
-      for (uint8_t i = 0; i < n; i++) {
-        setRingPixel(RING_OUTER_60, i, gold);
-        setRingPixel(RING_OUTER_60, 59 - i, gold);
-      }
-    } else if (elapsed < 1400) {
-      for (uint8_t i = 0; i < 30; i++) {
-        setRingPixel(RING_OUTER_60, i, gold);
-        setRingPixel(RING_OUTER_60, 59 - i, gold);
-      }
-      setCenterPixel(strip_.Color(255, 255, 255));
-    } else if (elapsed < 2600) {
-      uint8_t n = (uint8_t)((elapsed - 1400) * 30 / 1200);
-      for (uint8_t i = n; i < 30; i++) {
-        setRingPixel(RING_OUTER_60, i, gold);
-        setRingPixel(RING_OUTER_60, 59 - i, gold);
-      }
-      setCenterPixel(strip_.Color(255, 255, 255));
-    }
-  }
-
-  void animHr4(uint32_t now) {
-    uint32_t elapsed = scaledElapsed(now - animStartMs_);
-    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    uint8_t outerN, middleN, innerN;
-    if (elapsed < 2400) {
-      outerN = (uint8_t)(elapsed * 120 / 2400); middleN = 0; innerN = 0;
-    } else if (elapsed < 4320) {
-      outerN = 120; middleN = (uint8_t)((elapsed - 2400) * 48 / 1920); innerN = 0;
-    } else if (elapsed < 5760) {
-      outerN = 120; middleN = 48; innerN = (uint8_t)((elapsed - 4320) * 24 / 1440);
-    } else {
-      outerN = 120; middleN = 48; innerN = 24;
-    }
-    {
-      for (uint8_t p = 0; p < outerN; p++)
-        setRingPixel(RING_OUTER_60, p % RING_OUTER_60.count, paletteColor((uint8_t)(p * 256 / 120)));
-    }
-    {
-      for (uint8_t p = 0; p < middleN; p++) {
-        uint8_t idx = (uint8_t)((RING_MIDDLE_24.count * 2 - 1 - p) % RING_MIDDLE_24.count);
-        setRingPixel(RING_MIDDLE_24, idx, paletteColor((uint8_t)(p * 256 / 48)));
-      }
-    }
-    {
-      for (uint8_t p = 0; p < innerN; p++)
-        setRingPixel(RING_INNER_12, p % RING_INNER_12.count, paletteColor((uint8_t)(p * 256 / 24)));
-    }
-  }
-
-  void animHr5(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-    uint8_t breathNum = (uint8_t)(elapsed / 1667);
-    uint16_t hue = (uint16_t)(breathNum * 10923u);
-    for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-      setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hue + i * 1092u)));
-    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-      setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hue + i * 2730u)));
-    for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-      setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hue + i * 5461u)));
-    {
-      const uint8_t br = settings_.get().animationBrightness;
-      float breathPhase = (float)(elapsed % 1667) * 3.14159f / 1667.0f;
-      strip_.setBrightness((uint8_t)(br * (0.2f + 0.8f * fabsf(sinf(breathPhase)))));
-    }
-  }
-
-  void animQ4(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 1400) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    const uint8_t tl = settings_.get().trailLength;
-    uint32_t headColor = paletteColor(0);
-    if (se < 600) {
-      uint8_t pos = (uint8_t)(se * 60 / 600) % 60;
-      setRingPixel(RING_OUTER_60, pos, headColor);
-      for (uint8_t t = 1; t <= tl; t++) {
-        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-        setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
-      }
-    } else if (se < 1000) {
-      uint8_t fadeAmt = (uint8_t)(255u - (se - 600u) * 255u / 400u);
-      for (uint8_t t = 0; t < tl; t++) {
-        uint8_t tp = (uint8_t)((60 - t) % 60);
-        uint8_t trailBr = (uint8_t)((uint32_t)fadeAmt * (tl - t) / tl);
-        setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
-      }
-    }
-  }
-
-  void animQ5(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    const uint8_t tl = settings_.get().trailLength;
-    if (se < 1500) {
-      uint8_t pos  = (uint8_t)(se * 60 / 1500) % 60;
-      uint8_t pos2 = (pos + 30) % 60;
-      uint32_t cA = paletteColor(0);
-      uint32_t cB = paletteColor(128);
-      setRingPixel(RING_OUTER_60, pos, cA);
-      setRingPixel(RING_OUTER_60, pos2, cB);
-      for (uint8_t t = 1; t <= tl; t++) {
-        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-        setRingPixel(RING_OUTER_60, (pos  + 60 - t) % 60, scale(cA, trailBr));
-        setRingPixel(RING_OUTER_60, (pos2 + 60 - t) % 60, scale(cB, trailBr));
-      }
-    }
-  }
-
-  void animQ6(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 800) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      uint8_t step = (uint8_t)(se / 200);
-      if (step < 4) {
-        const uint8_t positions[] = {0, 15, 30, 45};
-        const uint8_t palPos[]    = {0, 85, 170, 255};
-        setRingPixel(RING_OUTER_60, positions[step], paletteColor(palPos[step]));
-      }
-    }
-  }
-
-  void animH4(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    const uint8_t tl = settings_.get().trailLength;
-    uint32_t headColor = paletteColor(0);
-    if (se < 3000) {
-      uint8_t pos = (uint8_t)(se * 60 / 1500) % 60;
-      setRingPixel(RING_OUTER_60, pos, headColor);
-      for (uint8_t t = 1; t <= tl; t++) {
-        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-        setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, scale(headColor, trailBr));
-      }
-    } else if (se < 3300) {
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-    }
-  }
-
-  void animH5(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 3500) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    if (se < 300) {
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-    } else {
-      uint32_t fp = se - 300;
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-        uint8_t rate     = (uint8_t)((i * 7 + 13) % 8 + 2);
-        uint32_t ft      = (uint32_t)rate * 300;
-        uint8_t  pct     = (fp < ft) ? (uint8_t)(255u - fp * 255u / ft) : 0u;
-        if (pct > 0)
-          setRingPixel(RING_OUTER_60, i, scale(paletteColor((uint8_t)(i * 4)), pct));
-      }
-    }
-  }
-
-  void animH6(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      const uint8_t tl = settings_.get().trailLength;
-      uint32_t headColor = paletteColor(0);
-      uint32_t passTime = se % 800;
-      uint32_t passNum  = se / 800;
-      uint8_t pos = (passNum % 2 == 0)
-          ? (uint8_t)(passTime * 59 / 800)
-          : (uint8_t)(59 - passTime * 59 / 800);
-      setRingPixel(RING_OUTER_60, pos, headColor);
-      for (uint8_t t = 1; t <= tl; t++) {
-        uint8_t trailBr = (uint8_t)(255u * (tl - t + 1) / (tl + 1));
-        uint8_t tp = (passNum % 2 == 0)
-            ? (uint8_t)((pos + 60 - t) % 60)
-            : (uint8_t)((pos + t) % 60);
-        setRingPixel(RING_OUTER_60, tp, scale(headColor, trailBr));
-      }
-    }
-  }
-
-  void animH7(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 3000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    if (se < 2000) {
-      uint8_t fi = (uint8_t)((se / 125) % 4);
-      const uint8_t palPos[] = {0, 85, 170, 255};
-      uint32_t c = paletteColor(palPos[fi]);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
-    } else {
-      uint8_t fadeAmt = (uint8_t)(255u - (se - 2000u) * 255u / 500u);
-      uint32_t c = scale(paletteColor(0), fadeAmt);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
-    }
-  }
-
-  void animHr6(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 8500) { animPhase_ = ANIM_IDLE; return; }
-    const uint8_t br = settings_.get().animationBrightness;
-    if (elapsed < 500) {
-      uint8_t rb = (uint8_t)(elapsed * 255 / 500);
-      uint32_t white = strip_.Color(rb, rb, rb);
-      strip_.setBrightness(br);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, white);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, white);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, white);
-    } else if (elapsed < 6000) {
-      strip_.setBrightness(br);
-      uint16_t hueOff = (uint16_t)((elapsed - 500) * 65536UL / 5500);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-        setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
-    } else {
-      uint8_t fadeAmt = (elapsed < 8000) ? (uint8_t)(255u - (elapsed - 6000u) * 255u / 2000u) : 0u;
-      strip_.setBrightness(fadeAmt);
-      uint16_t hueOff = (uint16_t)((6000 - 500) * 65536UL / 5500);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, strip_.ColorHSV((uint16_t)(hueOff + i * 65536UL / RING_OUTER_60.count), 255, br));
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, strip_.ColorHSV((uint16_t)(hueOff + 21845 + i * 65536UL / RING_MIDDLE_24.count), 255, br));
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-        setRingPixel(RING_INNER_12, i, strip_.ColorHSV((uint16_t)(hueOff + 43690 + i * 65536UL / RING_INNER_12.count), 255, br));
-    }
-  }
-
-  void animHr7(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 8000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      const uint8_t tl  = settings_.get().trailLength;
-      const uint8_t gbr = settings_.get().animationBrightness;
-      for (uint8_t d = 0; d < 8; d++) {
-        uint32_t period  = (uint32_t)(d * 3 + 5) % 8 * 600 + 1800;
-        uint8_t  offset  = (uint8_t)((d * 7 + 3) % 60);
-        uint8_t  pos     = (uint8_t)((elapsed % period * 60 / period + offset) % 60);
-        setRingPixel(RING_OUTER_60, pos, strip_.Color(0, gbr, 0));
-        for (uint8_t t = 1; t <= tl; t++) {
-          uint8_t trailBr = (uint8_t)((uint32_t)gbr * (tl - t + 1) / (tl + 1));
-          setRingPixel(RING_OUTER_60, (pos + 60 - t) % 60, strip_.Color(0, trailBr, 0));
-        }
-      }
-    }
-  }
-
-  void animHr8(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 10000) { animPhase_ = ANIM_IDLE; return; }
-    {
-      const uint8_t br = settings_.get().animationBrightness;
-      strip_.setBrightness(elapsed < 9000 ? br : (uint8_t)((10000u - elapsed) * br / 1000u));
-      uint8_t outerOff  = (uint8_t)(elapsed * 256 / 3000);
-      uint8_t middleOff = (uint8_t)(86u - (uint8_t)(elapsed * 256 / 5000));
-      uint8_t innerOff  = (uint8_t)(171u + (uint8_t)(elapsed * 256 / 7000));
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(outerOff + i * 256 / RING_OUTER_60.count)));
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(middleOff + i * 256 / RING_MIDDLE_24.count)));
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-        setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(innerOff + i * 256 / RING_INNER_12.count)));
-    }
-  }
-
-  void animHr9(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 7000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    if (se < 3000) {
-      uint8_t n = (uint8_t)(se * RING_OUTER_60.count / 3000);
-      for (uint8_t i = 0; i < n; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-    } else if (se < 4500) {
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-      uint8_t n = (uint8_t)((se - 3000) * RING_MIDDLE_24.count / 1500);
-      for (uint8_t i = 0; i < n; i++)
-        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
-    } else {
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4)));
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10)));
-      uint8_t n = (uint8_t)((se - 4500) * RING_INNER_12.count / 1000);
-      if (n > RING_INNER_12.count) n = RING_INNER_12.count;
-      for (uint8_t i = 0; i < n; i++)
-        setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21)));
-    }
-  }
-
-  void animHr10(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 10500) { animPhase_ = ANIM_IDLE; return; }
-    {
-      const uint8_t br = settings_.get().animationBrightness;
-      uint32_t baseColor = strip_.Color((uint8_t)(20u * br / 255u), 0, (uint8_t)(60u * br / 255u));
-      float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
-      uint8_t breathBr = (uint8_t)(br * (0.8f + 0.2f * sinf(breathPhase)));
-      strip_.setBrightness(breathBr);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, baseColor);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, baseColor);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, baseColor);
-      const uint16_t strikeTimes[] = {500, 2000, 3500, 5000, 7000};
-      for (uint8_t s = 0; s < 5; s++) {
-        if (elapsed >= strikeTimes[s] && elapsed < strikeTimes[s] + 80u) {
-          uint8_t p1 = (uint8_t)((strikeTimes[s] * 13u + 7u) % 60u);
-          uint8_t p2 = (uint8_t)((strikeTimes[s] * 23u + 31u) % 60u);
-          uint8_t p3 = (uint8_t)((strikeTimes[s] * 37u + 53u) % 60u);
-          setRingPixel(RING_OUTER_60, p1, strip_.Color(255, 255, 255));
-          setRingPixel(RING_OUTER_60, p2, strip_.Color(255, 255, 255));
-          setRingPixel(RING_OUTER_60, p3, strip_.Color(255, 255, 255));
-          setCenterPixel(strip_.Color(255, 255, 255));
-        }
-      }
-    }
-  }
-
-  void animRem1(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 4000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      uint32_t c = paletteColor(0, true);
-      const uint16_t starts[] = {0, 350, 700, 1050};
-      for (uint8_t r = 0; r < 4; r++) {
-        if (se < starts[r]) continue;
-        uint32_t rElap = se - starts[r];
-        if (rElap >= 1500) continue;
-        uint32_t cp = rElap % 500;
-        uint8_t pct;
-        if (cp < 200)      pct = (uint8_t)(cp * 255u / 200u);
-        else if (cp < 300) pct = 255;
-        else               pct = (uint8_t)(255u - (cp - 300u) * 255u / 200u);
-        uint32_t rc = scale(c, pct);
-        switch (r) {
-          case 0: for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);  break;
-          case 1: for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc); break;
-          case 2: for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);  break;
-          case 3: setCenterPixel(rc); break;
-        }
-      }
-    }
-  }
-
-  void animRem2(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 2000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      const ClockSettings &s2 = settings_.get();
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, ringColor(s2.outerMarkerRed, s2.outerMarkerGreen, s2.outerMarkerBlue, 38));
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, ringColor(s2.minutesRed, s2.minutesGreen, s2.minutesBlue, 38));
-      uint32_t period = 667;
-      uint8_t pos = (uint8_t)((se % period) * RING_INNER_12.count / period);
-      uint32_t c = paletteColor(0, true);
-      setRingPixel(RING_INNER_12, pos, c);
-      for (uint8_t t = 1; t <= 2; t++) {
-        uint8_t trailBr = (uint8_t)(255u * (2u - t + 1u) / 3u);
-        setRingPixel(RING_INNER_12, (pos + RING_INNER_12.count - t) % RING_INNER_12.count, scale(c, trailBr));
-      }
-    }
-  }
-
-  void animRem3(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 5000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      uint32_t c = paletteColor(0, true);
-      uint32_t cp = se % 1160;
+    // Ripple outward: center → inner → middle → outer
+    static const uint32_t onsets[] = {0, 250, 500, 800};
+    for (uint8_t r = 0; r < 4; r++) {
+      if (se < onsets[r]) continue;
+      uint32_t t = se - onsets[r];
       uint8_t pct;
-      if      (cp < 80)  pct = (uint8_t)(cp * 255u / 80u);
-      else if (cp < 160) pct = 255;
-      else if (cp < 280) pct = (uint8_t)(255u - (cp - 160u) * 255u / 120u);
-      else if (cp < 360) pct = (uint8_t)((cp - 280u) * 255u / 80u);
-      else if (cp < 440) pct = 255;
-      else if (cp < 640) pct = (uint8_t)(255u - (cp - 440u) * 255u / 200u);
-      else               pct = 38;
-      uint32_t rc = scale(c, pct);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, rc);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, rc);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, rc);
-      setCenterPixel(rc);
+      if      (t < 450u)  pct = (uint8_t)(t * 255u / 450u);
+      else if (t < 650u)  pct = 255u;
+      else if (t < 1500u) pct = (uint8_t)(255u - (t - 650u) * 255u / 850u);
+      else                pct = 0u;
+      if (pct == 0u) continue;
+      uint32_t c = scale(paletteColor((uint8_t)(r * 64u)), pct);
+      switch (r) {
+        case 0: setCenterPixel(c); break;
+        case 1: for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);  break;
+        case 2: for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c); break;
+        case 3: for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);  break;
+      }
     }
   }
 
-  void animRem4(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    const uint32_t se = scaledElapsed(elapsed);
-    if (se >= 6000) { animPhase_ = ANIM_IDLE; return; }
+  // ── Half-hour animations (modes 1-3, 4500-5500ms) ────────────────────────
+
+  void animH1(uint32_t now) {  // Unfurl
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 5000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t env = (se < 300u) ? (uint8_t)((uint32_t)se * br / 300u)
+                : (se > 4200u) ? (uint8_t)((dur - se) * br / 800u) : br;
+    strip_.setBrightness(env);
+    setCenterPixel(strip_.Color(255, 255, 255));
+    if (se >= 300u) {
+      uint32_t t = se - 300u;
+      uint8_t n = (t < 1000u) ? (uint8_t)(t * RING_INNER_12.count / 1000u) : RING_INNER_12.count;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21u + 160u)));
+    }
+    if (se >= 1100u) {
+      uint32_t t = se - 1100u;
+      uint8_t n = (t < 1400u) ? (uint8_t)(t * RING_MIDDLE_24.count / 1400u) : RING_MIDDLE_24.count;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10u + 80u)));
+    }
+    if (se >= 2200u) {
+      uint32_t t = se - 2200u;
+      uint8_t n = (t < 1800u) ? (uint8_t)(t * RING_OUTER_60.count / 1800u) : RING_OUTER_60.count;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4u)));
+    }
+  }
+
+  void animH2(uint32_t now) {  // Three Comets
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 5000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    const uint8_t tl = s.trailLength;
+    uint8_t env = (se < 400u) ? (uint8_t)((uint32_t)se * br / 400u)
+                : (se > 4600u) ? (uint8_t)((dur - se) * br / 400u) : br;
+    strip_.setBrightness(env);
+    {
+      uint8_t pos = (uint8_t)(se * 180u / 5000u % 60u);
+      uint32_t c = paletteColor(0);
+      setRingPixel(RING_OUTER_60, pos, c);
+      for (uint8_t t = 1; t <= tl; t++)
+        setRingPixel(RING_OUTER_60, (pos + 60u - t) % 60u, scale(c, (uint8_t)(255u * (tl - t + 1u) / (tl + 1u))));
+    }
+    {
+      uint8_t raw = (uint8_t)(se * 48u / 5000u % 24u);
+      uint8_t pos = (uint8_t)((24u - raw) % 24u);
+      uint32_t c = paletteColor(85);
+      setRingPixel(RING_MIDDLE_24, pos, c);
+      for (uint8_t t = 1; t <= tl; t++)
+        setRingPixel(RING_MIDDLE_24, (pos + t) % 24u, scale(c, (uint8_t)(255u * (tl - t + 1u) / (tl + 1u))));
+    }
+    {
+      uint8_t pos = (uint8_t)(se * 48u / 5000u % 12u);
+      uint32_t c = paletteColor(170);
+      setRingPixel(RING_INNER_12, pos, c);
+      for (uint8_t t = 1; t <= tl; t++)
+        setRingPixel(RING_INNER_12, (pos + 12u - t) % 12u, scale(c, (uint8_t)(255u * (tl - t + 1u) / (tl + 1u))));
+    }
+  }
+
+  void animH3(uint32_t now) {  // Breathe
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 5000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t env = (se < 400u) ? (uint8_t)((uint32_t)se * br / 400u)
+                : (se > 4600u) ? (uint8_t)((dur - se) * br / 400u) : br;
+    const float ft = (float)se * 6.2832f / 3200.0f;
+    uint8_t brI = (uint8_t)((sinf(ft + 1.5708f) + 1.0f) * 0.5f * (float)env);
+    uint8_t brM = (uint8_t)((sinf(ft)            + 1.0f) * 0.5f * (float)env);
+    uint8_t brO = (uint8_t)((sinf(ft - 1.5708f)  + 1.0f) * 0.5f * (float)env);
+    strip_.setBrightness(255);
+    for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+      setRingPixel(RING_INNER_12, i, scale(paletteColor((uint8_t)(i * 21u + 160u)), brI));
+    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+      setRingPixel(RING_MIDDLE_24, i, scale(paletteColor((uint8_t)(i * 10u + 85u)), brM));
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+      setRingPixel(RING_OUTER_60, i, scale(paletteColor((uint8_t)(i * 4u)), brO));
+  }
+
+  // ── Hour animations (modes 1-5, 6500-9000ms) ─────────────────────────────
+
+  void animHr1(uint32_t now) {  // Ceremony
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 9000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t env = (se < 400u) ? (uint8_t)((uint32_t)se * br / 400u)
+                : (se > 8000u) ? (uint8_t)((dur - se) * br / 1000u) : br;
+    strip_.setBrightness(env);
+    if (se >= 400u) {
+      uint32_t t = se - 400u;
+      uint8_t n = (t < 2000u) ? (uint8_t)(t * 60u / 2000u) : 60u;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4u)));
+    }
+    if (se >= 2200u) {
+      uint32_t t = se - 2200u;
+      uint8_t n = (t < 1500u) ? (uint8_t)(t * 24u / 1500u) : 24u;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_MIDDLE_24, (uint8_t)((24u - i) % 24u), paletteColor((uint8_t)(i * 10u + 85u)));
+    }
+    if (se >= 3500u) {
+      uint32_t t = se - 3500u;
+      uint8_t n = (t < 1200u) ? (uint8_t)(t * 12u / 1200u) : 12u;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21u + 160u)));
+    }
+    if (se >= 4500u) {
+      uint8_t pct;
+      if (se < 5200u) {
+        pct = (uint8_t)((se - 4500u) * 255u / 700u);
+      } else {
+        float ft = (float)(se - 5200u) * 6.2832f / 1800.0f;
+        pct = (uint8_t)(200u + (uint8_t)(27.5f + 27.5f * sinf(ft)));
+      }
+      setCenterPixel(scale(strip_.Color(255, 255, 255), pct));
+    }
+  }
+
+  void animHr2(uint32_t now) {  // Galaxy Spin
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 9000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t env = (se < 500u) ? (uint8_t)((uint32_t)se * br / 500u)
+                : (se > 8000u) ? (uint8_t)((dur - se) * br / 1000u) : br;
+    strip_.setBrightness(env);
+    uint8_t outerOff  = (uint8_t)(se * 256u / 6000u);
+    uint8_t middleOff = (uint8_t)(86u - (uint8_t)(se * 256u / 8000u));
+    uint8_t innerOff  = (uint8_t)(171u + (uint8_t)(se * 256u / 5000u));
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+      setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(outerOff + i * 256u / RING_OUTER_60.count)));
+    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+      setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(middleOff + i * 256u / RING_MIDDLE_24.count)));
+    for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+      setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(innerOff + i * 256u / RING_INNER_12.count)));
+    setCenterPixel(paletteColor((uint8_t)(outerOff + 128u)));
+  }
+
+  void animHr3(uint32_t now) {  // Supernova
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 8000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t globalFade = (se > 6000u) ? (uint8_t)((dur - se) * 255u / 2000u) : 255u;
+    strip_.setBrightness((uint8_t)((uint32_t)br * globalFade / 255u));
+    {
+      uint8_t pct = (se < 300u) ? (uint8_t)(se * 255u / 300u) : 255u;
+      setCenterPixel(scale(strip_.Color(255, 255, 255), pct));
+    }
+    if (se >= 200u) {
+      uint32_t t = se - 200u;
+      uint8_t pct = (t < 400u) ? (uint8_t)(t * 255u / 400u) : 255u;
+      uint32_t c = scale(paletteColor(160), pct);
+      for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, c);
+    }
+    if (se >= 600u) {
+      uint32_t t = se - 600u;
+      uint8_t pct = (t < 500u) ? (uint8_t)(t * 255u / 500u) : 255u;
+      uint32_t c = scale(paletteColor(85), pct);
+      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
+    }
+    if (se >= 1200u) {
+      uint32_t t = se - 1200u;
+      uint8_t pct = (t < 800u) ? (uint8_t)(t * 255u / 800u) : 255u;
+      uint32_t c = scale(paletteColor(0), pct);
+      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) setRingPixel(RING_OUTER_60, i, c);
+    }
+  }
+
+  void animHr4(uint32_t now) {  // Comet Relay
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 8000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    const uint8_t tl = s.trailLength;
+    uint8_t env = (se < 300u) ? (uint8_t)((uint32_t)se * br / 300u)
+                : (se > 7500u) ? (uint8_t)((dur - se) * br / 500u) : br;
+    strip_.setBrightness(env);
+    if (se < 3200u) {
+      uint8_t pos = (uint8_t)(se * 60u / 3000u % 60u);
+      uint32_t c = paletteColor(0);
+      setRingPixel(RING_OUTER_60, pos, c);
+      for (uint8_t t = 1; t <= tl; t++)
+        setRingPixel(RING_OUTER_60, (pos + 60u - t) % 60u, scale(c, (uint8_t)(255u * (tl - t + 1u) / (tl + 1u))));
+    }
+    if (se >= 2800u && se < 5400u) {
+      uint32_t t = se - 2800u;
+      uint8_t pos = (uint8_t)(t * 24u / 2400u % 24u);
+      uint32_t c = paletteColor(85);
+      setRingPixel(RING_MIDDLE_24, pos, c);
+      for (uint8_t tt = 1; tt <= tl; tt++)
+        setRingPixel(RING_MIDDLE_24, (pos + 24u - tt) % 24u, scale(c, (uint8_t)(255u * (tl - tt + 1u) / (tl + 1u))));
+    }
+    if (se >= 5000u && se < 7200u) {
+      uint32_t t = se - 5000u;
+      uint8_t pos = (uint8_t)(t * 24u / 2000u % 12u);
+      uint32_t c = paletteColor(170);
+      setRingPixel(RING_INNER_12, pos, c);
+      for (uint8_t tt = 1; tt <= tl; tt++)
+        setRingPixel(RING_INNER_12, (pos + 12u - tt) % 12u, scale(c, (uint8_t)(255u * (tl - tt + 1u) / (tl + 1u))));
+    }
+    if (se >= 6800u) {
+      uint8_t pct = (se < 7300u) ? (uint8_t)((se - 6800u) * 255u / 500u) : 255u;
+      setCenterPixel(scale(paletteColor(192), pct));
+    }
+  }
+
+  void animHr5(uint32_t now) {  // Deep Breath
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 9000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t env = (se < 500u) ? (uint8_t)((uint32_t)se * br / 500u)
+                : (se > 8000u) ? (uint8_t)((dur - se) * br / 1000u) : br;
+    const float ft = (float)se * 6.2832f / 3000.0f;
+    uint8_t breathBr = (uint8_t)((sinf(ft) + 1.0f) * 0.5f * (float)env);
+    strip_.setBrightness(breathBr);
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+      setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4u)));
+    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+      setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10u + 85u)));
+    for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+      setRingPixel(RING_INNER_12, i, paletteColor((uint8_t)(i * 21u + 160u)));
+    setCenterPixel(paletteColor(192));
+  }
+
+
+  // ── Reminder animations (modes 6-10, 2500-4000ms) ────────────────────────
+
+  void animRem1(uint32_t now) {  // Gentle Pulse
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 3000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
     strip_.setBrightness(settings_.get().animationBrightness);
-    if (se < 1000) {
-      uint8_t pct = (uint8_t)(se * 255u / 1000u);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++)
-        setRingPixel(RING_INNER_12, i, scale(strip_.Color(60, 0, 0), pct));
-    } else if (se < 2500) {
-      uint8_t ip = (uint8_t)((se - 1000u) * 32u / 1500u);
-      uint32_t ic = paletteColor(ip, true);
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, ic);
-      uint8_t mp = (uint8_t)((se - 1000u) * 128u / 1500u);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
-        setRingPixel(RING_MIDDLE_24, i, scale(strip_.Color(60, 0, 0), mp));
-    } else if (se < 4000) {
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, paletteColor(32, true));
-      uint8_t mp = (uint8_t)((se - 2500u) * 32u / 1500u);
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, paletteColor(mp, true));
-      uint8_t op = (uint8_t)((se - 2500u) * 128u / 1500u);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
-        setRingPixel(RING_OUTER_60, i, scale(strip_.Color(60, 0, 0), op));
-    } else {
-      uint8_t pos = (uint8_t)((se - 4000u) * 128u / 2000u + 64u);
-      uint32_t c = paletteColor(pos, true);
+    uint8_t pct;
+    if      (se < 800u)  pct = (uint8_t)(se * 255u / 800u);
+    else if (se < 1200u) pct = 255u;
+    else                 pct = (uint8_t)(255u - (se - 1200u) * 255u / 1800u);
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++)
+      setRingPixel(RING_OUTER_60, i, scale(paletteColor(0, true), pct));
+    for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++)
+      setRingPixel(RING_MIDDLE_24, i, scale(paletteColor(85, true), pct));
+    for (uint8_t i = 0; i < RING_INNER_12.count; i++)
+      setRingPixel(RING_INNER_12, i, scale(paletteColor(170, true), pct));
+    setCenterPixel(scale(paletteColor(200, true), pct));
+  }
+
+  void animRem2(uint32_t now) {  // Orbiting Orb
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 3000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    const uint8_t tl = s.trailLength;
+    uint8_t env = (se < 300u) ? (uint8_t)((uint32_t)se * br / 300u)
+                : (se > 2700u) ? (uint8_t)((dur - se) * br / 300u) : br;
+    strip_.setBrightness(env);
+    uint32_t dimC = scale(paletteColor(0, true), 40);
+    for (uint8_t i = 0; i < RING_OUTER_60.count; i++) setRingPixel(RING_OUTER_60, i, dimC);
+    uint8_t pos = (uint8_t)(se * 30u / dur % 12u);
+    uint32_t c = paletteColor(0, true);
+    setRingPixel(RING_INNER_12, pos, c);
+    for (uint8_t t = 1; t <= tl && t < 6u; t++)
+      setRingPixel(RING_INNER_12, (pos + 12u - t) % 12u, scale(c, (uint8_t)(255u * (tl - t + 1u) / (tl + 1u))));
+  }
+
+  void animRem3(uint32_t now) {  // Ripple In
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 3500;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    static const uint32_t onsets[] = {0, 300, 600, 900};
+    for (uint8_t r = 0; r < 4; r++) {
+      if (se < onsets[r]) continue;
+      uint32_t t = se - onsets[r];
+      uint8_t pct;
+      if      (t < 400u)  pct = (uint8_t)(t * 255u / 400u);
+      else if (t < 700u)  pct = 255u;
+      else if (t < 1600u) pct = (uint8_t)(255u - (t - 700u) * 255u / 900u);
+      else                pct = 0u;
+      if (pct == 0u) continue;
+      uint32_t c = scale(paletteColor((uint8_t)(r * 64u), true), pct);
+      switch (r) {
+        case 0: for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);  break;
+        case 1: for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c); break;
+        case 2: for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);  break;
+        case 3: setCenterPixel(c); break;
+      }
+    }
+  }
+
+  void animRem4(uint32_t now) {  // Heartbeat
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 3000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    strip_.setBrightness(settings_.get().animationBrightness);
+    static const uint32_t beatTimes[] = {0, 1400};
+    uint8_t pct = 0;
+    for (uint8_t b = 0; b < 2; b++) {
+      if (se < beatTimes[b]) continue;
+      uint32_t t = se - beatTimes[b];
+      uint8_t bscale = (b == 0) ? 255u : 180u;
+      if      (t < 140u) pct = (uint8_t)(t * bscale / 140u);
+      else if (t < 220u) pct = (uint8_t)((220u - t) * bscale / 80u);
+      else if (t < 360u) pct = 0u;
+      else if (t < 500u) pct = (uint8_t)((t - 360u) * bscale / 140u);
+      else if (t < 640u) pct = (uint8_t)((640u - t) * bscale / 140u);
+    }
+    if (pct > 0u) {
+      uint32_t c = scale(paletteColor(0, true), pct);
       for (uint8_t i = 0; i < RING_OUTER_60.count; i++)  setRingPixel(RING_OUTER_60, i, c);
       for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) setRingPixel(RING_MIDDLE_24, i, c);
       for (uint8_t i = 0; i < RING_INNER_12.count; i++)  setRingPixel(RING_INNER_12, i, c);
+      setCenterPixel(c);
     }
   }
 
-  void animRem5(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 5000) { animPhase_ = ANIM_IDLE; return; }
-    animStep_++;
+  void animRem5(uint32_t now) {  // Slow Bloom
+    const uint32_t se = scaledElapsed(now - animStartMs_);
+    const uint32_t dur = 4000;
+    if (se >= dur) { animPhase_ = ANIM_IDLE; return; }
+    const ClockSettings &s = settings_.get();
+    const uint8_t br = s.animationBrightness;
+    uint8_t env = (se < 500u) ? (uint8_t)((uint32_t)se * br / 500u)
+                : (se > 3200u) ? (uint8_t)((dur - se) * br / 800u) : br;
+    strip_.setBrightness(env);
     {
-      float breathPhase = (float)(elapsed % 2000) * 3.14159f / 2000.0f;
-      uint8_t breathBr = (uint8_t)(settings_.get().animationBrightness * (0.8f + 0.2f * sinf(breathPhase)));
-      strip_.setBrightness(breathBr);
-      uint8_t seed = animStep_;
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) {
-        uint8_t pn = (uint8_t)((i * 7 + seed * 3) % 160);
-        setRingPixel(RING_OUTER_60, i, paletteColor(pn, true));
-      }
-      for (uint8_t i = 0; i < RING_MIDDLE_24.count; i++) {
-        uint8_t pn = (uint8_t)((i * 11 + seed * 5) % 160);
-        setRingPixel(RING_MIDDLE_24, i, paletteColor(pn, true));
-      }
-      for (uint8_t i = 0; i < RING_INNER_12.count; i++) {
-        uint8_t pn = (uint8_t)((i * 17 + seed * 7) % 160);
-        setRingPixel(RING_INNER_12, i, paletteColor(pn, true));
-      }
-      if (elapsed % 200 < 50) {
-        uint8_t sp = (uint8_t)((seed * 47 + 13) % 60);
-        setRingPixel(RING_OUTER_60, sp, strip_.Color(255, 220, 100));
-      }
+      uint8_t n = (se < 2500u) ? (uint8_t)(se * 60u / 2500u) : 60u;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_OUTER_60, i, paletteColor((uint8_t)(i * 4u), true));
     }
-  }
-
-  void animRem6(uint32_t now) {
-    uint32_t elapsed = now - animStartMs_;
-    if (elapsed >= 4000) { animPhase_ = ANIM_IDLE; return; }
-    strip_.setBrightness(settings_.get().animationBrightness);
-    {
-      uint32_t c = paletteColor(0, true);
-      uint32_t dimOuter = scale(c, 30);
-      for (uint8_t i = 0; i < RING_OUTER_60.count; i++) setRingPixel(RING_OUTER_60, i, dimOuter);
-      bool glitch = (elapsed % 700) >= 550 && (elapsed % 700) < 670;
-      if (!glitch) {
-        bool on = (elapsed % 82) < 40;
-        if (on) {
-          for (uint8_t i = 0; i < RING_INNER_12.count; i++) setRingPixel(RING_INNER_12, i, c);
-        }
-      }
+    if (se >= 800u) {
+      uint32_t t = se - 800u;
+      uint8_t n = (t < 2000u) ? (uint8_t)(t * 24u / 2000u) : 24u;
+      for (uint8_t i = 0; i < n; i++)
+        setRingPixel(RING_MIDDLE_24, i, paletteColor((uint8_t)(i * 10u + 85u), true));
+    }
+    if (se >= 1500u) {
+      uint8_t pct = (se < 2000u) ? (uint8_t)((se - 1500u) * 255u / 500u) : 255u;
+      setCenterPixel(scale(paletteColor(200, true), pct));
     }
   }
 
@@ -2420,7 +2197,7 @@ class WebUi {
         ",\"middle_ambient_scale\":%u,\"inner_ambient_scale\":%u"
         ",\"button_event_count\":%lu,\"free_heap\":%lu"
         ",\"clock_pixel_count\":%u,\"ring_pixel_offset\":%u"
-        ",\"outer_ring_offset\":%u,\"sacrificial_enabled\":%s"
+        ",\"default_outer_ring_offset\":%u,\"outer_ring_offset\":%u,\"sacrificial_enabled\":%s"
         ",\"anim_phase\":\"%s\",\"last_anim_source\":\"%s\",\"last_anim_mode\":%u"
         ",\"settings_save_count\":%u}",
         (unsigned long)uptimeSec, FIRMWARE_VERSION, (unsigned)SETTINGS_VERSION,
@@ -2434,6 +2211,7 @@ class WebUi {
         (unsigned)mid_amb_scale, (unsigned)inn_amb_scale,
         (unsigned long)g_buttonEventCount, (unsigned long)ESP.getFreeHeap(),
         (unsigned)CLOCK_PIXEL_COUNT, (unsigned)RING_PIXEL_OFFSET,
+        (unsigned)DEFAULT_OUTER_RING_OFFSET,
         (unsigned)ds.outerRingOffset,
         SACRIFICIAL_PIXEL_ENABLED ? "true" : "false",
         renderer_.animPhaseName(), renderer_.lastAnimSource(), (unsigned)renderer_.lastAnimMode(),
@@ -3039,8 +2817,8 @@ static void logRuntimeStatus(uint32_t now) {
   }
 #endif
 
-  Serial.printf("  LEDs  : count=%d  ringOffset(hw)=%d  rotOffset(sw)=%d  center=%d  sac=%s\n",
-                CLOCK_PIXEL_COUNT, RING_PIXEL_OFFSET, s.outerRingOffset,
+  Serial.printf("  LEDs  : count=%d  ringOffset(hw)=%d  defaultRot=%d  rotOffset(sw)=%d  center=%d  sac=%s\n",
+                CLOCK_PIXEL_COUNT, RING_PIXEL_OFFSET, DEFAULT_OUTER_RING_OFFSET, s.outerRingOffset,
                 CENTER_PIXEL_INDEX, SACRIFICIAL_PIXEL_ENABLED ? "yes" : "no");
   Serial.printf("  NTP   : %s\n", timeSync.synced() ? "synced" : "waiting");
 }
@@ -3254,4 +3032,3 @@ void loop() {
     lastAnimationRenderMs = now;
   }
 }
-

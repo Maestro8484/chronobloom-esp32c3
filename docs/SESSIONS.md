@@ -37,10 +37,31 @@ Paste each into Claude Code using your autotext primer (replace TASK and FUNCTIO
 | 25 | Browser cache fix (v2.3.4) | Add Cache-Control: no-cache header to / GET — browser was serving stale cached page, making all JS fixes since v2.3.2 invisible | Done (2026-05-17, v2.3.4) |
 | 26 | /diag diagnostic fields (v2.3.5) | Add anim_phase, last_anim_source, last_anim_mode, settings_save_count to /diag JSON | Done (2026-05-17, v2.3.5) |
 | 27 | renderAnimFrame uint32 underflow fix (v2.3.6) | loop() captures now before webUi.loop(); handler sets animStartMs_ to newer millis(); renderAnimFrame(now) underflows → 1-frame flicker. Fix: renderAnimFrame(millis()) | Done (2026-05-17, v2.3.6) |
+| 28 | Animation overhaul (v2.4.0) | Replace all 29 animations with 16 cinematic, palette-aware animations: Q×3, H×3, Hr×5, Rem×5. Smooth fade envelopes, no flash/strobe. Update valid/sanitize max counts, trigger bounds, web UI dropdowns. | Done (2026-05-18, v2.4.0) |
+| 29 | 8-inch default ring rotation (v2.4.1) | Add build-time software ring rotation default, set 8-inch reset/defaults to offset 1, keep 8-inch sacrificial/center LED geometry valid, remove retired project nickname from docs. | Done (2026-05-18, v2.4.1) |
 
 ---
 
 ## Completed Sessions
+
+### Session 29 — 8-inch Default Ring Rotation (Done 2026-05-18, v2.4.1)
+- **8-inch default rotation fixed**: added `DEFAULT_OUTER_RING_OFFSET` in `src/main.cpp` and set it to `1` for `esp32c3_v3_8inch` in `platformio.ini`; `SettingsStore::defaults()` now uses that build-time value for factory/reset `outerRingOffset`.
+- **Invalid saved rotation fallback fixed**: `SettingsStore::sanitize()` now falls back to `DEFAULT_OUTER_RING_OFFSET` instead of hardcoded `0` when persisted `outerRingOffset` is out of range.
+- **8-inch LED geometry confirmed**: `platformio.ini` keeps `CLOCK_PIXEL_COUNT=98`, `CENTER_PIXEL_INDEX=97`, `RING_PIXEL_OFFSET=1`, `SACRIFICIAL_PIXEL_ENABLED=1`, `SACRIFICIAL_PIXEL_INDEX=0`; physical pixel 0 is sacrificial, ring pixels are 1-96, and center is 97.
+- **Diagnostics expanded**: `/diag` now reports `default_outer_ring_offset`; `logRuntimeStatus()` prints `defaultRot` beside the saved live `rotOffset(sw)`.
+- **Documentation cleanup**: removed all retired project-nickname references from `AGENTS.md`, `CLAUDE.md`, and `WORKFLOW.md`; anchor phrase is now `ChronoBloom workflow rules active`.
+- **Build and OTA**: `esp32c3_v3_8inch` SUCCESS, RAM 11.1%, Flash 57.3%; `esp32c3_v3_15inch` SUCCESS, RAM 11.1%, Flash 57.3%. 8-inch OTA command returned `Update successful, rebooting...`; post-reboot verification was intentionally left to the user after stop request.
+- **Symmap regenerated**: 130 functions; `docs/symmap.json` SHA updated and `docs/FUNCTION_INVENTORY.md` regenerated.
+- **Commit**: included in this closure commit.
+
+### Session 28 — Animation Overhaul (Done 2026-05-18, v2.4.0)
+- **Animation set replaced**: `src/main.cpp` replaces the previous 29 animation modes with 16 smoother, palette-aware animations: quarter x3, half-hour x3, hour x5, reminder x5.
+- **Mode bounds tightened**: `SettingsStore::valid()` and `SettingsStore::sanitize()` now limit quarter animations to 0-3, half-hour to 0-3, hour to 0-5, and focus reminder animation to 0-10.
+- **Renderer dispatch updated**: `ClockRenderer::triggerReminderDirectAnimation()`, `ClockRenderer::animPhaseName()`, and `ClockRenderer::tickAnimation()` now route only the retained animation modes.
+- **Web UI labels aligned**: `src/web_html.h` removes deleted animation options and relabels the remaining quarter, half-hour, hour, and reminder choices.
+- **Symmap regenerated**: function count drops from 143 to 130 after removing the deleted animation implementations.
+- **Build**: validated as part of Session 29 closure; both PlatformIO envs compile cleanly.
+- **Commit**: included in this closure commit.
 
 ### Session 27 — renderAnimFrame uint32 Underflow Fix (Done 2026-05-17, v2.3.6)
 - **Root cause**: `loop()` captures `const uint32_t now = millis()` at the top (line 3191) before `webUi.loop()`. The `/previewAnimation` handler runs inside `webUi.loop()` and calls `triggerAnimDirect(..., millis())`, setting `animStartMs_` to a timestamp **newer** than `now`. Then `renderer.renderAnimFrame(now)` computes `elapsed = now - animStartMs_` → uint32 underflow → ~4,294,967,295 ms → `if (elapsed >= 5000)` is immediately true → animation sets `animPhase_ = ANIM_IDLE` and returns on frame 1. User sees a single-frame flicker. Every preview, every time.

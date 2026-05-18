@@ -79,7 +79,7 @@ These rules persist across:
 - Hardware vs software topic switches
 - Planning vs debugging mode transitions
 
-**Rule anchor phrase**: "Iris Clock workflow rules active" (use in first message of new sessions to confirm)
+**Rule anchor phrase**: "ChronoBloom workflow rules active" (use in first message of new sessions to confirm)
 
 ---
 

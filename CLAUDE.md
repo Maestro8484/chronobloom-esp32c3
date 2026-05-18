@@ -64,7 +64,7 @@ Build commands, web UI URLs, project identity, and firmware file structure are i
 
 ## Project Identity
 
-**Name**: ChronoBloom ESP32-C3 (formerly neopixelClock-esp32c3-v3 / Iris Clock)
+**Name**: ChronoBloom ESP32-C3 (formerly neopixelClock-esp32c3-v3)
 **Hardware**: XIAO ESP32-C3, 3 NeoPixel rings (60/24/12 LEDs), VEML7700 lux sensor
 **Firmware**: `src/main.cpp` (~3100 lines) + `src/web_html.h` (~36KB PROGMEM HTML/JS)
 **Visual**: Concentric LED rings, flower-like light bloom pattern
@@ -105,4 +105,4 @@ OTA preferred post-first-flash: `http://esp32c3-v3-8inch.local/update`
 
 ## Session Anchor Phrase
 
-**"Iris Clock workflow rules active"** — say at start of any new session to confirm context loaded.
+**"ChronoBloom workflow rules active"** — say at start of any new session to confirm context loaded.

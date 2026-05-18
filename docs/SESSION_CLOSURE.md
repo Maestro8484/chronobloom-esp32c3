@@ -122,5 +122,5 @@ These are documented failure modes. Avoid them.
 
 ## Session Numbering Reference
 Check docs/SESSIONS.md status table for the current highest session number before assigning the next one.
-As of 2026-05-17: last documented session is Session 27 (renderAnimFrame uint32 underflow fix, 2026-05-17, v2.3.6).
-Next session to be documented: Session 28.
+As of 2026-05-18: last documented session is Session 29 (8-inch default ring rotation, 2026-05-18, v2.4.1).
+Next session to be documented: Session 30.
