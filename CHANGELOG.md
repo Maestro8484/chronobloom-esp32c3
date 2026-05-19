@@ -5,6 +5,21 @@ Format: **[vX.X.X] — YYYY-MM-DD**
 
 ---
 
+## [v2.4.2] — 2026-05-18
+
+### Added
+- **Per-ring face brightness controls** (`middleFaceScale`, `innerFaceScale`): Two new `ClockSettings` fields (0–255) replacing the hardcoded `50` ambient scale in `renderFace()` for the middle (24 LED) and inner (12 LED) rings. Defaults: 55 each.
+- **Contrast preset dropdown** (web UI Rings panel): Select from Current defaults / Soft contrast / Clear contrast / High contrast / Balanced glow. Selecting a preset immediately sets `outerRingBrightness`, `middleFaceScale`, and `innerFaceScale` and POSTs to persist. Dropdown reverts to "Custom" if any of the three linked fields is manually edited.
+- `SETTINGS_VERSION` bumped 12 → 13 (stale EEPROM resets to new defaults on first boot).
+
+### Files changed
+- `src/main.cpp` — `ClockSettings` struct, `SETTINGS_VERSION`, `defaults()`, `valid()`, `renderFace()`, `settingsJson()`, `setupRoutes()` POST handler
+- `src/web_html.h` — Rings panel HTML, `loadSettings`, `bindLive`, `saveSettings`, new `applyContrastPreset`/`updateContrastPreset` functions
+- `docs/FUNCTION_INVENTORY.md`, `docs/symmap.json` — regenerated (line numbers shifted by struct/version changes)
+- `platformio.ini` — `FIRMWARE_VERSION` 2.4.1 → 2.4.2
+
+---
+
 ## [v2.3.6] — 2026-05-17
 
 ### Fixed

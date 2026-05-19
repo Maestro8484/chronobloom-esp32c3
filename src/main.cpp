@@ -397,10 +397,12 @@ struct ClockSettings {
   uint8_t trailLength;          // 2-12 LEDs (chase/sweep trail length)
   uint8_t reminderPalette;      // 0=Amber,1=Red,2=Magenta,3=Cyan (reminder animations only)
   uint8_t outerRingBrightness;  // 0-100 percent multiplier applied to outer ring colors
+  uint8_t middleFaceScale;      // 0-255, face ambient level for middle ring (24 LED)
+  uint8_t innerFaceScale;       // 0-255, face ambient level for inner ring (12 LED)
 };
 
 constexpr uint8_t SETTINGS_MAGIC = 0xC1;
-constexpr uint8_t SETTINGS_VERSION = 12;
+constexpr uint8_t SETTINGS_VERSION = 13;
 constexpr size_t EEPROM_BYTES = 256;
 
 class SettingsStore {
@@ -446,7 +448,7 @@ class SettingsStore {
             0,   8,   22,   60,   0, 0, 60, 60,  // focusReminder: disabled, 08-22h, 60min, no days, quarter anim
             DEFAULT_OUTER_RING_OFFSET,   // outerRingOffset: build-time default rotation
             0, 3, 200, 4, 0,      // animPalette, animSpeed, animBrightness, trailLength, reminderPalette
-            90}; // outerRingBrightness
+            90, 55, 55}; // outerRingBrightness, middleFaceScale, innerFaceScale
   }
 
   static bool valid(const ClockSettings &settings) {
@@ -472,7 +474,9 @@ class SettingsStore {
            settings.animationBrightness >= 50 && settings.animationBrightness <= 255 &&
            settings.trailLength >= 2 && settings.trailLength <= 12 &&
            settings.reminderPalette <= 3 &&
-           settings.outerRingBrightness <= 100;
+           settings.outerRingBrightness <= 100 &&
+           settings.middleFaceScale <= 255 &&
+           settings.innerFaceScale <= 255;
   }
 
   static ClockSettings sanitize(ClockSettings settings) {
@@ -888,9 +892,9 @@ class ClockRenderer {
     const uint32_t outerMarkerScaled = scale(outerMarker, orbScale);
     const uint32_t outerFillerScaled = scale(outerFiller, orbScale);
     const uint32_t middleAmbient = scale(ringColor(settings.hoursRed, settings.hoursGreen,
-                                                  settings.hoursBlue, 255), 50);
+                                                  settings.hoursBlue, 255), settings.middleFaceScale);
     const uint32_t innerAmbient = scale(ringColor(settings.centerRed, settings.centerGreen,
-                                                 settings.centerBlue, 255), 50);
+                                                 settings.centerBlue, 255), settings.innerFaceScale);
     for (uint8_t i = 0; i < RING_OUTER_60.count; ++i) {
       setRingPixel(RING_OUTER_60, i, (i % 5 == 0) ? outerMarkerScaled : outerFillerScaled);
     }
@@ -2267,6 +2271,8 @@ class WebUi {
       if (server_.hasArg("trailLength"))         settings.trailLength         = clampByte(server_.arg("trailLength").toInt(), 2, 12);
       if (server_.hasArg("reminderPalette"))     settings.reminderPalette     = clampByte(server_.arg("reminderPalette").toInt(), 0, 3);
       if (server_.hasArg("outerRingBrightness")) settings.outerRingBrightness = clampByte(server_.arg("outerRingBrightness").toInt(), 0, 100);
+      if (server_.hasArg("middleFaceScale"))     settings.middleFaceScale     = clampByte(server_.arg("middleFaceScale").toInt(), 0, 255);
+      if (server_.hasArg("innerFaceScale"))      settings.innerFaceScale      = clampByte(server_.arg("innerFaceScale").toInt(), 0, 255);
       settings_.update(settings);
       if (!server_.hasArg("silent")) renderer_.setStatus(STATUS_SETTINGS_SAVED, 1300);
       model_.markDirty();
@@ -2460,7 +2466,7 @@ class WebUi {
     snprintf(mc, sizeof(mc), "#%02X%02X%02X", s.minutesRed, s.minutesGreen, s.minutesBlue);
     snprintf(hc, sizeof(hc), "#%02X%02X%02X", s.hoursRed, s.hoursGreen, s.hoursBlue);
     snprintf(cc, sizeof(cc), "#%02X%02X%02X", s.centerRed, s.centerGreen, s.centerBlue);
-    char buf[1150];
+    char buf[1200];
     snprintf(buf, sizeof(buf),
       "{\"dayBrightness\":%u,\"nightBrightness\":%u"
       ",\"nightStartHour\":%u,\"nightEndHour\":%u"
@@ -2482,7 +2488,8 @@ class WebUi {
       ",\"animationPalette\":%u,\"animationSpeed\":%u"
       ",\"animationBrightness\":%u,\"trailLength\":%u"
       ",\"reminderPalette\":%u"
-      ",\"outerRingBrightness\":%u}",
+      ",\"outerRingBrightness\":%u"
+      ",\"middleFaceScale\":%u,\"innerFaceScale\":%u}",
       s.dayBrightness, s.nightBrightness,
       s.nightStartHour, s.nightEndHour,
       s.colorTheme, s.secondTrail, s.progressSeconds,
@@ -2503,7 +2510,8 @@ class WebUi {
       s.animationPalette, s.animationSpeed,
       s.animationBrightness, s.trailLength,
       s.reminderPalette,
-      s.outerRingBrightness);
+      s.outerRingBrightness,
+      s.middleFaceScale, s.innerFaceScale);
     return String(buf);
   }
 
